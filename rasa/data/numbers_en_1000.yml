@@ -1,0 +1,10 @@
+version: "3.1"
+
+nlu:
+- regex: number
+  examples: |
+    - (((a|one|two|three|four|five|six|seven|eight|nine) )?hundred (and )?)?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|(thir|four|fif|six|seven|eight|nine)teen|(twenty|thirty|fourty|fifty|sixty|seventy|eighty|ninety)( *(one|two|three|four|five|six|seven|eight|nine))?)
+
+- regex: ordinal
+  examples: |
+    - ((a|one|two|three|four|five|six|seven|eight|nine)? hundred and?)? first|second|third|(four|fif|six|seven|eigh|nine)th|(ten|eleven|twelve|(thir|four|fif|six|seven|eight|nine)teen)th|(twen|thir|four|fif|six|seven|eigh|nine)tieth|((twenty|thirty|fourty|fifty|sixty|seventy|eighty|ninety) (first|second|third|(four|fif|six|seven|eigh|nine)th))

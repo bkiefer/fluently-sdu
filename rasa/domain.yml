@@ -1,0 +1,18 @@
+version: "3.1"
+
+intents:
+  - Command_Start
+  - Command_Stop
+  - Command_Quit
+  - Command_Jumpslide_Forward
+  - Command_Jumpslide_Back
+  - Command_Gotoslide
+  - Command_GotoChapter_1
+  - Command_GotoChapter
+  - Command_JumpChapter_0
+  - Command_JumpChapter_Forward
+  - Command_JumpChapter_Back
+  - OutOfDomain
+
+entities:
+  - number

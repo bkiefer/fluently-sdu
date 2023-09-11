@@ -1,0 +1,10 @@
+version: "3.1"
+
+nlu:
+- regex: unit
+  examples: |
+    - millimeter|millimeters
+    - centimeter|centimeters
+    - meter|meters
+    - inch|inches
+    - foot|feet
