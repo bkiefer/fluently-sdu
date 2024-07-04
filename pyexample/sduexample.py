@@ -22,10 +22,10 @@ def execute(robot, action):
     """stub that should do the appropriate action on the robot and return success"""
     return True
 
-scanSuccess = True
+scanSuccess = False
 while not scanSuccess:
     scan = RdfProxy.getObject("ScanningProcess")
-    session.has_constituent.add(scan)
+    session.hasConstituent.add(scan)
     scan.hasVerticalResolution = 3
     scan.hasHorizontalResolution = 3
     # robot.speak(user, 'Question(SetupOK)')
