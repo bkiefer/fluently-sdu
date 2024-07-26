@@ -28,3 +28,10 @@ data/Ontology/catalog-v001.xml
 /docker_dev/tarballs/
 deploy/
 common_lib/
+rasa/.config
+rasa/.cache
+rasa/.keras
+rasa/.rasa
+rasa/.nv
+rasa/models/**
+rasa/results

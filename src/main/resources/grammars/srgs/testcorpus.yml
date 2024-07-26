@@ -1,0 +1,12 @@
+nlu:
+- intent: 'Reject'
+  examples: |
+    - no start over
+    - not like this
+    - start over
+
+- intent: 'ChangeResolution'
+  examples: |
+    - change to seven points
+    - we need nine poses
+    - increase the amount of points

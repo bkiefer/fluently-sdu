@@ -1,0 +1,7 @@
+[Settings]
+
+[Rules StageMinusOne]
+infostate.trf
+
+[Include]
+allrules-mapper

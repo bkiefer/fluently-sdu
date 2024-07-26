@@ -1,0 +1,67 @@
+# Points to the HFC config file
+ontologyFile:       src/main/resources/ontology/fluently.yml
+
+# ########## COMPILE CONFIGURATION SETTINGS ##########
+inputFile:          src/main/rudi/DialogAgent.rudi
+outputDirectory:    src/main/gen-java
+agentBase:          de.dfki.vondabase.BaseAgent
+typeDef:            BaseAgent.rudi
+checkTypes:         true
+failOnError:        false
+verbose:            false
+rootPackage:        de.dfki.vondabase
+
+nameToURI:
+  Agent: <dial:Agent>
+  DialAct: <dial:DialogueAct>
+
+#nameToClass:
+#  Date: de.dfki.drz.mkm.util.Date
+#printErrors: false   # prints compile errors to terminal, true is the default
+#visualise: true      # produces a graphical representation of the parsed
+                      # rule files
+                      # with type resolution information
+#persistentVars: true # puts compiler into persistent variables mode: local
+                      # variables in included rule files also keep their
+                      # values during runtime
+
+# ########## RUN CONFIGURATION SETTINGS ##########
+
+NLG:
+  en_EN:
+    class: de.dfki.mlt.rudimant.agent.nlp.LanguageGenerator
+    mapperProject: src/main/resources/cplanner/allrules-mapper
+    generationProject: src/main/resources/cplanner/allrules
+    #translateNumbers: true  # translates numbers to text internally, if, e.g., the TTS
+                             # can not do it by itself
+NLU:
+  en_EN:
+    class: de.dfki.mlt.rudimant.agent.nlp.CombinedInterpreter
+    instances:
+    - class: de.dfki.mlt.rudimant.agent.nlp.SrgsParser
+      grammar: src/main/resources/grammars/srgs/commands.gram
+      converter: src/main/resources/cplanner/srgsconv
+      tokenizer:
+        class: de.dfki.mlt.rudimant.agent.nlp.TrivialTokenizer
+        toLower: true           # turn all output to lower case
+        removePunctuation: true  # remove all punctuation tokens
+    - class: de.dfki.mlt.rudimant.agent.nlp.RasaNlu
+      host: localhost
+      port: 9796
+      min_confidence: 0.8
+      converter: src/main/resources/cplanner/rasaconv
+
+# ########## Debugger/GUI SETTINGS ##########
+debugPort: 9777
+
+customCompileCommands:
+  compile: ./compile
+  mvncompile: ./compile && mvn install
+  mvncleancmp: mvn clean install
+  vcompile: vondac -v -c config.yml
+defaultCompileCommand: compile
+
+# Evaluation of language services (parsing)
+language: en_EN
+corpora:
+  - rasa/data/commands.yml

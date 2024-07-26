@@ -1,20 +1,27 @@
 version: "3.1"
 
 nlu:
-- intent: 'Accept'
+- intent: 'Confirm'
   examples: |
     - i accept the scanning points
     - the scan plan is ok
     - the final scan is good
     - accept the scan
     - this looks good
+    - that's good
+    - good for now
     - the result is fine
     - yes
     - that is the right pose
     - we can move on
     - i am happy with the quality of the scan
+    - yes
+    - sure
+    - yep
+    - yeah
+    - fine
 
-- intent: 'Reject'
+- intent: 'Disconfirm'
   examples: |
     - reject the result
     - try again
@@ -29,6 +36,11 @@ nlu:
     - decline the suggestion
     - please delete the scan
     - we need to change something
+    - no
+    - nope
+    - don't think so
+    - don't
+    - not like this
 
 - intent: 'AddPose'
   examples: |
@@ -109,3 +121,47 @@ nlu:
     - start again
     - proceed from where we left off
     - reinitiate the task
+
+- intent: 'Instruct_ResolutionH'
+  examples: |
+    - set the horizontal resolution to [four](number)
+    - horizontal resolution is [five](number)
+    - horizontal resolution [six](number)
+    - set horizontal resolution to [seven](number)
+    - horizontal to [three](number)
+    - horizontal [nine](number)
+
+- intent: 'Instruct_ResolutionV'
+  examples: |
+    - set the vertical resolution to [four](number)
+    - vertical resolution is [five](number)
+    - vertical resolution [six](number)
+    - set vertical resolution to [seven](number)
+    - vertical to [three](number)
+    - vertical [two](number)
+
+- intent: 'Instruct_ResolutionH+V'
+  examples: |
+    - set horizontal resolution to [four](number) and vertical resolution to [four](number)
+    - horizontal [three](number) and vertical [seven](number)
+    - horizontal and vertical [three](number)
+    - set horizontal and vertical resolution to [nine](number)
+    - set horizontal [three](number) and vertical [four](number)
+    - set horizontal [six](number) and vertical to [two](number)
+    - set vertical [five](number) and horizontal to [three](number)
+    - vertical to [six](number) and horizontal [eight](number)
+
+- intent: 'Instruct_Next'
+  examples: |
+    - next
+    - proceed
+    - go on
+    - go ahead
+
+- intent: 'Instruct_Skip'
+  examples: |
+    - skip the instructions
+    - skip this
+    - skip video
+    - skip this part
+    - skip the tutorial

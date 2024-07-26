@@ -1,0 +1,50 @@
+// convert JSON output of rasa converted into dag
+
+// by adding the <minEntityConfidence> slot, entities can be filtered,
+// the default is 0.75
+// with <response_selector>, we select the top node, which is risky
+<response_selector> {
+^ <minEntityConfidence> #mc: -> # ^ <mec>#mc:, # ! <minEntityConfidence>.
+^ !<minEntityConfidence> ^ !<mec>-> # ^ <mec>div(3,4).
+}
+
+// make sure the result has a proposition, even if it's `top'
+<response_selector> ^ #n: -> #n ^ (top).
+
+// delete unused edges
+<response_selector> -> # ! <response_selector>.
+<text_tokens> -> # ! <text_tokens>.
+<intent_ranking> -> # ! <intent_ranking>.
+
+// treat the intent_frame_theme and pull confidence up
+<intent> #int: -> # ^ #int:, # ! <intent>.
+
+// split intent label
+<name>#label: -> # ^ <split> split(#label, "_"):, # ! <name>.
+
+// put the split label parts into place
+<split>(#split: ^ <1>#da) -> # ^ :#da, #split ! <1>.
+<split>(#split: ^ <2>#frame) -> # ^ (#frame), #split ! <2>.
+<split>(#split: ^ <3>#theme) -> # ^ (<theme> #theme), #split ! <3>.
+<split>(!<1> ^ !<2> ^ !<3>) -> # ! <split>.
+
+// treat the entities (convert into key/value pairs)
+<mec>#minconf ^ <entities>(#ent:
+           ^ <first>(#first:
+                     ^ <entity>#key
+                     ^ <value>#val:)) {
+  ^ <entities><first><confidence_entity>#conf {
+    // entity confidence > min_confidence, add key/val pair
+    ^ (gteq(#conf, #minconf) ~ 1) => # ^ <#key>#val, #ent ! <first>.
+    // entity confidence < min_confidence, delete this entity
+    ^ (gteq(#conf, #minconf) ~ 0) => #ent ! <first>.
+  }
+
+  // no confidence specified, add key/val pair
+  ^ !<entities><first><confidence_entity> => # ^ <#key>#val, #ent ! <first>.
+}
+
+<entities>(#ent: ^ !<first> ^ <rest>#rest:) => #ent = #rest:.
+
+// remove empty node
+<entities>(!<first> ^ !<rest>) -> # ! <entities>.

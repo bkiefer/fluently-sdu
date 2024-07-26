@@ -1,0 +1,14 @@
+import java.util.Calendar;
+
+BaseCommunicationHub getHub() {
+  return isa(BaseCommunicationHub, _hub);
+}
+
+include NLU;
+
+da:
+if (lastDA()) {
+  logger.error("DA: {}", lastDA());
+  getHub().sendDA(lastDA());
+  lastDAprocessed();
+}

@@ -1,18 +1,24 @@
 version: "3.1"
 
 intents:
-  - Command_Start
-  - Command_Stop
-  - Command_Quit
-  - Command_Jumpslide_Forward
-  - Command_Jumpslide_Back
-  - Command_Gotoslide
-  - Command_GotoChapter_1
-  - Command_GotoChapter
-  - Command_JumpChapter_0
-  - Command_JumpChapter_Forward
-  - Command_JumpChapter_Back
-  - OutOfDomain
+  - Confirm
+  - Disconfirm
+  - Instruct_ResolutionH
+  - Instruct_ResolutionV
+  - Instruct_ResolutionH+V
+  - Instruct_Next
+  - Instruct_Skip
+  - IncreaseResolution
+  - Pause
+  - SetResolution
+  - DecreaseResolutionPercentage
+  - Resume
+  - SetResolutionRelative
+  - ChangeResolution
+  - ReduceResolution
+  - IncreaseResolutionPercentage
+  - AddPose
+  - GiveDimensions
 
 entities:
   - number

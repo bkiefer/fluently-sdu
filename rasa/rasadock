@@ -2,8 +2,13 @@
 scdir=`dirname $0`
 cd "$scdir"
 if test -z "$1"; then
-    docker run -d --rm -p 5005:5005 -v $(pwd):/app rasa/rasa:3.5.14-full run --enable-api --port 5005
+    docker run -d --rm --user $UID:$UID -p 9796:5005 -v $(pwd):/app rasa/rasa:3.6.20-full run --enable-api --port 5005
 else
     # e.g., for training
-    docker run --rm --user $UID:$UID -v $(pwd):/app rasa/rasa:3.5.14-full "$@"
+    #docker run --rm --user $UID:$UID -v $(pwd):/app rasa/rasa:3.6.20-full "$@"
+    docker run --rm --user $UID:$UID --gpus all -v $PWD:/app rasa/rasa:3.6.20-full "$@"
 fi
+
+#docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+
+#docker run [-it] [--rm] --gpus all [-v $PWD:/tmp] gcr.io/rasa-platform/rasa:<tag> [rasa command]

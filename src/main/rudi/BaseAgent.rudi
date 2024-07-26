@@ -1,0 +1,6 @@
+User user;
+Robot robot;
+
+User getUser(String id);
+
+Rdf getRandomItem (String type_uri);

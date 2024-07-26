@@ -1,14 +1,15 @@
-# Running the ASR pipeline locally on your computer
+# An ASR client using a vosk server sending output to MQTT
 
-*DO NOT DO THIS IN A CONDA OR VIRTUAL ENVIRONMENT, THE PYTHON BINARY HAS TO BE THAT OF YOUR NATIVE OS INSTALLATION*
+*DO NOT RUN THIS IN A CONDA OR VIRTUAL ENVIRONMENT WITH SEPARATE PYTHON BINARY, THE PYTHON BINARY HAS TO BE THAT OF YOUR NATIVE OS INSTALLATION*
 
-Install docker, pip, and python bindings for the gstreamer libraries
+Install python bindings for the gstreamer libraries
 
-`sudo apt install docker.io docker-compose pip python3-gst-1.0`
+```
+sudo apt install libgirepository1.0-dev python3-gst-1.0 libcairo2-dev python3-pip
 
-Now install the required python packages
 
-`pip install -r requirements.txt`
+pip install -r requirements.txt
+```
 
 Start MQTT broker and vosk kaldi server:
 

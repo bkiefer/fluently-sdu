@@ -1,0 +1,21 @@
+#ABNF 1.0 UTF-8;
+
+language de_DE;
+root $root;
+mode voice;
+tag-format "semantics/1.0";
+
+/* $day = "$$[0-9]" *; */
+
+$junk = $GARBAGE<0-2>;
+
+$greet = (Hallo|Hi|Guten (Morgen | Tag | Abend)|Moin|Mahlzeit|Tach) $junk
+         { out.da="InitialGreeting" ; out.prop="Greet"; };
+$confirm = (Ja|Jap|[Das ist]richtig|Ok|[Das]stimmt|Jo) $junk
+           { out.da="Confirm" ; out.prop="top" ;};
+$disconfirm = (Nein|Nope|[Das (ist|is)] falsch|
+            [Das (ist|is)] [so] nicht richtig|noe|nö|[das] stimmt nicht|
+            Kein Interesse| [das] brauche ich nicht | nicht nötig ) $junk
+            { out.da="Disconfirm" ; out.prop="top" ;};
+
+public $root = ($confirm | $disconfirm | $greet) { out = $%1; };

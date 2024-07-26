@@ -1,0 +1,19 @@
+#ABNF 1.0 UTF-8;
+
+language de-DE;
+root $root;
+mode voice;
+tag-format "semantics/1.0";
+
+$root = [$day_of_week { $out.DayOfWeek = "$$1"; }]
+    [[der] $day_of_month { $out.DayOfMonth = "$$1"; }]
+    $month { $out.Month="$$1"; } |
+    $month { $out.Month="$$1"; } der $day_of_month { $out.DayOfMonth = "$$1"; };
+
+$day_of_week = montag|dienstag|mittwoch|donnerstag|
+             freitag|samstag|sonnabend|sonntag;
+
+$month = januar|jänner|februar|märz|april|mai|juni|juli|august|september|
+       oktober|november|dezember;
+
+$day_of_month = "$$(((ers|zwei|drit|vier|fünf|sechs|sieb|ach|neun)te[rn]?)|((zehn|elf|zwölf|((drei|vier|fünf|sechs|sieb|acht|neun)zehn))te[rn]?)|((((ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun)und)?zwanzig)|((einund)?dreißig))ste[rn]?)" { out = "$$1"; };

@@ -1,0 +1,117 @@
+#ABNF 1.0 UTF-8;
+
+language en_EN;
+root $root;
+mode voice;
+tag-format "semantics/1.0";
+
+$junk = $GARBAGE<0-2>;
+
+public $root = ($accept|$reject|$addpose|$changeresolution|
+       $resolutionH|$resolutionV|$resolutionHV|$next|$skip)
+       { out = $%1; };
+
+$number = $<nummer-en.gram> { out = $%1; };
+
+$accept = (
+    i accept the scanning points |
+    [the] scan plan is ok |
+    [the] final scan is good |
+    accept the scan |
+    this looks good |
+    [the] result is fine |
+    yes |
+    that is the right pose |
+    [we can] move on |
+    i am happy with the quality of the scan |
+    sure |
+    yep |
+    yeah |
+    fine |
+    ok ) { out.da="Confirm"; };
+
+$reject = (
+    reject the result |
+    try again |
+    [no] start over |
+    no |
+    this failed |
+    i "don't" accept the scanning points |
+    move to a different pose |
+    decline the suggestion |
+    [please] delete the scan |
+    we need to change something |
+    nope |
+    "don't" think so |
+    "don't" |
+    not like this
+) { out.da="Disconfirm"; };
+
+$addpose = (
+    i would like to add another scanning point |
+    add a new pose |
+    i am going to point to a new pose |
+    there are not enough scanning points |
+    the scan is not complete so we need to add more poses |
+    some points are missing |
+    "let's" add some more |
+    the scan is incomplete |
+    we should introduce more poses |
+    the scan plan needs more points ) { out.da="AddPose"; };
+
+$changeresolution = (
+    [i want to] change the resolution of scanning points |
+    increase the amount of points |
+    i want fewer scanning poses |
+    adjust the resolution |
+    i need a more detailed scan |
+    [please] change to $number { out.number = "$%%1"; } points |
+    [we need] $number { out.number = "$%%1"; } poses |
+    half the number of points |
+    double the number of points |
+    change amount of points by $number { out.percent = "$%%1"; } percent )
+    { out.da="ChangeResolution"; };
+
+$resolutionH = (
+  set the horizontal resolution to $number { out.horizontal = "$%%1"; }
+  | horizontal resolution is $number { out.horizontal = "$%%1"; }
+  | horizontal resolution $number { out.horizontal = "$%%1"; }
+  | set horizontal resolution to $number { out.horizontal = "$%%1"; }
+  | horizontal to $number { out.horizontal = "$%%1"; }
+  | horizontal $number { out.horizontal = "$%%1"; }
+) { out.da="Instruct"; out.prop="ResolutionH"; };
+
+$resolutionV = (
+  set the vertical resolution to $number { out.vertical = "$%%1"; }
+  | vertical resolution is $number { out.vertical = "$%%1"; }
+  | vertical resolution $number { out.vertical = "$%%1"; }
+  | set vertical resolution to $number { out.vertical = "$%%1"; }
+  | vertical to $number { out.vertical = "$%%1"; }
+  | vertical $number { out.vertical = "$%%1"; }
+) { out.da="Instruct"; out.prop="ResolutionH"; };
+
+$resolutionHV = (
+  set horizontal resolution to $number { out.horizontal = "$%%1"; } and vertical resolution to $number { out.vertical = "$%%1"; }
+  | horizontal $number { out.horizontal = "$%%1"; } and vertical $number { out.vertical = "$%%1"; }
+  | horizontal and vertical $number { out.horizontal="$%%1"; out.vertical = "$%%1"; }
+  | set horizontal and vertical resolution to $number { out.horizontal="$%%1"; out.vertical = "$%%1"; }
+  | set horizontal $number { out.horizontal = "$%%1"; } and vertical $number { out.vertical = "$%%1"; }
+  | set horizontal $number { out.horizontal = "$%%1"; } and vertical to $number { out.vertical = "$%%1"; }
+  | set vertical $number { out.vertical = "$%%1"; } and horizontal to $number { out.horizontal = "$%%1"; }
+  | vertical to $number { out.vertical = "$%%1"; } and horizontal $number { out.horizontal = "$%%1"; }
+) { out.da="Instruct"; out.prop="ResolutionH+V"; };
+
+$next =(
+  next
+  | proceed
+  | go on
+  | go ahead
+) { out.da="Instruct"; out.prop="Next"; };
+
+$skip = (
+  skip the instructions
+  | skip this
+  | skip video
+  | skip this part
+  | skip the tutorial
+) { out.da="Instruct"; out.prop="Skip"; };

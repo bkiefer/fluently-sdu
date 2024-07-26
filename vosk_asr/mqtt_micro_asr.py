@@ -13,6 +13,7 @@ import numpy as np
 
 import json
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 
 import gstmicpipeline as gm
 
@@ -31,24 +32,18 @@ def current_milli_time():
     return round(time.time() * 1000)
 
 class VoskMicroServer():
-    pid = "voskasr"
-    audio_dir = "audio/"
-    language = None
-
-    channels = 1
-    usedchannel = 0
-    sample_rate = 16000
-    asr_sample_rate = 8000
-
-    client = None
-    loop = None
-    audio_queue = None
 
     def __init__(self, config):
+        self.pid = "voskasr"
+        self.audio_dir = "audio/"
+        self.language = "de"
+
+        self.channels = 1
+        self.usedchannel = 0
+        self.sample_rate = 16000
+        self.asr_sample_rate = 8000
+
         self.config = config
-        # The right sample rate has to be set in the gststreamer module
-        #if 'sample_rate' in config:
-        #    self.sample_rate = config['sample_rate']
         if 'asr_sample_rate' in config:
             self.asr_sample_rate = config['asr_sample_rate']
         if 'channels' in config:
@@ -67,7 +62,7 @@ class VoskMicroServer():
         self.__init_mqtt_client()
 
     def __init_mqtt_client(self):
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(CallbackAPIVersion.VERSION2)
         # self.client.username_pw_set(self.mqtt_username, self.mqtt_password)
         # self.client.on_connect = self.__on_mqtt_connect
 
@@ -218,7 +213,9 @@ class VoskMicroServer():
 
     async def run_micro(self):
         cb = lambda inp, frames: self.callback(inp, frames, None, None)
-        with gm.GstreamerMicroSink(callback=cb) as device:
+        pipeline = self.config["pipeline"] \
+            if "pipeline" in self.config else gm.PIPELINE
+        with gm.GstreamerMicroSink(callback=cb, pipeline_spec=pipeline) as device:
             with self.open_wave_file(self.wav_filename()) as self.wf:
                 with self.open_asrmon_file(self.asrmon_filename()) as self.am:
                     print("Connecting to MQTT broker")

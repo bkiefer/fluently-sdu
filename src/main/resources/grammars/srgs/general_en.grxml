@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<grammar xmlns="http://www.w3.org/2001/06/grammar" xml:lang="en-US"
+         mode="voice" root="ROOT" tag-format="semantics/1.0" version="1.0">
+  <rule id="ROOT" scope="public">
+    <one-of>
+      <item>
+        <one-of>
+          <item>Hello</item>
+          <item>Hi</item>
+	  <item>Good day</item>
+        </one-of>
+        <item repeat="0-1">Cat</item>
+        <tag> out.da="InitialGreeting" ; out.prop="Greet" </tag>
+      </item>
+
+      <item>
+        <item> My name is </item> 
+        <item>$$.*</item>
+        <tag>out.da="Inform" ; out.prop="Name" ; out.what="$$1" </tag>
+      </item>
+
+      <item>
+        <item> I'm </item> 
+        <item>$$.*</item>
+        <tag>out.da="Inform" ; out.prop="Age" ; out.what="$$1" </tag>
+      </item>
+
+      <item>
+        <item> This is Rolli</item> 
+        <tag>out.da="Inform" ; out.prop="Introduction" </tag>
+      </item>
+
+      <item>
+        <item> luggage loaded </item> 
+        <tag>out.da="CisInform" ; out.prop="luggage_loaded" </tag>
+      </item>
+
+      <item>
+        <item> small obstruction </item>
+        <tag>out.da="ObInform" ; out.prop="small" </tag>
+      </item>
+
+      <item>
+        <item> big obstruction </item>
+        <tag>out.da="ObInform" ; out.prop="big" </tag>
+      </item>
+
+      <item>
+        <item> route free now </item>
+        <tag>out.da="RouteInform" ; out.prop="free" </tag>
+      </item>
+
+      <item>
+        <item> We are at decision point  </item>
+        <item> $$.* </item>
+        <tag>out.da="RouteInform" ; out.prop="DecisionPoint" ; out.what="$$1"</tag>
+      </item>
+
+      <item>
+        <item> Next action is </item>
+        <item> $$.* </item>
+        <tag>out.da="RouteInform" ; out.prop="Action" ; out.what="$$1"</tag>
+      </item>
+
+
+    </one-of>
+  </rule>
+</grammar>

@@ -1,0 +1,51 @@
+minArgs: 3
+maxArgs: 4
+noOfCores: 4
+#noOfAtoms: 100000
+#noOfTuples: 500000
+shortIsDefault: true
+#persistenceFile=../../../../persistent.nt
+eqReduction: true
+characterEncoding: UTF-8
+addTimestamps: [ 0 ]
+
+# further options for the future,
+# e.g., character encoding, persistent output file name, etc.
+
+namespaces:
+  # namespaces for XSD, RDF, RDFS, and OWL are already defined
+  dom: http://www.dfki.de/lt/onto/fluently/domain.owl#
+  dial: http://www.dfki.de/lt/onto/common/dialogue.owl#
+  soho: http://pst.istc.cnr.it/ontologies/2019/01/soho#
+  dul: http://www.loa-cnr.it/ontologies/DUL.owl#
+  cim: http://www.fluently.eu/2024/04/cim#
+  flu: http://www.semanticweb.org/sjh224/ontologies/2023/1/Draft_Fluently#
+  soma: http://www.ease-crc.org/ont/SOMA.owl#
+  somaobj: http://www.ease-crc.org/ont/SOMA-OBJ.owl#
+  dul2: http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#
+  ssn: http://purl.oclc.org/NET/ssnx/ssn#
+  swrla: http://swrl.stanford.edu/ontologies/3.3/swrla.owl#
+  somaobj: http://www.ease-crc.org/ont/SOMA-OBJ.owl#
+  somaio: http://www.ease-crc.org/ont/SOMA-IO.owl#
+  somasay: http://www.ease-crc.org/ont/SOMA-SAY.owl#
+  somaact: http://www.ease-crc.org/ont/SOMA-ACT.owl#
+  somaneem: http://www.ease-crc.org/ont/SOMA-NEEM.owl#
+  dul_io: http://www.ontologydesignpatterns.org/ont/dul/IOLite.owl#
+  somawf: http://www.ease-crc.org/ont/SOMA-WF.owl#
+
+tupleFiles:
+  # the axiomatic triples for OWL-Horst w/ EQ reduction
+  - default/default.eqred.nt
+
+  # the PAL sub-ontologies
+  - dialogue/dialogue.nt
+
+  # Fluently sub-ontologies
+  - base/base.nt
+  - fluently/FluentlyOntology_0803.nt
+  - fluently/cim.nt
+  - fluently/cimbase.nt
+
+ruleFiles:
+  # we need special rules for transaction time (mixture of triples/quadruples)
+  - rules/default.eqred.quads.rdl

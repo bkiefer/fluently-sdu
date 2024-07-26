@@ -1,0 +1,5 @@
+if (myLastDA() >= #Question(top) && lastDA()) {
+  if (lastDA() >= #Inform(top) && ! (lastDA() >= #Answer(top))) {
+    lastDA().setDialogueActType("<dial:Answer>");
+  }
+}
