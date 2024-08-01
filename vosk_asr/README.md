@@ -1,24 +1,30 @@
-# An ASR client using a vosk server sending output to MQTT
+# An ASR client using a vosk recognizer, sending output to MQTT
+
+This has been tested on Ubuntu 22.04. Dependencies might differ for other distros.
 
 *DO NOT RUN THIS IN A CONDA OR VIRTUAL ENVIRONMENT WITH SEPARATE PYTHON BINARY, THE PYTHON BINARY HAS TO BE THAT OF YOUR NATIVE OS INSTALLATION*
 
-Install python bindings for the gstreamer libraries
+Install python bindings for the gstreamer libraries, the mosquitto system service, and the python requirements
 
 ```
-sudo apt install libgirepository1.0-dev python3-gst-1.0 libcairo2-dev python3-pip
+sudo apt install libgirepository1.0-dev python3-gst-1.0 libcairo2-dev python3-pip mosquitto
 
 
 pip install -r requirements.txt
 ```
 
-Start MQTT broker and vosk kaldi server:
+Download the silero VAD model
 
-`./run_compose.sh up`
+    wget https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.jit
 
-Check language in `config.yml` and start ASR locally
+and the ASR model of your choice, at https://alphacephei.com/vosk/models
 
-`./mqtt_micro_asr.py config.yml`
+Adapt the config.yml to your needs (let `model_path` point to the directory where your unpacked ASR model is)
 
-When done, shut MQTT broker and vosk kaldi server down
+Start the recognizer:
 
-`./run_compose.sh down`
+    python mqtt_micro_vadasr.py config.yml
+
+Currently, the recognizer uses the default pulseaudio input device, you should even be able to switch it when the recognizer is running. If you want something more sophisticated, you may have to modify the gstreamer pipeline (the defaults are in gstmicpipeline.py) to your needs, you don't have to modify the code, you can specify it as `pipeline` key in the config.
+
+The ASR result will be send to the `voskasr/asrresult/<lang>` MQTT topic.

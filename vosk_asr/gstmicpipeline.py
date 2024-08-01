@@ -26,8 +26,8 @@ PIPELINE_RESPEAKER="""pulsesrc ! audio/x-raw,format=S16LE,channels=6,rate={} ! d
 # For, e.g., Sennheiser headset (stereo, 44100Hz)
 PIPELINE_PULSE = """pulsesrc ! audioconvert ! audio/x-raw,format=S16LE,channels=1,rate={} ! appsink name=sink emit-signals=true"""
 
-PIPELINE=PIPELINE_RESPEAKER
-#PIPELINE=PIPELINE_PULSE
+#PIPELINE=PIPELINE_RESPEAKER
+PIPELINE=PIPELINE_PULSE
 
 class GstreamerMicroSink(object):
 
