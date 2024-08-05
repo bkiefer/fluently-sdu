@@ -1,12 +1,12 @@
 log/
 data/Ontology/**/*.nt
 !data/Ontology/default/**
-target/
+**/target/
 deploy/
 src/main/gen-java/
 src/main/resources/generated/
 src/main/resources/grammars/srgs/testfile.out
-*~
+**/*~
 **/.idea
 **/*.iml
 **/nbproject/
@@ -35,3 +35,4 @@ rasa/.rasa
 rasa/.nv
 rasa/models/**
 rasa/results
+**/__pycache__
