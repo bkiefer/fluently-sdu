@@ -1,10 +1,6 @@
-package de.dfki.vondabase;
+package de.dfki.fluently.prima;
 
 public interface Constants {
-
-  public static final String CFG_ONTOLOGY_FILE = "ontologyFile";
-
-  public static final String CFG_VISUALISE = "visualise";
 
   //public static final String USER_CLASS = "<dom:Animate>";
 

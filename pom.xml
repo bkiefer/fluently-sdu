@@ -115,7 +115,7 @@
           <appendAssemblyId>false</appendAssemblyId>
           <archive>
             <manifest>
-              <mainClass>de.dfki.vondabase.App</mainClass>
+              <mainClass>de.dfki.fluently.prima.App</mainClass>
             </manifest>
           </archive>
           <descriptors>

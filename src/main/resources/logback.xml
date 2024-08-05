@@ -4,10 +4,10 @@
   <import class="ch.qos.logback.core.ConsoleAppender"/>
 
   <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>mkm.log</file>
+    <file>fluently-prim.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- daily rollover -->
-      <fileNamePattern>mkm.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>flupri.%d{yyyy-MM-dd}.log</fileNamePattern>
 
       <!-- keep 30 days' worth of history capped at 3GB total size -->
       <maxHistory>30</maxHistory>
@@ -27,7 +27,7 @@
     </encoder>
   </appender>
 
-  <logger name="de.dfki.voluprof" level="DEBUG"/>
+  <logger name="de.dfki.fluently.prima" level="DEBUG"/>
   <logger name="de.dfki.mlt.rudimant.agent" level="DEBUG"/>
   <logger name="de.dfki.mlt.rudimant.common" level="DEBUG"/>
   <logger name="de.dfki.mlt.rudimant.nlp" level="DEBUG"/>

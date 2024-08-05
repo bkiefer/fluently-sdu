@@ -1,0 +1,38 @@
+
+raw:Instruct {
+  ^ Next -> # = :canned ^ <string>"jump next".
+  ^ Skip -> # = :canned ^ <string>"skipping".
+
+  ^ (ResolutionH | ResolutionH_V)
+  { ^ <horizontal>#h:
+    ->
+    # = :canned ^ <hs> concatenate("set horizontal ", #h).
+
+    ^ !<horizontal>
+    ->
+    # = :canned ^ <hs> "set horizontal no value".
+  }
+
+  ^ (ResolutionV | ResolutionH_V)
+  { ^ <vertical>#v
+    ->
+    # ^ :canned ^ <vs> concatenate(" set vertical ", #v).
+
+    ^ !<vertical>
+    ->
+    # ^ :canned ^ <vs> " set vertical no value".
+  }
+}
+
+:canned ^ <hs>#hs: ^ ! <vs> -> # ^ <vs>"".
+
+:canned ^ ! <hs> ^ <vs>#vs: -> # ^ <hs>"".
+
+:canned ^ <hs>#hs: ^ <vs>#vs:
+->
+# ^ :canned ^ <string>concatenate(#hs, #vs),
+# ! <hs>,
+# ! <vs>.
+
+raw:Confirm -> # = :canned ^ <string>"ok, doing".
+raw:Disconfirm -> # = :canned ^ <string>"ok, not doing".

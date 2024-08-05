@@ -5,4 +5,4 @@ model_path: './vosk-model-en-us-0.22'
 
 vad:
   threshold: 0.3
-  min_silence_duration_ms: 300
+  min_silence_duration_ms: 400

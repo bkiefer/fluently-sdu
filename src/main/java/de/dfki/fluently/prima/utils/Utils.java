@@ -1,4 +1,4 @@
-package de.dfki.vondabase.utils;
+package de.dfki.fluently.prima.utils;
 
 import de.dfki.lt.hfc.types.XsdDouble;
 import de.dfki.lt.hfc.types.XsdFloat;

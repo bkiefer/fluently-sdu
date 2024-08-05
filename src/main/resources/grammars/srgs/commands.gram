@@ -65,41 +65,41 @@ $changeresolution = (
     i want fewer scanning poses |
     adjust the resolution |
     i need a more detailed scan |
-    [please] change to $number { out.number = "$%%1"; } points |
-    [we need] $number { out.number = "$%%1"; } poses |
+    [please] change to $number { out.number = "$%1"; } points |
+    [we need] $number { out.number = "$%1"; } poses |
     half the number of points |
     double the number of points |
-    change amount of points by $number { out.percent = "$%%1"; } percent )
+    change amount of points by $number { out.percent = "$%1"; } percent )
     { out.da="ChangeResolution"; };
 
 $resolutionH = (
-  set the horizontal resolution to $number { out.horizontal = "$%%1"; }
-  | horizontal resolution is $number { out.horizontal = "$%%1"; }
-  | horizontal resolution $number { out.horizontal = "$%%1"; }
-  | set horizontal resolution to $number { out.horizontal = "$%%1"; }
-  | horizontal to $number { out.horizontal = "$%%1"; }
-  | horizontal $number { out.horizontal = "$%%1"; }
-) { out.da="Instruct"; out.prop="ResolutionH"; };
+  [set] [the] horizontal resolution [to] $number { out.horizontal = "$$1"; }
+  | horizontal resolution is $number { out.horizontal = "$$1"; }
+  | horizontal resolution $number { out.horizontal = "$$1"; }
+  | horizontal to $number { out.horizontal = "$$1"; }
+  | horizontal $number { out.horizontal = "$$1"; }
+) {!{ out.da="Instruct"; out.prop="ResolutionH";
+    out.horizontal = { number: out.horizontal }; }!};
 
 $resolutionV = (
-  set the vertical resolution to $number { out.vertical = "$%%1"; }
-  | vertical resolution is $number { out.vertical = "$%%1"; }
-  | vertical resolution $number { out.vertical = "$%%1"; }
-  | set vertical resolution to $number { out.vertical = "$%%1"; }
-  | vertical to $number { out.vertical = "$%%1"; }
-  | vertical $number { out.vertical = "$%%1"; }
-) { out.da="Instruct"; out.prop="ResolutionH"; };
+  set the vertical resolution to $number { out.vertical = "$$1"; }
+  | vertical resolution is $number { out.vertical = "$$1"; }
+  | vertical resolution $number { out.vertical = "$$1"; }
+  | set vertical resolution to $number { out.vertical = "$$1"; }
+  | vertical to $number { out.vertical = "$$1"; }
+  | vertical $number { out.vertical = "$$1"; }
+) {!{ out.da="Instruct"; out.prop="ResolutionV";
+      out.vertical = { number: out.vertical }; }!};
 
 $resolutionHV = (
-  set horizontal resolution to $number { out.horizontal = "$%%1"; } and vertical resolution to $number { out.vertical = "$%%1"; }
-  | horizontal $number { out.horizontal = "$%%1"; } and vertical $number { out.vertical = "$%%1"; }
-  | horizontal and vertical $number { out.horizontal="$%%1"; out.vertical = "$%%1"; }
-  | set horizontal and vertical resolution to $number { out.horizontal="$%%1"; out.vertical = "$%%1"; }
-  | set horizontal $number { out.horizontal = "$%%1"; } and vertical $number { out.vertical = "$%%1"; }
-  | set horizontal $number { out.horizontal = "$%%1"; } and vertical to $number { out.vertical = "$%%1"; }
-  | set vertical $number { out.vertical = "$%%1"; } and horizontal to $number { out.horizontal = "$%%1"; }
-  | vertical to $number { out.vertical = "$%%1"; } and horizontal $number { out.horizontal = "$%%1"; }
-) { out.da="Instruct"; out.prop="ResolutionH+V"; };
+  horizontal and vertical $number { out.horizontal="$$1"; out.vertical = "$$1"; }
+  | [set] horizontal [resolution] [to] $number { out.horizontal = "$$1"; }
+    and [set] vertical [resolution] [to] $number { out.vertical = "$$1"; }
+  | [set] vertical [resolution] [to] $number { out.vertical = "$$1"; } and [set] horizontal [resolution] [to] $number { out.horizontal = "$$1"; }
+) {!{ out.da="Instruct"; out.prop="ResolutionH_V";
+      out.horizontal = { number: out.horizontal };
+      out.vertical = { number: out.vertical };
+}!};
 
 $next =(
   next
@@ -109,9 +109,6 @@ $next =(
 ) { out.da="Instruct"; out.prop="Next"; };
 
 $skip = (
-  skip the instructions
-  | skip this
-  | skip video
-  | skip this part
-  | skip the tutorial
+  skip [the|these|this] instructions
+  | skip [this|that|the] [tutorial|part|video]
 ) { out.da="Instruct"; out.prop="Skip"; };

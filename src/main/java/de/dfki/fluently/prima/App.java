@@ -1,7 +1,6 @@
-package de.dfki.vondabase;
+package de.dfki.fluently.prima;
 
-import static de.dfki.vondabase.Constants.CFG_ONTOLOGY_FILE;
-import static de.dfki.vondabase.Constants.CFG_VISUALISE;
+import static de.dfki.mlt.rudimant.common.Configs.*;
 
 import java.io.File;
 import java.io.FileReader;

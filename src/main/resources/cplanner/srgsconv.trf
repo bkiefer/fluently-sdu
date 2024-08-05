@@ -2,6 +2,8 @@
 
 <prop>#prop -> # ^ (#prop), # ! <prop>.
 
-<number>#n: ^ !<what>-> # ^ <what>string2number(#n), # ! <number>.
+<number>#n: -> # = string2number(#n), # ! <number>.
 
 <neg> ^ <what>#w: -> # ^ <what>concatenate("-", #w), # ! <neg>.
+
+nom1: ^ !<prop> ^ ! top -> # ^ top.

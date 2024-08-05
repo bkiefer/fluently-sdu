@@ -1,4 +1,4 @@
-package de.dfki.vondabase.utils;
+package de.dfki.fluently.prima.utils;
 
 
 import de.dfki.mlt.rudimant.agent.Behaviour;

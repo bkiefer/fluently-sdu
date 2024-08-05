@@ -1,4 +1,4 @@
-package de.dfki.vondabase;
+package de.dfki.fluently.prima;
 
 import java.io.File;
 import java.util.Map;

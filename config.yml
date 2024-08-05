@@ -4,12 +4,12 @@ ontologyFile:       src/main/resources/ontology/fluently.yml
 # ########## COMPILE CONFIGURATION SETTINGS ##########
 inputFile:          src/main/rudi/DialogAgent.rudi
 outputDirectory:    src/main/gen-java
-agentBase:          de.dfki.vondabase.BaseAgent
+agentBase:          de.dfki.fluently.prima.BaseAgent
 typeDef:            BaseAgent.rudi
 checkTypes:         true
 failOnError:        false
 verbose:            false
-rootPackage:        de.dfki.vondabase
+rootPackage:        de.dfki.fluently.prima
 
 nameToURI:
   Agent: <dial:Agent>

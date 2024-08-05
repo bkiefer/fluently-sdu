@@ -1,0 +1,2 @@
+mvn clean
+vondac "$@" -c config.yml

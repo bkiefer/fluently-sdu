@@ -1,6 +1,8 @@
-package de.dfki.vondabase;
+package de.dfki.fluently.prima;
 
-import static de.dfki.vondabase.Constants.*;
+import static de.dfki.fluently.prima.Constants.ASR_TOPIC;
+import static de.dfki.fluently.prima.Constants.OUT_TOPIC;
+import static de.dfki.fluently.prima.Constants.TTS_TOPIC;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +22,8 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.dfki.fluently.prima.data.AsrResult;
+import de.dfki.fluently.prima.utils.Listener;
 import de.dfki.lt.hfc.WrongFormatException;
 import de.dfki.mlt.mqtt.JsonMarshaller;
 import de.dfki.mlt.mqtt.MqttHandler;
@@ -27,8 +31,6 @@ import de.dfki.mlt.rudimant.agent.Behaviour;
 import de.dfki.mlt.rudimant.agent.CommunicationHub;
 import de.dfki.mlt.rudimant.agent.Intention;
 import de.dfki.mlt.rudimant.agent.nlp.DialogueAct;
-import de.dfki.vondabase.data.AsrResult;
-import de.dfki.vondabase.utils.Listener;
 
 
 public class BaseCommunicationHub implements CommunicationHub {
@@ -269,6 +271,10 @@ public class BaseCommunicationHub implements CommunicationHub {
         json.put(slot, da.getValue(slot));
       }
     }
-    client.sendMessage(OUT_TOPIC, json.toString());
+    sendMessage(json.toString());
+  }
+
+  public void sendMessage(String s) {
+    client.sendMessage(OUT_TOPIC, s);
   }
 }

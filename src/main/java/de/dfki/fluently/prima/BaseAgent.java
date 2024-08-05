@@ -1,6 +1,7 @@
-package de.dfki.vondabase;
+package de.dfki.fluently.prima;
 
-import static de.dfki.vondabase.Constants.*;
+import static de.dfki.mlt.rudimant.common.Configs.*;
+import static de.dfki.fluently.prima.Constants.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import de.dfki.fluently.prima.utils.ExtendedBehaviour;
 import de.dfki.lt.hfc.WrongFormatException;
 import de.dfki.lt.hfc.db.HfcDbHandler;
 import de.dfki.lt.hfc.db.rdfProxy.Rdf;
@@ -16,7 +18,6 @@ import de.dfki.mlt.rudimant.agent.Agent;
 import de.dfki.mlt.rudimant.agent.Behaviour;
 import de.dfki.mlt.rudimant.agent.nlp.DialogueAct;
 import de.dfki.mlt.rudimant.agent.nlp.Pair;
-import de.dfki.vondabase.utils.ExtendedBehaviour;
 
 public abstract class BaseAgent extends Agent {
   /**

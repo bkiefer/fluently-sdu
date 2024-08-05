@@ -1,4 +1,4 @@
-package de.dfki.vondabase.data;
+package de.dfki.fluently.prima.data;
 
 import java.util.List;
 
@@ -21,7 +21,8 @@ public class AsrResult {
 
   public List<Word> result;
   public String text;
-  public long id;
+  public long start, end;
+  public double confidence;
 
   public String getText() {
     return text;

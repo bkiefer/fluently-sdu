@@ -8,7 +8,30 @@ include NLU;
 
 da:
 if (lastDA()) {
-  logger.error("DA: {}", lastDA());
-  getHub().sendDA(lastDA());
+  logger.info("DA: {}", lastDA());
+  if (lastDA() >= #Confirm(top)) {
+    emitDA(lastDA());
+    getHub().sendMessage("yes");
+  } else if (lastDA() >= #Disconfirm(top)) {
+    emitDA(lastDA());
+    getHub().sendMessage("no");
+  } else if (lastDA() >= #Instruct(Next)) {
+    emitDA(lastDA());
+    getHub().sendMessage("next");
+  } else if (lastDA() >= #Instruct(Skip)) {
+    emitDA(lastDA());
+    getHub().sendMessage("skip");
+  } else if (lastDA() >= #Instruct(ResolutionH)) {
+    emitDA(lastDA());
+    getHub().sendMessage("horizontal_resolution " + lastDA().horizontal);
+  } else if (lastDA() >= #Instruct(ResolutionV)) {
+    emitDA(lastDA());
+    getHub().sendMessage("vertical_resolution " + lastDA().vertical);
+  } else if (lastDA() >= #Instruct(ResolutionH_V)) {
+    emitDA(lastDA());
+    getHub().sendMessage("horizontal_resolution " + lastDA().horizontal);
+    getHub().sendMessage("vertical_resolution " + lastDA().vertical);
+  }
+  //getHub().sendDA(lastDA());
   lastDAprocessed();
 }
