@@ -63,7 +63,7 @@ class RdfStore:
 
     # For all the Offer situations, i think we should have a fixed Instance
     # which is a placeholder for what we offer, or should we create an Event
-    # instance which then may never happen since it is rejected?
+    # instance which then may never happen since it is declined?
     def offer_instruction(self, node, which):
         """
         Robot offers to show instructions, which determines what the
@@ -87,23 +87,23 @@ class RdfStore:
             # TODO: at least log a warning
             return None
 
-    def reject_instruction(self, node):
+    def decline_instruction(self, node):
         """
-        Assumption: only the last offered instruction can be rejected/accepted
+        Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
         if not lastoffer:
             # TODO: at least log a warning
             return
-        reject = self.__session_part("Reject")
-        reject.hasConstituent.add(lastoffer)
+        decline = self.__session_part("Decline")
+        decline.hasConstituent.add(lastoffer)
         # TODO: check if our code handles this assignment correctly, e.g.,
         # clones the set of the lastoffer.hasPart
-        reject.hasPart = lastoffer.hasPart
+        decline.hasPart = lastoffer.hasPart
 
     def accept_instruction(self, node):
         """
-        Assumption: only the last offered instruction can be rejected/accepted
+        Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
         if not lastoffer:
@@ -141,7 +141,45 @@ class RdfStore:
         instruction.hasPart.add(part)
 
     def dimensions_checked(self, node):
+        """record system has checked dimension"""
         self.__session_part("CheckedDimensions")
 
     def poses_generated(self, node):
+        """record system has generated poses"""
         self.__session_part("PosesGenerated")
+
+    def resolution_accept_requested(self, node):
+        """record system "offers" user to change resolution"""
+        self.__session_part("YNQuestionResolution")
+
+    def resolution_accepted(self, node):
+        """record system "offers" user to change resolution"""
+        self.__session_part("AcceptResolution")
+
+    def addpose_requested(self, node):
+        """record system "offers" user to change addpose"""
+        self.__session_part("YNQuestionAddpose")
+
+    def addpose_accepted(self, node):
+        """record system "offers" user to change addpose"""
+        self.__session_part("AcceptAddpose")
+
+    def add_pose(self, node, quaternion: np.matrix):
+        pose = RdfProxy.getObject("Quaternion")
+        # i would propose to have an invertible string representation here
+        pose.representation = str(quaternion)
+        # we assume he have an active scan object, which is the last one in the
+        # session
+        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
+        scan.hasManualPoses.add(pose)
+
+    def record_scan_test_result(self, node, result: float):
+        """
+        indicates if the scan succeeded (result >0.8?), was 'incomplete'
+        (0.5 < result < 0.8) or failed  (result < 0.5)
+
+        Maybe we can use an enum, or strings instead and change the range
+        of wasSuccessful
+        """
+        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
+        scan.wasSuccessful = result
