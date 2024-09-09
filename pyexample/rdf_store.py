@@ -16,7 +16,9 @@ class RdfStore:
     def __init__(self, port=7070):
         RdfProxy.init_rdfproxy(port=port)
         self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
+        self.user = None
         self.session = None
+        self.scan = None
 
     def get_user(self, node, first_name: str, last_name: str):
         users = RdfProxy.selectQuery(
@@ -59,7 +61,7 @@ class RdfStore:
         """
         self.scan = self.__session_part("ScanningProcess")
         # TODO: COMPUTE THE USER PREFERRED DEFAULT SETTINGS
-        self.scan.hasHorziontalResolution = DEFAULT_H_RESOLUTION
+        self.scan.hasHorizontalResolution = DEFAULT_H_RESOLUTION
         self.scan.hasVerticalResolution = DEFAULT_V_RESOLUTION
         return self.scan
 

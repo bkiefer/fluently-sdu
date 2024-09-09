@@ -43,10 +43,11 @@ class MyTestCase(unittest.TestCase):
         session = rdf_store.start_session(None)
         scan = rdf_store.start_scan(None)
         self.assertIsNotNone(scan)
-        scan.hasHorziontalResolution = 7
+        scan.hasHorizontalResolution = 7
         scan.hasVerticalResolution = 5
-        theScan = RdfProxy.rdf2pyobj(str(scan))
-
+        theScan = RdfProxy.rdf2pyobj(scan.uri)
+        self.assertEqual(theScan.hasHorizontalResolution, 7)
+        self.assertEqual(theScan.hasVerticalResolution, 5)
 
 if __name__ == '__main__':
     unittest.main()
