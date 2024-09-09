@@ -1,0 +1,3 @@
+[submodule "src/main/resources/ontology/fluently"]
+	path = src/main/resources/ontology/fluently
+	url = git@github.com:bkiefer/fluently_ontology.git
