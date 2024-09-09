@@ -16,16 +16,17 @@ class RdfStore:
     def __init__(self, port=7070):
         RdfProxy.init_rdfproxy(port=port)
         self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
+        self.session = None
 
     def get_user(self, node, first_name: str, last_name: str):
         users = RdfProxy.selectQuery(
             'select ?uri where ?uri <rdf:type> <cim:User> ?_ '
-            '& ?uri <soho:hasName> "John" ?_ '
-            '& ?uri <soho:hasSurname> "Doe" ?_')
+            '& ?uri <soho:hasName> "{}" ?_ '
+            '& ?uri <soho:hasSurname> "{}" ?_'.format(first_name, last_name))
         if not users:
             self.user = RdfProxy.getObject("User")
-            self.user.hasName = "John"
-            self.user.hasSurname = "Doe"
+            self.user.hasName = first_name
+            self.user.hasSurname = last_name
         else:
             self.user = users[0]
         return self.user
@@ -35,6 +36,7 @@ class RdfStore:
             self.end_session(node)
         self.session = RdfProxy.getObject("UserSession")
         self.user.userSessions.add(self.session)
+        self.session.user = self.user
         return self.session
 
     def end_session(self, node):
