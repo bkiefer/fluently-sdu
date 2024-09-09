@@ -1,24 +1,30 @@
+import os
 import unittest
 import subprocess
+import time
 
 from hfc_thrift.rdfproxy import RdfProxy
 from rdf_store import RdfStore
 
 
 class MyTestCase(unittest.TestCase):
-    # @classmethod
-    # def setUpClass(cls):
-    #     """ Start external hfc instance """
-    #     cls.proc = subprocess.Popen(
-    #         ["sh", "-c ",
-    #          "./startServer.sh ../src/main/resources/ontology/fluently.yml"])
-    #     if cls.proc is None:
-    #         print("Server not started")
-    #
-    # @classmethod
-    # def tearDownClass(cls):
-    #     """ stop external hfc instance"""
-    #     cls.proc.terminate()
+    HFC_JAR=os.environ["HOME"]+'/src/java/hfc-thrift/target/hfc-server.jar'
+    @classmethod
+    def setUpClass(cls):
+
+        """ Start external hfc instance """
+        cls.proc = subprocess.Popen(
+            ["java", '-jar', cls.HFC_JAR, '-p7070',
+            "../src/main/resources/ontology/fluently.yml"],
+             shell=False)
+        time.sleep(1)
+        #cls.proc = subprocess.Popen(["pwd"], shell=True)
+        #cls.proc.communicate()
+
+    @classmethod
+    def tearDownClass(cls):
+        """ stop external hfc instance"""
+        cls.proc.kill()
 
     def test_getuser(self):
         rdf_store = RdfStore()
@@ -48,6 +54,17 @@ class MyTestCase(unittest.TestCase):
         theScan = RdfProxy.rdf2pyobj(scan.uri)
         self.assertEqual(theScan.hasHorizontalResolution, 7)
         self.assertEqual(theScan.hasVerticalResolution, 5)
+
+    def test_instructions(self):
+        rdf_store = RdfStore()
+        johndoe = rdf_store.get_user(None, "John", "Doe")
+        session = rdf_store.start_session(None)
+        offer = rdf_store.offer_instruction(None, "intro")
+        self.assertIsNotNone(offer)
+        decline = rdf_store.decline_instruction(None)
+        self.assertIsNotNone(decline)
+        self.assertTrue(offer in decline.hasConstituent)
+
 
 if __name__ == '__main__':
     unittest.main()

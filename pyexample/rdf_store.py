@@ -1,7 +1,11 @@
+import time
+
 from hfc_thrift.rdfproxy import RdfProxy
 import sys
 import os
 import numpy as np
+
+sys.path.append(os.path.expanduser("~") + "/hfc-thrift/src/main/python/src")
 
 DEFAULT_H_RESOLUTION = 3
 DEFAULT_V_RESOLUTION = 3
@@ -14,7 +18,12 @@ class RdfStore:
     """
 
     def __init__(self, port=7070):
-        RdfProxy.init_rdfproxy(port=port)
+        mapclass = { "<cim:Offer>": "Offer",
+                     "<cim:Decline>" : "Decline",
+                     "<cim:Accept>" : "Accept",
+                     "<cim:Question>" : "Question",
+                     "<cim:YNQuestion>" : "YNQuestion"}
+        RdfProxy.init_rdfproxy(port=port, classmapping=mapclass)
         self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
         self.user = None
         self.session = None
@@ -23,8 +32,8 @@ class RdfStore:
     def get_user(self, node, first_name: str, last_name: str):
         users = RdfProxy.selectQuery(
             'select ?uri where ?uri <rdf:type> <cim:User> ?_ '
-            '& ?uri <soho:hasName> "{}" ?_ '
-            '& ?uri <soho:hasSurname> "{}" ?_'.format(first_name, last_name))
+            '& ?uri <soho:hasName> "{first_name}" ?_ '
+            '& ?uri <soho:hasSurname> "{last_name}" ?_'.format(first_name=first_name,last_name=last_name))
         if not users:
             self.user = RdfProxy.getObject("User")
             self.user.hasName = first_name
@@ -34,7 +43,7 @@ class RdfStore:
         return self.user
 
     def start_session(self, node):
-        if self.session:
+        if self.session is not None:
             self.end_session(node)
         self.session = RdfProxy.getObject("UserSession")
         self.user.userSessions.add(self.session)
@@ -65,6 +74,13 @@ class RdfStore:
         self.scan.hasVerticalResolution = DEFAULT_V_RESOLUTION
         return self.scan
 
+    def getFileInstance(self, which: str):
+        insts = RdfProxy.selectQuery(
+            'select ?inst where ?inst <rdf:type> <soma:Digital_File> ?_'
+            ' & ?inst <soma:hasNameString> "{}" ?_'.format(which))
+        return None if not insts else insts[0]
+
+
     # For all the Offer situations, i think we should have a fixed Instance
     # which is a placeholder for what we offer, or should we create an Event
     # instance which then may never happen since it is declined?
@@ -78,24 +94,27 @@ class RdfStore:
         # We need to create (fixed) instances of SOMA:VideoData that represent
         # different (parts of) instruction video, that isParticipantIn this
         # Instruction (e.g., offer hasParticipant VideoData)
-        offer.hasParticipant.add(which)
+        fi = self.getFileInstance(which)
+        offer.hasParticipant.add(fi)
         return offer
 
     def __get_last_session_constituent(self, clazz):
         lastoffer = RdfProxy.selectQuery(
             'select ?off ?t where ?off <rdf:type> {} ?t'
-            ' & {} <DUL:hasConstituent> ?off ?_'
-            ' aggregate ?res = LGetLatest2 ?s ?t "1"^^<xsd:int>'.format(
+            ' & {} <dul:hasConstituent> ?off ?_'
+            ' aggregate ?res = LGetLatest2 ?off ?t "1"^^<xsd:int>'.format(
                 clazz, self.session.uri))
         if not lastoffer:
             # TODO: at least log a warning
             return None
+        return lastoffer[0]
 
     def decline_instruction(self, node):
         """
         Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
+        print("Last offer: ",lastoffer)
         if not lastoffer:
             # TODO: at least log a warning
             return
@@ -103,19 +122,22 @@ class RdfStore:
         decline.hasConstituent.add(lastoffer)
         # TODO: check if our code handles this assignment correctly, e.g.,
         # clones the set of the lastoffer.hasPart
-        decline.hasPart = lastoffer.hasPart
+        decline.hasParticipant.union(lastoffer.hasParticipant)
+        return decline
 
     def accept_instruction(self, node):
         """
         Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
+        print("Last offer: ",lastoffer)
         if not lastoffer:
             # TODO: at least log a warning
             return
         accept = self.__session_part("Accept")
         accept.hasConstituent.add(lastoffer)
-        accept.hasPart = lastoffer.hasPart
+        accept.hasParticipant.union(lastoffer.hasParticipant)
+        return accept
 
     def display_instruction(self, node):
         """
@@ -125,7 +147,8 @@ class RdfStore:
         instruction = self.__session_part("Instruction")
         # TODO: we could play instructions immediately without offer, maybe it
         # would be more convenient to pass the VideoData as argument?
-        instruction.hasPart = lastoffer.hasPart
+        instruction.hasParticipant.union(lastoffer.hasParticipant)
+        return instruction
 
     def request_next_part(self, node, part):
         requestnext = self.__session_part("RequestNext")
@@ -146,27 +169,40 @@ class RdfStore:
 
     def dimensions_checked(self, node):
         """record system has checked dimension"""
-        self.__session_part("CheckedDimensions")
+        return self.__session_part("CheckedDimensions")
 
     def poses_generated(self, node):
         """record system has generated poses"""
-        self.__session_part("PosesGenerated")
+        return self.__session_part("PosesGenerated")
 
     def resolution_accept_requested(self, node):
         """record system "offers" user to change resolution"""
-        self.__session_part("YNQuestionResolution")
+        return self.__session_part("YNQuestionResolution")
 
     def resolution_accepted(self, node):
         """record system "offers" user to change resolution"""
-        self.__session_part("AcceptResolution")
+        return self.__session_part("AcceptResolution")
+
+    def resolution_declined(self, node):
+        """record system "offers" user to change resolution"""
+        return self.__session_part("DeclineResolution")
+
+    def change_resolution(self, node, h_res, v_res):
+        self.scan.hasHorizontalResolution = h_res
+        self.scan.hasVerticalResolution = v_res
+        return self.scan
 
     def addpose_requested(self, node):
         """record system "offers" user to change addpose"""
-        self.__session_part("YNQuestionAddpose")
+        return self.__session_part("YNQuestionAddpose")
 
     def addpose_accepted(self, node):
         """record system "offers" user to change addpose"""
-        self.__session_part("AcceptAddpose")
+        return self.__session_part("AcceptAddpose")
+
+    def addpose_declined(self, node):
+        """record system "offers" user to change addpose"""
+        return self.__session_part("DeclineAddpose")
 
     def add_pose(self, node, quaternion: np.matrix):
         pose = RdfProxy.getObject("Quaternion")
@@ -174,8 +210,8 @@ class RdfStore:
         pose.representation = str(quaternion)
         # we assume he have an active scan object, which is the last one in the
         # session
-        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
-        scan.hasManualPoses.add(pose)
+        self.scan.hasManualPoses.add(pose)
+        return self.scan
 
     def record_scan_test_result(self, node, result: float):
         """
@@ -185,5 +221,122 @@ class RdfStore:
         Maybe we can use an enum, or strings instead and change the range
         of wasSuccessful
         """
+        self.scan.wasSuccessful = result
+
+
+    def robot_starts_scanning(self, node):
+        now = time.time()
         scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
-        scan.wasSuccessful = result
+        scan.fromTime = round(now * 1000)
+
+    def robot_ends_scanning(self, node):
+        now = time.time()
+        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
+        scan.toTime = round(now * 1000)
+
+def update_rdf(node, blackboard, rdf_store: RdfStore):
+    if node == "log_in":
+        if blackboard.get(node) == "not_requested":
+            user = rdf_store.get_user(node=node,first_name=blackboard.get("first_name"),last_name=blackboard.get("last_name"))
+            session = rdf_store.start_session(node=node)
+            scan = rdf_store.start_scan(node=node)
+            print("User: ",user,"\nSession: ",session,"\nScan: ",scan)
+            print("h_res: ",scan.hasHorizontalResolution)
+            print("v_res", scan.hasVerticalResolution)
+            print("Number of user sessions: ",len(user.userSessions))
+
+    elif node in ["skip_intro","skip_reso","skip_manual","skip_quality"]:
+        if blackboard.get(node) == "not_requested":
+            offer = rdf_store.offer_instruction(node,which=node[4:])
+            print("Offer: ", offer)
+
+        elif blackboard.get(node) == "completed":
+            accept = rdf_store.accept_instruction(node=node)
+            print("Accept: ",accept)
+
+        elif blackboard.get(node) == "failed":
+            decline = rdf_store.decline_instruction(node=node)
+            print("Decline: ",decline)
+
+    elif node == ["introduction","resolution","manual","quality"]:
+        if blackboard.get(node) == "not_requested":
+            instruction = rdf_store.display_instruction(node=node)
+            print("Instruction: ",instruction)
+
+            # testing clicking "next" and "back", this info will come from sim
+            rdf_store.request_next_part
+            rdf_store.request_previous_part
+
+    elif node == "check_dimension":
+        if blackboard.get(node) == "completed":
+            rdf_store.dimensions_checked(node=node)
+            pass
+
+    elif node == "generate_poses":
+        if blackboard.get(node) == "completed":
+            rdf_store.poses_generated(node=node)
+            pass
+
+    elif node == "change_resolution":
+        if blackboard.get(node) == "completed":
+            #h_res = blackboard.get("h_res") # Get this info from sim
+            #v_res = blackboard.get("v_res") # Get this info from sim
+            h_res = 5
+            v_res = 5
+            scan = rdf_store.change_resolution(node=node, h_res=h_res, v_res=v_res)
+            print("Scan after changing resolution: ", scan)
+            print("h_res: ",scan.hasHorizontalResolution)
+            print("v_res", scan.hasVerticalResolution)
+
+    elif node == "resolution_ok":
+        if blackboard.get(node) == "not_requested":
+            rdf_store.resolution_accept_requested(node=node)
+            pass
+
+        elif blackboard.get(node) =="completed":
+            rdf_store.resolution_accepted(node=node)
+
+        # elif failure
+        elif blackboard.get(node) == "failed":
+            pass
+
+    elif node == "scan_plan_ok":
+        if blackboard.get(node) == "not_requested":
+            rdf_store.addpose_requested(node=node)
+            pass
+
+        elif blackboard.get(node) =="completed":
+            rdf_store.addpose_accepted(node=node)
+            pass
+
+        # elif failure
+        elif blackboard.get(node) == "failed":
+            pass
+
+    elif node == "add_pose":
+        # GET INFO ABOUT ALL POSES FROM SIM
+        q1 = np.matrix('1 0 0 0')
+        q2 = np.matrix('1 2 3 4')
+        poses = [q1,q2]
+        # BK: is this the quaternion?? or is it just a 4-tuple that you store?
+        #for pose in poses:
+        #    rdf_store.add_pose(node=node,quaternion=pose)
+
+    elif node == "start_scan":
+        # add an RdfStore function for when the robot performs the scanning action
+        rdf_store.start_scan(node)
+        # BK: is there also a signal when the scan ends?
+
+    elif node == "scan_ok":
+        if blackboard.get(node) =="completed":
+            rdf_store.end_session(node=node)
+
+    elif node == "scan_failed":
+        if blackboard.get(node) =="completed":
+            rdf_store.end_session(node=node)
+
+    elif node == "scan_incomplete":
+        if blackboard.get(node) =="completed":
+            rdf_store.end_session(node=node)
+
+    print(node)
