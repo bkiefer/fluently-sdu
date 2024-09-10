@@ -36,3 +36,5 @@ rasa/.nv
 rasa/models/**
 rasa/results
 **/__pycache__
+**/*hits.txt
+**/*misses.txt

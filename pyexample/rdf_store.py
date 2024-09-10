@@ -226,13 +226,11 @@ class RdfStore:
 
     def robot_starts_scanning(self, node):
         now = time.time()
-        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
-        scan.fromTime = round(now * 1000)
+        self.scan.fromTime = round(now * 1000)
 
     def robot_ends_scanning(self, node):
         now = time.time()
-        scan = self.__get_last_session_constituent("<cim:ScanningProcess>")
-        scan.toTime = round(now * 1000)
+        self.scan.toTime = round(now * 1000)
 
 def update_rdf(node, blackboard, rdf_store: RdfStore):
     if node == "log_in":
@@ -303,14 +301,13 @@ def update_rdf(node, blackboard, rdf_store: RdfStore):
     elif node == "scan_plan_ok":
         if blackboard.get(node) == "not_requested":
             rdf_store.addpose_requested(node=node)
-            pass
 
         elif blackboard.get(node) =="completed":
             rdf_store.addpose_accepted(node=node)
-            pass
 
         # elif failure
         elif blackboard.get(node) == "failed":
+            # BK: SOMETHING IS MISSING HERE?
             pass
 
     elif node == "add_pose":
