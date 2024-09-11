@@ -4,7 +4,7 @@ noOfCores: 4
 #noOfAtoms: 100000
 #noOfTuples: 500000
 shortIsDefault: true
-#persistenceFile=../../../../persistent.nt
+#persistenceFile: ../../../../persistent.nt
 eqReduction: true
 characterEncoding: UTF-8
 addTimestamps: [ 0 ]

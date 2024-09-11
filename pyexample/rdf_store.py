@@ -75,9 +75,9 @@ class RdfStore:
         return self.scan
 
     def getFileInstance(self, which: str):
-        insts = RdfProxy.selectQuery(
-            'select ?inst where ?inst <rdf:type> <soma:Digital_File> ?_'
-            ' & ?inst <soma:hasNameString> "{}" ?_'.format(which))
+        query = 'select ?inst where ?inst <rdf:type> <cim:InstructionSlide> ?_' \
+            ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(which)
+        insts = RdfProxy.selectQuery(query)
         return None if not insts else insts[0]
 
 
@@ -114,7 +114,6 @@ class RdfStore:
         Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
-        print("Last offer: ",lastoffer)
         if not lastoffer:
             # TODO: at least log a warning
             return
@@ -130,7 +129,6 @@ class RdfStore:
         Assumption: only the last offered instruction can be declined/accepted
         """
         lastoffer = self.__get_last_session_constituent("<cim:Offer>")
-        print("Last offer: ",lastoffer)
         if not lastoffer:
             # TODO: at least log a warning
             return
@@ -205,9 +203,11 @@ class RdfStore:
         return self.__session_part("DeclineAddpose")
 
     def add_pose(self, node, quaternion: np.matrix):
+        """a pose is a quaternion, represented by a 4x4 numpy matrix"""
         pose = RdfProxy.getObject("Quaternion")
-        # i would propose to have an invertible string representation here
-        pose.representation = str(quaternion)
+        # TODO: create an invertible string representation here, and write
+        # a get_pose(s) method
+        pose.representation = str(quaternion).replace(os.linesep, ' ')
         # we assume he have an active scan object, which is the last one in the
         # session
         self.scan.hasManualPoses.add(pose)
@@ -315,7 +315,8 @@ def update_rdf(node, blackboard, rdf_store: RdfStore):
         q1 = np.matrix('1 0 0 0')
         q2 = np.matrix('1 2 3 4')
         poses = [q1,q2]
-        # BK: is this the quaternion?? or is it just a 4-tuple that you store?
+        # a pose is a quaternion, represented by a 4x4 numpy matrix
+        # BK: are you adding all poses at once? or one by one?
         #for pose in poses:
         #    rdf_store.add_pose(node=node,quaternion=pose)
 
@@ -325,6 +326,7 @@ def update_rdf(node, blackboard, rdf_store: RdfStore):
         # BK: is there also a signal when the scan ends?
 
     elif node == "scan_ok":
+        """ This is the judgement of the user """
         if blackboard.get(node) =="completed":
             rdf_store.end_session(node=node)
 
