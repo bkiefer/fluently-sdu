@@ -73,6 +73,16 @@ class MyTestCase(unittest.TestCase):
         self.assertIsNotNone(accept)
         self.assertTrue(offer in accept.hasConstituent)
 
+    def test_add_pose_offers(self):
+        rdf_store = RdfStore()
+        johndoe = rdf_store.get_user(None, "John", "Doe")
+        session = rdf_store.start_session(None)
+        request = rdf_store.addpose_requested(None)
+        self.assertIsNotNone(request)
+        accept = rdf_store.addpose_accepted(None)
+        self.assertIsNotNone(accept)
+        decline = rdf_store.addpose_declined(None)
+        self.assertIsNotNone(decline)
 
     def test_add_pose(self):
         rdf_store = RdfStore()
@@ -80,11 +90,15 @@ class MyTestCase(unittest.TestCase):
         session = rdf_store.start_session(None)
         scan = rdf_store.start_scan(None)
         # TODO: get rid of the warning when creating the matrix
-        quat = np.matrix([[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]
+        pose1 = np.matrix([[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]
                          , dtype=float)
-        theScan = rdf_store.add_pose(None, quat)
-        assert_equal(scan, theScan)
-        assert_equal(len(theScan.hasManualPoses), 1)
+        quat1 = rdf_store.add_pose(None, pose1)
+        pose_2 = np.matrix('-0.56333682 0 0.82622734 -0.22; 0 1 0 0; '
+                           '-0.82622734 0 -0.56333682 0.15; 0 0 0 1')
+        quat2 = rdf_store.add_pose(None, pose_2)
+        assert_equal(len(scan.hasManualPoses), 2)
+        assert(quat1 in scan.hasManualPoses)
+        assert(quat2 in scan.hasManualPoses)
 
     def test_start_end_scan(self):
         rdf_store = RdfStore()
@@ -96,6 +110,16 @@ class MyTestCase(unittest.TestCase):
         rdf_store.robot_ends_scanning(None)
         assert(scan.toTime - scan.fromTime > 500 and
                scan.toTime - scan.fromTime < 1000)
+
+    def test_record_scan_result(self):
+        rdf_store = RdfStore()
+        johndoe = rdf_store.get_user(None, "John", "Doe")
+        session = rdf_store.start_session(None)
+        scan = rdf_store.start_scan(None)
+        rdf_store.record_scan_test_quality(None, 0.95)
+        assert_equal(scan.scanQuality, 0.95)
+        rdf_store.record_scan_test_result(None,"accepted")
+        assert_equal(scan.wasSuccessful, "accepted")
 
 if __name__ == '__main__':
     unittest.main()
