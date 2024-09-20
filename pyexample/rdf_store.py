@@ -7,7 +7,7 @@ import re
 sys.path.append(os.path.expanduser("~") + "/.local/share/ov/pkg/isaac-sim-2023.1.1/hfc-thrift/src/main/python/src")
 from hfc_thrift.rdfproxy import RdfProxy
 
-DEFAULT_H_RESOLUTION = 3
+DEFAULT_H_RESOLUTION = 5
 DEFAULT_V_RESOLUTION = 3
 
 
@@ -151,21 +151,25 @@ class RdfStore:
     def request_next_part(self, node, part):
         requestnext = self.__session_part("RequestNext")
         instruction = self.__get_last_session_constituent("<cim:Instruction>")
-        requestnext.hasConstituent(instruction)
+        
+        #requestnext.hasConstituent(instruction) # EP: TypeError: 'RdfSet' object is not callable
+
         # Again: We could get the last part from the DB and automatically
         # determine the next part, but i for now assume it's an argument
         instruction.hasPart.add(part)
         # As i designed this, there will be no new 'Instruction' for the parts
-        return instruction
+        return requestnext
 
     def request_previous_part(self, node, part):
         requestback = self.__session_part("RequestBack")
         instruction = self.__get_last_session_constituent("<cim:Instruction>")
-        requestback.hasConstituent(instruction)
+        
+        #requestback.hasConstituent(instruction) # EP: TypeError: 'RdfSet' object is not callable
+ 
         # Again: We could get the last part from the DB and automatically
         # determine the previous part, but i for now assume it's an argument
         instruction.hasPart.add(part)
-        return instruction
+        return requestback
 
     def dimensions_checked(self, node):
         """record system has checked dimension"""
@@ -277,10 +281,10 @@ def update_rdf(node, blackboard, rdf_store: RdfStore):
 
         info = blackboard.get("info")
         if info == "next":
-            next = rdf_store.request_next_part
+            next = rdf_store.request_next_part(node=node, part="slide")
             print("Next: ",next)
         elif info == "previous":
-            previous = rdf_store.request_previous_part
+            previous = rdf_store.request_previous_part(node=node, part="slide")
             print("Previous: ",previous)
 
     elif node == "check_dimension":
@@ -355,7 +359,7 @@ def update_rdf(node, blackboard, rdf_store: RdfStore):
             print("Scan ended: ", end_scan)
 
     elif node == "scan_ok":
-        """ This is the automatic judgement?? """
+        # The status of the Behavior Tree nodes depend on the user decision (scan_ok/scan_incomplete/scan_failed)
         if blackboard.get(node) == "running":
             response = blackboard.get("scan_response")
             info = blackboard.get("info")
