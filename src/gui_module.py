@@ -70,7 +70,6 @@ class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        # Create a Canvas for displaying the image
         canvas_width, canvas_height = 540, 720
 
         self.canvas = tk.Canvas(self, width=canvas_width, height=canvas_height)
@@ -95,7 +94,8 @@ class HomeScreen(tk.Frame):
 class AutoClassScreen(HomeScreen):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
-        
+
+        #TODO: stopped here 
 
 class ManualClassScreen(tk.Frame):
     def __init__(self, parent, controller):
