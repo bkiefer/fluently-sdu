@@ -5,12 +5,12 @@ import os
 import time
 
 # from .vision import
-from .gui_module import Gui
-from .robot_module import RobotModule
-from .battery_pack import PackState
-from .rdf_store import RdfStore
-from .vision_module import VisionModule
-from .behaviors import AutoClass, HelpedClass, AutoDetect, HelpedDetect, AutoAssess, HelpedAssess, AutoSort, HelpedSort
+from gui_module import Gui
+from robot_module import RobotModule
+from battery_pack import PackState
+from rdf_store import RdfStore
+from vision_module import VisionModule
+from behaviors import AutoClass, HelpedClass, AutoDetect, HelpedDetect, AutoAssess, HelpedAssess, AutoSort, HelpedSort
 
 class BehaviourTree(pt.trees.BehaviourTree):
     def __init__(self):        
