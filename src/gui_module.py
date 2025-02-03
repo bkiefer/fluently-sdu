@@ -7,12 +7,112 @@ from tkinter import ttk
 import cv2
 import PIL
 
+import tkinter as tk
+
+class _BoundingBoxEditor:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.selected_box = None
+        self.dragging = None  # "move" or "resize"
+        self.start_x = 0
+        self.start_y = 0
+
+        self.boxes = []
+    # def draw_boxes(self, x_min, y_min, x_max, y_max, id):
+    #     """Draws bounding boxes with resize/move handles"""
+    #     self.canvas.delete("bb_" + str(self.id))
+    #     center_x = (self.x_min + self.x_max) // 2
+    #     center_y = (self.y_min + self.y_max) // 2
+
+    #     box = self.canvas.create_rectangle(self.x_min, self.y_min, self.x_max, self.y_max, outline="black", width=2, tags='bb_' + str(self.id))
+    #     # Center move handle
+    #     move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bb_' + str(self.id))
+    #     # Resize handle (bottom-right corner)
+    #     resize_handle = self.canvas.create_rectangle(self.x_min-5, self.y_min-5, self.x_min+5, self.y_min+5, fill="red", tags='bb_' + str(self.id))
+    #     text_bg = self.canvas.create_rectangle(self.x_max-15, self.y_max-5, self.x_max, self.y_max+5, fill="white", outline="white", tags='bb_' + str(self.id))
+    #     text_label = self.canvas.create_text(self.x_max-7, self.y_max, text=f"{self.id:02d}", font=("Arial", 5), tags='bb_' + str(self.id))
+    #     self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
+
+    def draw_boxes(self, bbs, canvas):
+        self.boxes = []
+        for id, bb in enumerate(bbs):
+            box_items = []
+            x_min, y_min, x_max, y_max = bb
+            center_x = (x_min + x_max) // 2
+            center_y = (y_min + y_max) // 2
+            box = canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bb_' + str(id))
+            # Center move handle
+            move_handle = canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bb_' + str(id))
+            # Resize handle (bottom-right corner)
+            resize_handle = canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bb_' + str(id))
+            text_bg = canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bb_' + str(id))
+            text_label = canvas.create_text(x_max-7, y_max, text=f"{id:02d}", font=("Arial", 5), tags='bb_' + str(id))
+
+            canvas.bind("<ButtonPress-1>", self.on_click)
+            canvas.bind("<B1-Motion>", self.on_drag)
+            canvas.bind("<ButtonRelease-1>", self.on_release)
+
+            box_items.extend([box, move_handle, resize_handle, text_bg, text_label])
+            self.boxes.append(box_items)
+
+
+    def on_click(self, event):
+        """Detects which part of a box was clicked (move/resize)"""
+        clicked_items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
+        if len(clicked_items) > 1: # one is the canvas
+            print(clicked_items[1])
+            print(self.boxes)
+            for box in self.boxes:
+                if clicked_items[1] in box:
+                    for element in box:
+                        print(element, type(element))
+                        print(event.x, event.y)
+                        # if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
+                        item = self.canvas.find_withtag(clicked_items[1])
+                        print(item, type(item))
+                        #     if item == move_handle:  # Move box
+                        #         self.selected_box = i
+                        #         self.dragging = "move"
+                        #     elif item == resize_handle:  # Resize box
+                        #         self.selected_box = i
+                        #         self.dragging = "resize"
+                        #     self.start_x = event.x
+                        #     self.start_y = event.y
+                        #     break
+
+    def on_drag(self, event):
+        """Moves or resizes the selected bounding box"""
+        if self.selected_box is None:
+            return
+        dx = event.x - self.start_x
+        dy = event.y - self.start_y
+
+        if self.dragging == "move":
+            self.x_min += dx
+            self.y_min += dy
+            self.x_max += dx
+            self.y_max += dy
+
+        elif self.dragging == "resize":
+            self.x_min += dx
+            self.y_min += dy
+        
+        # self.bbs_position[self.selected_box] = (self.x_min, self.y_min, self.x_max, self.y_max)
+        self.start_x = event.x
+        self.start_y = event.y
+        self.draw_box()
+
+    def on_release(self, event):
+        """Resets after dragging"""
+        self.selected_box = None
+        self.dragging = None
+
 class MemGui(tk.Tk):
     def __init__(self, camera_frame: PIL.Image):
         super().__init__()
         self.title("MeM use case")
         # self.geometry("800x600+400+400") # 2nd and 3rd number will move the window spawn point (with multiple screen will start from most left screen)
-        size = (int(camera_frame.width), int(camera_frame.height*1.2))
+        size = (int(camera_frame.width+20), int(camera_frame.height*1.2))
         self.geometry(f"{size[0]}x{size[1]}")
         self.resizable(False, False)
         self.states = []
@@ -38,20 +138,29 @@ class MemGui(tk.Tk):
         self.infos_container.pack(side='right', padx=(5, 10), fill='both', expand=True)
         
         debug_btn = tk.Button(self.infos_container, text="debug", command=lambda: self.debug())
-        debug_btn.grid(row=1, column=0, sticky='nsew')
+        # debug_btn.grid(row=1, column=0, sticky='nsew')
 
 
         # self.treeview = ttk.Treeview(self.infos_container)
         # self.treeview.place(x=500, y=300)
 
-        info_bpack = {"model": "Unknown", "cells": [
-                                                                {"model": "123", "bb":[1, 1, 2, 2], "quality": 0.87, "pickedup":False},
-                                                                {"model": "123", "bb":[3, 3, 4, 4], "quality": 0.67, "pickedup":True },
-                                                                {"model": "123", "bb":[5, 5, 6, 6], "quality": 0.47, "pickedup":False},
-                                                                {"model": "123", "bb":[7, 7, 8, 8], "quality": 0.97, "pickedup":False}
-                                                                ]}
+        info_bpack = {"model": "Unknown", "grid": (4, 3), "cells": [
+                                                                    {"model": "123", "bb":[1, 1, 2, 2], "quality": 0.87, "pickedup":False},
+                                                                    {"model": "123", "bb":[3, 3, 4, 4], "quality": 0.67, "pickedup":True },
+                                                                    {"model": "123", "bb":[5, 5, 6, 6], "quality": 0.47, "pickedup":False},
+                                                                    {"model": "123", "bb":[7, 7, 8, 8], "quality": 0.97, "pickedup":False},
+                                                                    {"model": "123", "bb":[1, 1, 2, 2], "quality": 0.87, "pickedup":False},
+                                                                    {"model": "123", "bb":[3, 3, 4, 4], "quality": 0.67, "pickedup":True },
+                                                                    {"model": "123", "bb":[5, 5, 6, 6], "quality": 0.47, "pickedup":False},
+                                                                    {"model": "123", "bb":[7, 7, 8, 8], "quality": 0.97, "pickedup":False},
+                                                                    {"model": "123", "bb":[1, 1, 2, 2], "quality": 0.87, "pickedup":False},
+                                                                    {"model": "123", "bb":[3, 3, 4, 4], "quality": 0.67, "pickedup":True },
+                                                                    {"model": "123", "bb":[5, 5, 6, 6], "quality": 0.47, "pickedup":False},
+                                                                    {"model": "123", "bb":[5, 5, 6, 6], "quality": 0.47, "pickedup":False},
+                                                                    ]}
 
         self.update_info(info_bpack)
+        
         
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
@@ -59,6 +168,8 @@ class MemGui(tk.Tk):
             frame = screen(self.picture_container, self)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
+
+        self.bbs_editor = _BoundingBoxEditor(self.frames[0].canvas)
         self.show_frame(0)
 
     def debug(self):
@@ -71,23 +182,35 @@ class MemGui(tk.Tk):
         current_window_height = self.winfo_height()
         current_window_width = self.winfo_width()
         if int(self.geometry().split("x")[0]) / self.camera_frame.height > 1: # the menu is alread open close it
-            self.geometry(f"{current_window_width//2}x{current_window_height}")
+            self.geometry(f"{int(self.camera_frame.width+20)}x{current_window_height}")
             self.expand_btn.config(text="▶")
         else:
             self.geometry(f"{current_window_width*2}x{current_window_height}")
             self.expand_btn.config(text="◀")
 
-    def update_info(self, info):
+    def update_info(self, infos):
         # TODO: draw the batteyr pack in the gui with representation of bb (4 int) quality(float)
-        self.write_cell_state(30, 30, info['cells'][0])
+        idx = 0
+        for i in range(infos['grid'][0]):
+            for j in range(infos['grid'][1]):
+                self.write_cell_state(j*180, i*100+30, infos['cells'][idx])
+                idx += 1
+                # break
+            # break
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
-        self.x_entry = tk.Entry(self.infos_container, width=3)
-        self.x_entry.insert(0, str(cell['bb'][0]))
-        self.x_entry.place(x=x-30, y=y)
-        self.y_entry = tk.Entry(self.infos_container, width=3)
-        self.y_entry.insert(0, str(cell['bb'][1]))
-        self.y_entry.place(x=x+30, y=y)
+        self.x_min = tk.Entry(self.infos_container, width=4, justify="center")
+        self.x_min.insert(0, str(cell['bb'][0]))
+        self.x_min.place(x=x, y=y)
+        self.y_max = tk.Entry(self.infos_container, width=4, justify="center")
+        self.y_max.insert(0, str(cell['bb'][2]))
+        self.y_max.place(x=x+75, y=y)
+        self.y_min = tk.Entry(self.infos_container, width=4, justify="center")
+        self.y_min.insert(0, str(cell['bb'][1]))
+        self.y_min.place(x=x, y=y+35)
+        self.y_max = tk.Entry(self.infos_container, width=4, justify="center")
+        self.y_max.insert(0, str(cell['bb'][3]))
+        self.y_max.place(x=x+75, y=y+35)
     
     def show_frame(self, state_id: int):
         """update the state of the gui the current state will be hidden and the new one will be visible
@@ -121,10 +244,11 @@ class MemGui(tk.Tk):
         """
         for frame in self.frames:
             if hasattr(frame, "canvas"):
-                for i, bb in enumerate(bbs_position):
-                    frame.canvas.create_rectangle(bb[0], bb[1], bb[2], bb[3], fill="", outline="black", width=2)
-                    frame.canvas.create_rectangle(bb[2]-15, bb[3]-5, bb[2], bb[3]+5, fill="white", outline="white")
-                    frame.canvas.create_text(bb[2]-7, bb[3], text=f"{i:02d}", font=("Arial", 5))
+                self.bbs_editor.draw_boxes(bbs_position, frame.canvas)
+
+                    # frame.canvas.create_rectangle(bb[0], bb[1], bb[2], bb[3], fill="", outline="black", width=2)
+                    # frame.canvas.create_rectangle(bb[2]-15, bb[3]-5, bb[2], bb[3]+5, fill="white", outline="white")
+                    # frame.canvas.create_text(bb[2]-7, bb[3], text=f"{i:02d}", font=("Arial", 5))
 
     def write_qualities(self, bbs_position: list[ndarray], qualities: list[float]):
         """write the quality of each cell on the frame showed to the user
