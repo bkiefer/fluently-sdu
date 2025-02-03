@@ -211,8 +211,9 @@ class MemGui(tk.Tk):
         
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
-        for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
-            frame = screen(self.picture_container, self)
+        # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
+        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen]):
+            frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
 
@@ -318,9 +319,10 @@ class MemGui(tk.Tk):
         self.camera_frame = new_frame
 
 class HomeScreen(tk.Frame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, idx):
         super().__init__(parent)
         self.controller = controller
+        self.idx = idx
         canvas_width, canvas_height = self.controller.camera_frame.width, self.controller.camera_frame.height
         self.canvas = tk.Canvas(self, width=canvas_width, height=canvas_height)
         self.canvas.pack(pady=(10, 0))
@@ -347,16 +349,16 @@ class AutoClassScreen(HomeScreen):
     
     def confirm(self):
         self.controller.chosen_model = self.proposed_model
-        self.controller.show_frame(3)
+        self.controller.show_frame(self.idx + 2)
     
     def deny(self):
-        self.controller.show_frame(2)
+        self.controller.show_frame(self.idx + 1)
 
 class ManualClassScreen(tk.Frame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, idx):
         super().__init__(parent)
         self.controller = controller
-        
+        self.idx = idx
         btns_frame = tk.Frame(self)
         btns_frame.place(relx=0.5, rely=0.5, anchor='center')
         for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied bu the user
@@ -365,7 +367,7 @@ class ManualClassScreen(tk.Frame):
 
     def chose_model(self, model: str):
         self.controller.chosen_model = model
-        self.controller.show_frame(3)
+        self.controller.show_frame(self.idx + 1)
 
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller):
@@ -382,7 +384,7 @@ class AutoDetectScreen(HomeScreen):
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
         self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations))
-        self.controller.show_frame(5)
+        self.controller.show_frame(self.idx + 1)
         print("Chosen locations:", self.controller.chosen_locations)
         print("Generated qualities:", [self.controller.proposed_qualities])
     
