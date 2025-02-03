@@ -9,98 +9,83 @@ import PIL
 
 import tkinter as tk
 
+import tkinter as tk
+
 class _BoundingBoxEditor:
-    def __init__(self, canvas):
+    def __init__(self, canvas, bbs_position):
         self.canvas = canvas
+        self.bbs_position = bbs_position
         self.selected_box = None
         self.dragging = None  # "move" or "resize"
         self.start_x = 0
         self.start_y = 0
+        
+        self.box_items = []  # Store drawn objects
+        self.draw_boxes()
 
-        self.boxes = []
-    # def draw_boxes(self, x_min, y_min, x_max, y_max, id):
-    #     """Draws bounding boxes with resize/move handles"""
-    #     self.canvas.delete("bb_" + str(self.id))
-    #     center_x = (self.x_min + self.x_max) // 2
-    #     center_y = (self.y_min + self.y_max) // 2
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
-    #     box = self.canvas.create_rectangle(self.x_min, self.y_min, self.x_max, self.y_max, outline="black", width=2, tags='bb_' + str(self.id))
-    #     # Center move handle
-    #     move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bb_' + str(self.id))
-    #     # Resize handle (bottom-right corner)
-    #     resize_handle = self.canvas.create_rectangle(self.x_min-5, self.y_min-5, self.x_min+5, self.y_min+5, fill="red", tags='bb_' + str(self.id))
-    #     text_bg = self.canvas.create_rectangle(self.x_max-15, self.y_max-5, self.x_max, self.y_max+5, fill="white", outline="white", tags='bb_' + str(self.id))
-    #     text_label = self.canvas.create_text(self.x_max-7, self.y_max, text=f"{self.id:02d}", font=("Arial", 5), tags='bb_' + str(self.id))
-    #     self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
-
-    def draw_boxes(self, bbs, canvas):
-        self.boxes = []
-        for id, bb in enumerate(bbs):
-            box_items = []
+    def draw_boxes(self):
+        """Draws bounding boxes with resize/move handles"""
+        self.box_items.clear()
+        for i, bb in enumerate(self.bbs_position):
             x_min, y_min, x_max, y_max = bb
+
+            # Draw bounding box
+            box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2)
+
+            # Center move handle
             center_x = (x_min + x_max) // 2
             center_y = (y_min + y_max) // 2
-            box = canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bb_' + str(id))
-            # Center move handle
-            move_handle = canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bb_' + str(id))
+            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue")
+
             # Resize handle (bottom-right corner)
-            resize_handle = canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bb_' + str(id))
-            text_bg = canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bb_' + str(id))
-            text_label = canvas.create_text(x_max-7, y_max, text=f"{id:02d}", font=("Arial", 5), tags='bb_' + str(id))
+            resize_handle = self.canvas.create_rectangle(x_max-5, y_max-5, x_max+5, y_max+5, fill="red")
 
-            canvas.bind("<ButtonPress-1>", self.on_click)
-            canvas.bind("<B1-Motion>", self.on_drag)
-            canvas.bind("<ButtonRelease-1>", self.on_release)
-
-            box_items.extend([box, move_handle, resize_handle, text_bg, text_label])
-            self.boxes.append(box_items)
-
+            self.box_items.append((box, move_handle, resize_handle))
 
     def on_click(self, event):
         """Detects which part of a box was clicked (move/resize)"""
-        clicked_items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
-        if len(clicked_items) > 1: # one is the canvas
-            print(clicked_items[1])
-            print(self.boxes)
-            for box in self.boxes:
-                if clicked_items[1] in box:
-                    for element in box:
-                        print(element, type(element))
-                        print(event.x, event.y)
-                        # if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
-                        item = self.canvas.find_withtag(clicked_items[1])
-                        print(item, type(item))
-                        #     if item == move_handle:  # Move box
-                        #         self.selected_box = i
-                        #         self.dragging = "move"
-                        #     elif item == resize_handle:  # Resize box
-                        #         self.selected_box = i
-                        #         self.dragging = "resize"
-                        #     self.start_x = event.x
-                        #     self.start_y = event.y
-                        #     break
+        for i, (box, move_handle, resize_handle) in enumerate(self.box_items):
+            if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
+                item = self.canvas.find_withtag(tk.CURRENT)[0]
+
+                if item == move_handle:  # Move box
+                    self.selected_box = i
+                    self.dragging = "move"
+                elif item == resize_handle:  # Resize box
+                    self.selected_box = i
+                    self.dragging = "resize"
+
+                self.start_x = event.x
+                self.start_y = event.y
+                break
 
     def on_drag(self, event):
         """Moves or resizes the selected bounding box"""
         if self.selected_box is None:
             return
+        
         dx = event.x - self.start_x
         dy = event.y - self.start_y
+        x_min, y_min, x_max, y_max = self.bbs_position[self.selected_box]
 
         if self.dragging == "move":
-            self.x_min += dx
-            self.y_min += dy
-            self.x_max += dx
-            self.y_max += dy
+            x_min += dx
+            y_min += dy
+            x_max += dx
+            y_max += dy
 
         elif self.dragging == "resize":
-            self.x_min += dx
-            self.y_min += dy
+            x_max += dx
+            y_max += dy
         
-        # self.bbs_position[self.selected_box] = (self.x_min, self.y_min, self.x_max, self.y_max)
+        self.bbs_position[self.selected_box] = (x_min, y_min, x_max, y_max)
         self.start_x = event.x
         self.start_y = event.y
-        self.draw_box()
+        self.draw_boxes()
 
     def on_release(self, event):
         """Resets after dragging"""
@@ -169,7 +154,6 @@ class MemGui(tk.Tk):
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
 
-        self.bbs_editor = _BoundingBoxEditor(self.frames[0].canvas)
         self.show_frame(0)
 
     def debug(self):
@@ -222,7 +206,7 @@ class MemGui(tk.Tk):
         self.expand_btn.place(x=camera_frame.width-50, y=camera_frame.height*1.2-50)
         # will be done by bt ----
         if state_id > 2:
-            self.draw_bbs(self.proposed_locations)
+            self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])
         if state_id > 4:
             self.write_qualities(self.proposed_locations, self.proposed_qualities)
         if state_id > 6:
@@ -236,19 +220,16 @@ class MemGui(tk.Tk):
         """
         pass
 
-    def draw_bbs(self, bbs_position: list[ndarray]):
+    def draw_bbs(self, bbs_position: list[ndarray], frame):
         """draw bounding boxes on the battery on the frame showed for the user
 
         Args:
             bbs_position (list[ndarray]): postions of bounding boxes
         """
-        for frame in self.frames:
-            if hasattr(frame, "canvas"):
-                self.bbs_editor.draw_boxes(bbs_position, frame.canvas)
-
-                    # frame.canvas.create_rectangle(bb[0], bb[1], bb[2], bb[3], fill="", outline="black", width=2)
-                    # frame.canvas.create_rectangle(bb[2]-15, bb[3]-5, bb[2], bb[3]+5, fill="white", outline="white")
-                    # frame.canvas.create_text(bb[2]-7, bb[3], text=f"{i:02d}", font=("Arial", 5))
+        self.bbs_editor = _BoundingBoxEditor(frame.canvas, bbs_position)
+        # frame.canvas.create_rectangle(bb[0], bb[1], bb[2], bb[3], fill="", outline="black", width=2)
+        # frame.canvas.create_rectangle(bb[2]-15, bb[3]-5, bb[2], bb[3]+5, fill="white", outline="white")
+        # frame.canvas.create_text(bb[2]-7, bb[3], text=f"{i:02d}", font=("Arial", 5))
 
     def write_qualities(self, bbs_position: list[ndarray], qualities: list[float]):
         """write the quality of each cell on the frame showed to the user
