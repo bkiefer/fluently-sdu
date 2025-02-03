@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 import cv2
 import PIL
+import numpy as np
 
 import tkinter as tk
 
@@ -22,14 +23,13 @@ class _BoundingBoxEditor:
         
         self.box_items = []  # Store drawn objects
         self.draw_boxes()
-
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
     def spawn_box(self):
         x_min, y_min, x_max, y_max = 100, 100, 150, 150 
-        self.bbs_position.append(x_min, y_min, x_max, y_max)
+        self.bbs_position.append([x_min, y_min, x_max, y_max])
 
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
@@ -41,7 +41,6 @@ class _BoundingBoxEditor:
         text_label = self.canvas.create_text(x_max-7, y_max, text=f"{len(self.box_items):02d}", font=("Arial", 5), tags='bbs')
 
         self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
-        print("asd")
 
     def draw_boxes(self):
         """Draws bounding boxes with resize/move handles"""
@@ -59,7 +58,7 @@ class _BoundingBoxEditor:
             text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
             text_label = self.canvas.create_text(x_max-7, y_max, text=f"{i:02d}", font=("Arial", 5), tags='bbs')
 
-            self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
+            self.box_items.append([box, move_handle, resize_handle, text_bg, text_label])
 
     def on_click(self, event):
         """Detects which part of a box was clicked (move/resize)"""
@@ -105,6 +104,62 @@ class _BoundingBoxEditor:
         self.selected_box = None
         self.dragging = None
 
+class _QualitiesEditor:
+    def __init__(self, canvas, bbs_position, qualities):
+        self.canvas = canvas
+        self.bbs_position = bbs_position
+        self.qualities = qualities
+
+        self.h = 0.8
+        self.m = 0.6
+        
+        self.old_quality = None
+        self.editing = False
+        self.editing_qual_id = None
+        self.edit_entry = tk.Entry(self.canvas, width=4, font=("Arial", 7), justify="center")
+
+        self.boxes = []
+        self.write_qualities()
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.edit_entry.bind("<Return>", self.on_enter)
+        self.edit_entry.bind("<Escape>", self.on_esc)
+    
+    def write_qualities(self):
+        for bb, q in zip(self.bbs_position, self.qualities):
+            color = 'green2' if q > self.h else 'yellow2' if q > self.m else 'firebrick1'
+            self.canvas.create_rectangle(bb[0]-30, bb[1]-25, bb[0]+25, bb[1]+5, fill="gray9", outline="gray9")
+            qual = self.canvas.create_text(bb[0], bb[1]-10, text=f"{int(q*100):02d}%", font=("Arial", 10), fill=color)
+            self.boxes.append(qual)
+
+    def on_click(self, event):
+        if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
+            item = self.canvas.find_withtag(tk.CURRENT)[0]
+            for i, label_id in enumerate(self.boxes):
+                if label_id == item:
+                    self.editing_qual_id = i
+                    self.editing_item_id = label_id
+                    self.old_quality = self.canvas.itemcget(label_id, "text")
+                    self.canvas.itemconfig(label_id, state="hidden")
+                    self.edit_entry.place(x = self.canvas.coords(label_id)[0]-25, y = self.canvas.coords(label_id)[1]-13)
+                    self.editing = True
+                    self.edit_entry.focus_set()
+        
+    def on_enter(self, event):
+        new_q = float(self.edit_entry.get()) / 100
+        self.qualities[self.editing_qual_id] = new_q
+        self.canvas.itemconfig(self.editing_item_id, state="normal")
+        self.canvas.itemconfig(self.editing_item_id, text=f"{int(self.edit_entry.get()):02d}%")
+        self.canvas.itemconfig(self.editing_item_id, fill='green2' if new_q > self.h else 'yellow2' if new_q > self.m else 'firebrick1')
+        self.canvas.winfo_toplevel().focus_set() # defocus entry
+        self.edit_entry.delete(0, tk.END)
+        self.edit_entry.place_forget()
+    
+    def on_esc(self, event):
+        self.canvas.itemconfig(self.editing_item_id, state="normal")
+        self.canvas.winfo_toplevel().focus_set() # defocus entry
+        self.edit_entry.delete(0, tk.END)
+        self.edit_entry.place_forget()
+
 class MemGui(tk.Tk):
     def __init__(self, camera_frame: PIL.Image):
         super().__init__()
@@ -123,9 +178,7 @@ class MemGui(tk.Tk):
         self.chosen_model = ""
         self.proposed_locations = [(80, 80, 140, 140), (240, 240, 300, 300), (400, 400, 460, 460)]
         self.chosen_locations = []
-        self.high_quality_threshold = 0.8
-        self.mid_quality_threshold = 0.6
-        self.proposed_qualities = [0.81, 0.61, 0.41]
+        self.proposed_qualities = [0.81, 0.61, 0.43]
         self.chosen_qualities = []
         self.outcomes = [False, True, True]
         
@@ -137,10 +190,6 @@ class MemGui(tk.Tk):
         
         debug_btn = tk.Button(self.infos_container, text="debug", command=lambda: self.debug())
         # debug_btn.grid(row=1, column=0, sticky='nsew')
-
-
-        # self.treeview = ttk.Treeview(self.infos_container)
-        # self.treeview.place(x=500, y=300)
 
         info_bpack = {"model": "Unknown", "grid": (4, 3), "cells": [
                                                                     {"model": "123", "bb":[1, 1, 2, 2], "quality": 0.87, "pickedup":False},
@@ -186,7 +235,7 @@ class MemGui(tk.Tk):
             self.expand_btn.config(text="◀")
 
     def update_info(self, infos):
-        # TODO: draw the batteyr pack in the gui with representation of bb (4 int) quality(float)
+        # Maybe a treeview would be better
         idx = 0
         for i in range(infos['grid'][0]):
             for j in range(infos['grid'][1]):
@@ -221,7 +270,7 @@ class MemGui(tk.Tk):
         if state_id > 2:
             self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])
         if state_id > 4:
-            self.write_qualities(self.proposed_locations, self.proposed_qualities)
+            self.write_qualities(self.proposed_locations, self.proposed_qualities, self.frames[int(state_id)])
         if state_id > 6:
             self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
 
@@ -240,28 +289,16 @@ class MemGui(tk.Tk):
             bbs_position (list[ndarray]): postions of bounding boxes
         """
         self.bbs_editor = _BoundingBoxEditor(frame.canvas, bbs_position)
-        # frame.canvas.create_rectangle(bb[0], bb[1], bb[2], bb[3], fill="", outline="black", width=2)
-        # frame.canvas.create_rectangle(bb[2]-15, bb[3]-5, bb[2], bb[3]+5, fill="white", outline="white")
-        # frame.canvas.create_text(bb[2]-7, bb[3], text=f"{i:02d}", font=("Arial", 5))
 
-    def write_qualities(self, bbs_position: list[ndarray], qualities: list[float]):
+    def write_qualities(self, bbs_position: list[ndarray], qualities: list[float], frame):
         """write the quality of each cell on the frame showed to the user
 
         Args:
             bbs_position (list[ndarray]): postions of bounding boxes for each cell
             qualities (list[float]): qualities of each cell
         """
-        for frame in self.frames:
-            if hasattr(frame, "canvas"):
-                for bb, quality in zip(bbs_position, qualities):
-                    if quality > self.high_quality_threshold:
-                        color = 'green2'
-                    elif quality > self.mid_quality_threshold:
-                        color = 'yellow2'
-                    else:
-                        color = 'firebrick1'
-                    frame.canvas.create_rectangle(bb[0]-30, bb[1]-25, bb[0]+25, bb[1]+5, fill="gray9", outline="gray9")
-                    frame.canvas.create_text(bb[0], bb[1]-10, text=f"{int(quality*100):02d}%", font=("Arial", 10), fill=color)
+        frame.focus_set()
+        self.quals_editor = _QualitiesEditor(frame.canvas, bbs_position=bbs_position, qualities=qualities)
 
     def write_outcome_picked_cell(self, bbs_position: list[ndarray], outcomes: list[bool]):
         """mark on the image whether or not the battery cell was picked up
@@ -321,7 +358,6 @@ class ManualClassScreen(tk.Frame):
         self.controller = controller
         
         btns_frame = tk.Frame(self)
-        # btns_frame.pack(anchor='center')
         btns_frame.place(relx=0.5, rely=0.5, anchor='center')
         for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied bu the user
             button1 = tk.Button(btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.chose_model(propose['model']))
@@ -344,18 +380,21 @@ class AutoDetectScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
+        self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
+        self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations))
         self.controller.show_frame(5)
+        print("Chosen locations:", self.controller.chosen_locations)
+        print("Generated qualities:", [self.controller.proposed_qualities])
     
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
-        # self.controller.show_frame(4)
 
 class ManualDetectScreen(HomeScreen):
+    # UNUSED
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
         label = tk.Label(self, text="ManualDetectScreen", font=("Arial", 16))
         label.pack(pady=20)
-
 
 class AutoAssessScreen(HomeScreen):
     def __init__(self, parent, controller):
@@ -366,16 +405,16 @@ class AutoAssessScreen(HomeScreen):
         btns_frame.pack(side='bottom')
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
-        deny_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.deny())
-        deny_btn.pack(side='left')
 
     def confirm(self):
+        self.controller.chosen_qualities = self.controller.quals_editor.qualities 
+        self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
+        print("Generated outcomes:", [bool(el) for el in self.controller.outcomes])
+        print("Chosen qualities:", self.controller.chosen_qualities)
         self.controller.show_frame(7)
-    
-    def deny(self):
-        self.controller.show_frame(6)
 
 class ManualAssessScreen(HomeScreen):
+    # UNUSED
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
         label = tk.Label(self, text="ManualAssessScreen", font=("Arial", 16))
