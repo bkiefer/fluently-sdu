@@ -28,7 +28,8 @@ class _BoundingBoxEditor:
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
     def spawn_box(self):
-        x_min, y_min, x_max, y_max = -5, -5, 5, 5 
+        x_min, y_min, x_max, y_max = 100, 100, 150, 150 
+        self.bbs_position.append(x_min, y_min, x_max, y_max)
 
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
