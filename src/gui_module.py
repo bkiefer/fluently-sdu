@@ -29,45 +29,42 @@ class _BoundingBoxEditor:
 
     def draw_boxes(self):
         """Draws bounding boxes with resize/move handles"""
+        self.canvas.delete('bbs')
         self.box_items.clear()
         for i, bb in enumerate(self.bbs_position):
             x_min, y_min, x_max, y_max = bb
 
-            # Draw bounding box
-            box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2)
-
-            # Center move handle
             center_x = (x_min + x_max) // 2
             center_y = (y_min + y_max) // 2
-            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue")
 
-            # Resize handle (bottom-right corner)
-            resize_handle = self.canvas.create_rectangle(x_max-5, y_max-5, x_max+5, y_max+5, fill="red")
+            box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
+            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
+            resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
+            text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
+            text_label = self.canvas.create_text(x_max-7, y_max, text=f"{i:02d}", font=("Arial", 5), tags='bbs')
 
-            self.box_items.append((box, move_handle, resize_handle))
+            self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
 
     def on_click(self, event):
         """Detects which part of a box was clicked (move/resize)"""
-        for i, (box, move_handle, resize_handle) in enumerate(self.box_items):
-            if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
-                item = self.canvas.find_withtag(tk.CURRENT)[0]
-
-                if item == move_handle:  # Move box
+        if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
+            item = self.canvas.find_withtag(tk.CURRENT)[0]
+            for i, [box, move_handle, resize_handle, text_bg, text_label] in enumerate(self.box_items):
+                if item == move_handle:
                     self.selected_box = i
                     self.dragging = "move"
+                    self.start_x, self.start_y = event.x, event.y
+                    break   
                 elif item == resize_handle:  # Resize box
                     self.selected_box = i
                     self.dragging = "resize"
-
-                self.start_x = event.x
-                self.start_y = event.y
-                break
+                    self.start_x, self.start_y = event.x, event.y
+                    break  
 
     def on_drag(self, event):
         """Moves or resizes the selected bounding box"""
         if self.selected_box is None:
             return
-        
         dx = event.x - self.start_x
         dy = event.y - self.start_y
         x_min, y_min, x_max, y_max = self.bbs_position[self.selected_box]
@@ -79,8 +76,8 @@ class _BoundingBoxEditor:
             y_max += dy
 
         elif self.dragging == "resize":
-            x_max += dx
-            y_max += dy
+            x_min += dx
+            y_min += dy
         
         self.bbs_position[self.selected_box] = (x_min, y_min, x_max, y_max)
         self.start_x = event.x
