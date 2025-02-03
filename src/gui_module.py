@@ -27,6 +27,21 @@ class _BoundingBoxEditor:
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
+    def spawn_box(self):
+        x_min, y_min, x_max, y_max = -5, -5, 5, 5 
+
+        center_x = (x_min + x_max) // 2
+        center_y = (y_min + y_max) // 2
+
+        box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
+        move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
+        resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
+        text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
+        text_label = self.canvas.create_text(x_max-7, y_max, text=f"{len(self.box_items):02d}", font=("Arial", 5), tags='bbs')
+
+        self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
+        print("asd")
+
     def draw_boxes(self):
         """Draws bounding boxes with resize/move handles"""
         self.canvas.delete('bbs')
@@ -324,20 +339,22 @@ class AutoDetectScreen(HomeScreen):
         btns_frame.pack(side='bottom')
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
-        deny_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.deny())
+        deny_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.add_box())
         deny_btn.pack(side='left')
 
     def confirm(self):
         self.controller.show_frame(5)
     
-    def deny(self):
-        self.controller.show_frame(4)
+    def add_box(self):
+        self.controller.bbs_editor.spawn_box()
+        # self.controller.show_frame(4)
 
 class ManualDetectScreen(HomeScreen):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
         label = tk.Label(self, text="ManualDetectScreen", font=("Arial", 16))
         label.pack(pady=20)
+
 
 class AutoAssessScreen(HomeScreen):
     def __init__(self, parent, controller):
