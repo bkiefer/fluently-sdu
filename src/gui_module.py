@@ -389,12 +389,12 @@ class AutoDetectScreen(HomeScreen):
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
 
-class ManualDetectScreen(HomeScreen):
-    # UNUSED
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        label = tk.Label(self, text="ManualDetectScreen", font=("Arial", 16))
-        label.pack(pady=20)
+# class ManualDetectScreen(HomeScreen):
+#     # UNUSED
+#     def __init__(self, parent, controller):
+#         super().__init__(parent, controller)
+#         label = tk.Label(self, text="ManualDetectScreen", font=("Arial", 16))
+#         label.pack(pady=20)
 
 class AutoAssessScreen(HomeScreen):
     def __init__(self, parent, controller):
@@ -411,21 +411,21 @@ class AutoAssessScreen(HomeScreen):
         self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
         print("Generated outcomes:", [bool(el) for el in self.controller.outcomes])
         print("Chosen qualities:", self.controller.chosen_qualities)
-        self.controller.show_frame(7)
+        self.controller.show_frame(0)
 
-class ManualAssessScreen(HomeScreen):
-    # UNUSED
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        label = tk.Label(self, text="ManualAssessScreen", font=("Arial", 16))
-        label.pack(pady=20)
+# class ManualAssessScreen(HomeScreen):
+#     # UNUSED
+#     def __init__(self, parent, controller):
+#         super().__init__(parent, controller)
+#         label = tk.Label(self, text="ManualAssessScreen", font=("Arial", 16))
+#         label.pack(pady=20)
 
-class PickingUpScreen(HomeScreen):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        label = tk.Label(self, text="PickingUpScreen", font=("Arial", 16))
-        label.pack(pady=20)
-        # se rimane cosí si puó rimuovere e usare l'home screen
+# class PickingUpScreen(HomeScreen):
+#     # se rimane cosí si puó rimuovere e usare l'home screen
+#     def __init__(self, parent, controller):
+#         super().__init__(parent, controller)
+#         label = tk.Label(self, text="PickingUpScreen", font=("Arial", 16))
+#         label.pack(pady=20)
 
 if __name__ == "__main__":
     camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
