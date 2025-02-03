@@ -334,8 +334,8 @@ class HomeScreen(tk.Frame):
         self.canvas.create_image(0, 0, anchor="nw", image=self.tk_image)
 
 class AutoClassScreen(HomeScreen):
-    def __init__(self, parent:tk.Frame, controller: MemGui):
-        super().__init__(parent, controller)
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
         self.proposed_model = self.controller.proposed_models[0]['model'] 
         self.label = tk.Label(self, text=f"Cells are: {self.proposed_model}", font=("Arial", 10))
         self.label.pack()
@@ -371,8 +371,8 @@ class ManualClassScreen(tk.Frame):
 
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        self.label = tk.Label(self, text=f"Proposed bouding boxes on the screen", font=("Arial", 10))
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Proposed bouding boxes on the screen", font=("Arial", 10), idx)
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
@@ -400,8 +400,8 @@ class AutoDetectScreen(HomeScreen):
 
 class AutoAssessScreen(HomeScreen):
     def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        self.label = tk.Label(self, text=f"Proposed scores on the screen", font=("Arial", 10))
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Proposed scores on the screen", font=("Arial", 10), idx)
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
