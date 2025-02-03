@@ -270,9 +270,11 @@ class MemGui(tk.Tk):
         # will be done by bt ----
         if state_id > 2:
             self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])
-        if state_id > 4:
+        if state_id > 3:
             self.write_qualities(self.proposed_locations, self.proposed_qualities, self.frames[int(state_id)])
-        if state_id > 6:
+        if len(self.chosen_locations) != 0 and len(self.chosen_qualities) != 0:
+            self.draw_bbs(self.chosen_locations, self.frames[int(state_id)])
+            self.write_qualities(self.chosen_locations, self.chosen_qualities, self.frames[int(state_id)])
             self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
 
     def ask_for_help(self,  query: str):
@@ -370,9 +372,9 @@ class ManualClassScreen(tk.Frame):
         self.controller.show_frame(self.idx + 1)
 
 class AutoDetectScreen(HomeScreen):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
-        self.label = tk.Label(self, text=f"Proposed bouding boxes on the screen", font=("Arial", 10), idx)
+        self.label = tk.Label(self, text=f"Proposed bouding boxes on the screen", font=("Arial", 10))
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
@@ -399,9 +401,9 @@ class AutoDetectScreen(HomeScreen):
 #         label.pack(pady=20)
 
 class AutoAssessScreen(HomeScreen):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
-        self.label = tk.Label(self, text=f"Proposed scores on the screen", font=("Arial", 10), idx)
+        self.label = tk.Label(self, text=f"Proposed scores on the screen", font=("Arial", 10))
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
