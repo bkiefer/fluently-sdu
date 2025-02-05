@@ -5,10 +5,10 @@ import os
 import time
 
 # from .vision import
-from gui_module import Gui
+from gui_module import MemGui
 from robot_module import RobotModule
-from battery_pack import PackState
-from rdf_store import RdfStore
+from battery_pack_module import PackState
+# from rdf_store import RdfStore
 from vision_module import VisionModule
 from behaviors import AutoClass, HelpedClass, AutoDetect, HelpedDetect, AutoAssess, HelpedAssess, AutoSort, HelpedSort
 
@@ -18,8 +18,8 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
         self.rdf = RdfStore()
         self.vision = VisionModule()
-        self.gui = Gui()
-        self.robot = RobotModule()
+        self.gui = MemGui(self.vision.get_current_frame(format='pil'))
+        self.robot = RobotModule([0,0,0,0,0,0])
         self.pack_state = PackState()
 
         # Leaf nodes
