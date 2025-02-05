@@ -217,7 +217,7 @@ class MemGui(tk.Tk):
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
 
-        self.show_frame(0)
+        # self.show_frame(1)
 
     def debug(self):
         self.infos_container.pack_forget()
@@ -276,6 +276,7 @@ class MemGui(tk.Tk):
             self.draw_bbs(self.chosen_locations, self.frames[int(state_id)])
             self.write_qualities(self.chosen_locations, self.chosen_qualities, self.frames[int(state_id)])
             self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
+        self.active_frame = state_id
 
     def ask_for_help(self,  query: str):
         """ask human for help for something
@@ -351,10 +352,12 @@ class AutoClassScreen(HomeScreen):
     
     def confirm(self):
         self.controller.chosen_model = self.proposed_model
-        self.controller.show_frame(self.idx + 2)
+        # self.controller.show_frame(self.idx + 2)
     
     def deny(self):
-        self.controller.show_frame(self.idx + 1)
+        # need to comunicate with bt
+        pass
+        # self.controller.show_frame(self.idx + 1)
 
 class ManualClassScreen(tk.Frame):
     def __init__(self, parent, controller, idx):
@@ -369,7 +372,7 @@ class ManualClassScreen(tk.Frame):
 
     def chose_model(self, model: str):
         self.controller.chosen_model = model
-        self.controller.show_frame(self.idx + 1)
+        # self.controller.show_frame(self.idx + 1)
 
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
@@ -386,7 +389,7 @@ class AutoDetectScreen(HomeScreen):
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
         self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations))
-        self.controller.show_frame(self.idx + 1)
+        # self.controller.show_frame(self.idx + 1)
         print("Chosen locations:", self.controller.chosen_locations)
         print("Generated qualities:", [self.controller.proposed_qualities])
     
@@ -408,7 +411,7 @@ class AutoAssessScreen(HomeScreen):
         self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
         print("Generated outcomes:", [bool(el) for el in self.controller.outcomes])
         print("Chosen qualities:", self.controller.chosen_qualities)
-        self.controller.show_frame(0)
+        # self.controller.show_frame(0)
 
 if __name__ == "__main__":
     camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
