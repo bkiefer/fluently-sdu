@@ -6,9 +6,10 @@ from scipy.spatial.transform import Rotation
 
 class RobotModule:
     def __init__(self, home_position: ndarray):
-        self.robot = robotics.Robot(ip="192.168.1.1", home_jpos=home_position)
-        self.gripper = None # TODO: init gripper
-        self.robot.add_gripper(gripper=self.gripper)
+        # self.robot = robotics.Robot(ip="192.168.1.1", home_jpos=home_position)
+        # self.gripper = None # TODO: init gripper
+        # self.robot.add_gripper(gripper=self.gripper)
+        print("Starting robot module")
 
     def pick_and_place(self, pick_T: sm.SE3, place_T: sm.SE3):
         """pick and place an object 

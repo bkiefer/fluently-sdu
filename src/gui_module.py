@@ -266,7 +266,7 @@ class MemGui(tk.Tk):
             state_id (int): id of new state
         """
         self.frames[int(state_id)].tkraise()
-        self.expand_btn.place(x=camera_frame.width-50, y=camera_frame.height*1.2-50)
+        self.expand_btn.place(x=self.camera_frame.width-50, y=self.camera_frame.height*1.2-50)
         # will be done by bt ----
         if state_id > 2:
             self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])

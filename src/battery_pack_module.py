@@ -13,7 +13,7 @@ class Cell():
         return f"{self.quality:05.2f}"
         
 class PackState():
-    def __init__(self, rows: int, cols: int):
+    def __init__(self, rows: int=0, cols: int=0):
         self.model = "unknown"
         self.cells = []
         for _ in range(rows):
