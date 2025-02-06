@@ -5,12 +5,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import PIL
+import pyrealsense2 as rs
+from gubokit import vision
 
 class VisionModule():
     def __init__(self):
         # camera initialization
         self.frame = cv2.imread("./data/NMC21700-from-top.jpg")
-
+        self.camera = vision.RealSenseCamera()
+        
     def get_current_frame(self, format="cv2") -> cv2.Mat:
         """get the current frame from the camera
 
@@ -23,8 +26,6 @@ class VisionModule():
         else:
             frame = self.frame
         return frame
-
-
 
     def classify_cell(self, frames: list[cv2.Mat]) -> dict[tuple[str, float]]:
         """
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     # camera_frame = cv2.imread("./data/Camera02.jpg")
     vision_module = VisionModule()
     # vision_module.classify_cell([camera_frame])
-    positions = vision_module.cell_detection(camera_frame)
-    pickedup = vision_module.verify_pickup(camera_frame, positions[-1][:-1])
+    # positions = vision_module.cell_detection(camera_frame)
+    # pickedup = vision_module.verify_pickup(camera_frame, positions[-1][:-1])
 
     
