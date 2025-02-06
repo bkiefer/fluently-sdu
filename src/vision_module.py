@@ -12,7 +12,7 @@ class VisionModule():
     def __init__(self):
         # camera initialization
         self.frame = cv2.imread("./data/NMC21700-from-top.jpg")
-        self.camera = vision.RealSenseCamera()
+        # self.camera = vision.RealSenseCamera()        
         
     def get_current_frame(self, format="cv2") -> cv2.Mat:
         """get the current frame from the camera
@@ -20,12 +20,14 @@ class VisionModule():
         Returns:
             cv2.Mat: frame
         """
-        if format.lower() == "pil":
-            frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-            frame = PIL.Image.fromarray(frame)
-        else:
-            frame = self.frame
-        return frame
+        self.frame = cv2.imread("./data/NMC21700-from-top.jpg") # TESTING
+        # self.frame = self.camera.get_color_frame()
+        # if format.lower() == "pil":
+        #     self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        #     self.frame = PIL.Image.fromarray(self.frame)
+        # else:
+        #     self.frame = self.frame
+        return self.frame
 
     def classify_cell(self, frames: list[cv2.Mat]) -> dict[tuple[str, float]]:
         """
@@ -78,7 +80,7 @@ class VisionModule():
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 radius = i[2]
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-        show_frames("Detection", [drawing_frame])
+            show_frames("Detection", [drawing_frame])
         return cells_positions
 
     def assess_cells_qualities(self, frame:cv2.Mat, bbs_positions: list[ndarray]) -> list[float]:
@@ -129,8 +131,9 @@ if __name__ == "__main__":
     camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
     # camera_frame = cv2.imread("./data/Camera02.jpg")
     vision_module = VisionModule()
+    # camera_frame = vision_module.get_current_frame()
+    show_frames("frame", [camera_frame])
     # vision_module.classify_cell([camera_frame])
-    # positions = vision_module.cell_detection(camera_frame)
-    # pickedup = vision_module.verify_pickup(camera_frame, positions[-1][:-1])
-
-    
+    positions = vision_module.cell_detection(camera_frame)
+    if len(positions) > 1:
+        pickedup = vision_module.verify_pickup(camera_frame, positions[-1][:-1])

@@ -9,11 +9,6 @@ from battery_pack_module import PackState
 from vision_module import VisionModule
 
 class Test01(pt.behaviour.Behaviour):
-    """
-    The vision module classifies the battery pack.
-    SUCCESS if user accepts the classification. Pack state is updated.
-    FAILURE if user rejects the classification. Pack state remains unchanged.
-    """
 
     def __init__(self, name, pack_state, vision, gui):
         super().__init__(name)
@@ -35,11 +30,6 @@ class Test01(pt.behaviour.Behaviour):
         return new_status
     
 class Test02(pt.behaviour.Behaviour):
-    """
-    The vision module classifies the battery pack.
-    SUCCESS if user accepts the classification. Pack state is updated.
-    FAILURE if user rejects the classification. Pack state remains unchanged.
-    """
 
     def __init__(self, name, pack_state, vision, gui):
         super().__init__(name)
