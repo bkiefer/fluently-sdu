@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 import copy
 import PIL
 import pyrealsense2 as rs
-from gubokit import vision
+# from gubokit import vision
 
 class VisionModule():
     def __init__(self):
+        pass
         # camera initialization
-        self.frame = cv2.imread("./data/NMC21700-from-top.jpg")
         # self.camera = vision.RealSenseCamera()        
         
     def get_current_frame(self, format="cv2") -> cv2.Mat:
@@ -20,14 +20,12 @@ class VisionModule():
         Returns:
             cv2.Mat: frame
         """
-        self.frame = cv2.imread("./data/NMC21700-from-top.jpg") # TESTING
+        frame = cv2.imread("./data/NMC21700-from-top.jpg") # TESTING
         # self.frame = self.camera.get_color_frame()
-        # if format.lower() == "pil":
-        #     self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-        #     self.frame = PIL.Image.fromarray(self.frame)
-        # else:
-        #     self.frame = self.frame
-        return self.frame
+        if format.lower() == "pil":
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+            frame = PIL.Image.fromarray(frame)
+        return frame
 
     def classify_cell(self, frames: list[cv2.Mat]) -> dict[tuple[str, float]]:
         """
@@ -133,7 +131,4 @@ if __name__ == "__main__":
     vision_module = VisionModule()
     # camera_frame = vision_module.get_current_frame()
     show_frames("frame", [camera_frame])
-    # vision_module.classify_cell([camera_frame])
-    positions = vision_module.cell_detection(camera_frame)
-    if len(positions) > 1:
-        pickedup = vision_module.verify_pickup(camera_frame, positions[-1][:-1])
+    
