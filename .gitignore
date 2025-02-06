@@ -1,6 +1,6 @@
 # data/*
 logs/*
-.vscode/*
+.vscode/settings.json
 
 # python temp files removal
 __pycache__/
