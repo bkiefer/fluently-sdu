@@ -12,7 +12,8 @@ class VisionModule():
     def __init__(self):
         pass
         # camera initialization
-        # self.camera = vision.RealSenseCamera()        
+        # self.camera = vision.RealSenseCamera() 
+        self.start_frame = cv2.imread("./data/NMC21700-from-top.png")     
         
     def get_current_frame(self, format="cv2") -> cv2.Mat:
         """get the current frame from the camera
@@ -20,7 +21,7 @@ class VisionModule():
         Returns:
             cv2.Mat: frame
         """
-        frame = cv2.imread("./data/NMC21700-from-top.jpg") # TESTING
+        frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
         # self.frame = self.camera.get_color_frame()
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
@@ -65,20 +66,21 @@ class VisionModule():
         # img_dilation = cv2.dilate(frame, kernel, iterations=1) 
 
         edges = cv2.Canny(preprocessed, 100 ,200)
-        # show_frames("Edges", [edges])
-
+        # vision.show_frames("Edges", [edges])
         circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, 1, edges.shape[0] / 8, param1=100, param2=30, minRadius=1, maxRadius=100)
         if circles is not None:
             print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
-            cells_positions = circles[0]
+            cells_positions = circles[0][:, 0:2]
             drawing_frame = copy.deepcopy(frame)
             for i in circles[0, :]:
                 center = (i[0], i[1])
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 radius = i[2]
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            show_frames("Detection", [drawing_frame])
+            vision.show_frames("Detection", [drawing_frame])
+        else:
+            print("No circles found")
         return cells_positions
 
     def assess_cells_qualities(self, frame:cv2.Mat, bbs_positions: list[ndarray]) -> list[float]:
@@ -103,32 +105,32 @@ class VisionModule():
         Returns:
             bool: if or not the cell was picked up
         """
-        current_frame = cv2.imread("./data/NMC21700-from-top-one_missing.jpg")
-
-        start_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
+        start_frame = cv2.cvtColor(self.start_frame, cv2.COLOR_BGR2GRAY)
+        current_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, start_frame)
         _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
-        cv2.circle(result, position, 3, (255, 0, 255), 3)
-        pickedup = bool(result[position[0]][position[1]])
+        pickedup = bool(result[position[1]][position[0]])
+        
         print(f"The cell was pickedup: {pickedup}")
-        show_frames("Verify pick up", [result])
+        result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+        if not pickedup:
+            cv2.circle(result_bgr, position, 3, (0, 0, 255), 3)
+        else:
+            cv2.circle(result_bgr, position, 3, (0, 255, 0), 3)
+        vision.show_frames("Verify pick up", [result_bgr])
+
         return pickedup
 
-def show_frames(title, frames):
-    for i, frame in enumerate(frames):
-        t = title + f"_{i:02d}" if i > 0 else title
-        cv2.imshow(t, frame)
-    while True:
-        key = cv2.waitKey(1)
-        if  key != -1 or cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) < 1:
-            break
-
 if __name__ == "__main__":
-    camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
+    # camera_frame = cv2.imread("./data/NMC21700-from-top.png")
+    camera_frame = cv2.imread("./data/camera_frame_02.jpg")
     # camera_frame = cv2.imread("./data/Camera02.jpg")
     vision_module = VisionModule()
-    # camera_frame = vision_module.get_current_frame()
-    show_frames("frame", [camera_frame])
+    vision_module.classify_cell(camera_frame)
+    bbs_positions = vision_module.cell_detection(camera_frame)
+    # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
+    # camera_frame = cv2.imread("./data/NMC21700-from-top-one_missing.png")
+    # for bb in bbs_positions:
+    #     vision_module.verify_pickup(camera_frame, bb)
     
