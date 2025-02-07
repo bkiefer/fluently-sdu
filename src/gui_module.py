@@ -226,14 +226,12 @@ class MemGui(tk.Tk):
         self.write_qualities(self.proposed_locations, self.proposed_qualities)
 
     def expand_collapse(self):
-        current_window_height = self.winfo_height()
-        current_window_width = self.winfo_width()
-        if int(self.geometry().split("x")[0]) / self.camera_frame.height > 1: # the menu is alread open close it
-            self.geometry(f"{int(self.camera_frame.width+20)}x{current_window_height}")
-            self.expand_btn.config(text="▶")
-        else:
-            self.geometry(f"{current_window_width*2}x{current_window_height}")
+        if self.expand_btn['text'] == "▶": # the menu is already open close it
+            self.geometry(f"{int(self.winfo_width()+200)}x{self.winfo_height()}")
             self.expand_btn.config(text="◀")
+        else:
+            self.geometry(f"{int(self.winfo_width()-200)}x{self.winfo_height()}")
+            self.expand_btn.config(text="▶")
 
     def update_info(self, infos):
         # Maybe a treeview would be better
@@ -414,7 +412,8 @@ class AutoAssessScreen(HomeScreen):
         # self.controller.show_frame(0)
 
 if __name__ == "__main__":
-    camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
+    # camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
+    camera_frame = cv2.imread("./data/camera_frame.jpg")
     camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
     camera_frame = PIL.Image.fromarray(camera_frame)
     app = MemGui(camera_frame=camera_frame)
