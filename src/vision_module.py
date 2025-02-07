@@ -123,14 +123,14 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    # camera_frame = cv2.imread("./data/NMC21700-from-top.png")
-    camera_frame = cv2.imread("./data/camera_frame_02.jpg")
+    camera_frame = cv2.imread("./data/NMC21700-from-top.png")
+    # camera_frame = cv2.imread("./data/camera_frame_02.jpg")
     # camera_frame = cv2.imread("./data/Camera02.jpg")
     vision_module = VisionModule()
     vision_module.classify_cell(camera_frame)
     bbs_positions = vision_module.cell_detection(camera_frame)
-    # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
-    # camera_frame = cv2.imread("./data/NMC21700-from-top-one_missing.png")
-    # for bb in bbs_positions:
-    #     vision_module.verify_pickup(camera_frame, bb)
+    vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
+    camera_frame = cv2.imread("./data/NMC21700-from-top-one_missing.png")
+    for bb in bbs_positions:
+        vision_module.verify_pickup(camera_frame, bb)
     
