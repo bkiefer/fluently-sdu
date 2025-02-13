@@ -38,7 +38,7 @@ class VisionModule():
         Returns:
             list[tuple[str, float]]: list of model with associated probability
         """
-        cells_probs = {"AA": 0.51, "C":0.49}
+        cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49}]
         return cells_probs
 
     def cell_detection(self, frame: cv2.Mat) -> list[ndarray]:
@@ -78,7 +78,7 @@ class VisionModule():
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 radius = i[2]
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            vision.show_frames("Detection", [drawing_frame])
+            #vision.show_frames("Detection", [drawing_frame])
         else:
             print("No circles found")
         return cells_positions

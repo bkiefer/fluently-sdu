@@ -1,4 +1,5 @@
 import spatialmath as sm
+import numpy as np
 
 class Cell():
     def __init__(self):
@@ -13,7 +14,9 @@ class Cell():
         return f"{self.quality:05.2f}"
         
 class PackState():
-    def __init__(self, rows: int=0, cols: int=0):
+    def __init__(self, rows: int=2, cols: int=2):
+        self.rows = rows
+        self.cols = cols
         self.model = "unknown"
         self.cells = []
         for _ in range(rows):
@@ -21,7 +24,18 @@ class PackState():
             for _ in range(cols):
                 row.append(Cell())
             self.cells.append(row)
-
+    
+    def update_dim(self, rows: int, cols: int):
+        self.rows = rows
+        self.cols = cols
+        self.model = "unknown"
+        self.cells = []
+        for _ in range(rows):
+            row = []
+            for _ in range(cols):
+                row.append(Cell())
+            self.cells.append(row)
+        
     def update_cell(self, i, j, model=None, size=None, quality=None, pose=None, frame_position=None, sorted=None):
         """_summary_
 

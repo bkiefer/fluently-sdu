@@ -174,13 +174,15 @@ class MemGui(tk.Tk):
         self.active_frame = 0
         self.wait_interaction = False
         
-        self.proposed_models = [{'model': "NMC21700", 'prob': 0.97}, {'model': "CCN12900", 'prob': 0.76}, {'model': "ASD123", 'prob': 0.46}, {'model': "QWE456", 'prob': 0.26}]
+        self.proposed_models = []#[{'model': "NMC21700", 'prob': 0.97}, {'model': "CCN12900", 'prob': 0.76}, {'model': "ASD123", 'prob': 0.46}, {'model': "QWE456", 'prob': 0.26}]
         self.chosen_model = ""
         self.proposed_locations = [(80, 80, 140, 140), (240, 240, 300, 300), (400, 400, 460, 460)]
         self.chosen_locations = []
         self.proposed_qualities = [0.81, 0.61, 0.43]
         self.chosen_qualities = []
         self.outcomes = [False, True, True]
+        self.class_reject = False # !!!
+        self.done = False
         
         self.picture_container = tk.Frame(self, width=size[0]//2, height=size[1])
         self.picture_container.pack(side='left', padx=(10, 10))
@@ -212,7 +214,7 @@ class MemGui(tk.Tk):
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
         # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
-        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen]):
+        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, AutoSortScreen, ManualSortScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
@@ -337,7 +339,8 @@ class HomeScreen(tk.Frame):
 class AutoClassScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
         super().__init__(parent, controller, idx)
-        self.proposed_model = self.controller.proposed_models[0]['model'] 
+        #self.proposed_model = self.controller.proposed_models[0]['model'] 
+        self.proposed_model = ""
         self.label = tk.Label(self, text=f"Cells are: {self.proposed_model}", font=("Arial", 10))
         self.label.pack()
 
@@ -347,14 +350,24 @@ class AutoClassScreen(HomeScreen):
         confirm_btn.pack(side='left')
         deny_btn = tk.Button(btns_frame, text="✗", background='firebrick1', command=lambda: self.deny())
         deny_btn.pack(side='left')
+
+        self.after(1, self.change_label)
     
+    def change_label(self):
+        if self.controller.proposed_models:
+            self.proposed_model = self.controller.proposed_models[0]['model'] 
+        text = f"Cells are: {self.proposed_model}"
+        self.label.configure(text=text)
+        self.label.after(1000,self.change_label)
+
     def confirm(self):
         self.controller.chosen_model = self.proposed_model
         # self.controller.show_frame(self.idx + 2)
     
     def deny(self):
         # need to comunicate with bt
-        pass
+        self.controller.class_reject = True # !!!
+        #pass
         # self.controller.show_frame(self.idx + 1)
 
 class ManualClassScreen(tk.Frame):
@@ -362,12 +375,19 @@ class ManualClassScreen(tk.Frame):
         super().__init__(parent)
         self.controller = controller
         self.idx = idx
-        btns_frame = tk.Frame(self)
-        btns_frame.place(relx=0.5, rely=0.5, anchor='center')
-        for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied bu the user
-            button1 = tk.Button(btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.chose_model(propose['model']))
-            button1.pack()
+        self.btns_frame = tk.Frame(self)
+        self.btns_frame.place(relx=0.5, rely=0.5, anchor='center')
+        self.after(1, self.change_label)
+        
+    def change_label(self):
 
+        if self.controller.proposed_models:
+            for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied by the user
+                button1 = tk.Button(self.btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.chose_model(propose['model']))
+                button1.pack()
+        else:
+            self.after(1, self.change_label)
+            
     def chose_model(self, model: str):
         self.controller.chosen_model = model
         # self.controller.show_frame(self.idx + 1)
@@ -406,11 +426,32 @@ class AutoAssessScreen(HomeScreen):
 
     def confirm(self):
         self.controller.chosen_qualities = self.controller.quals_editor.qualities 
-        self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
-        print("Generated outcomes:", [bool(el) for el in self.controller.outcomes])
+        #self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
+        self.controller.outcomes = [(el>=0.5) for el in self.controller.chosen_qualities]
+        print("Generated outcomes:", self.controller.outcomes)
+        #print("Generated outcomes:", [(el>=0.5) for el in self.controller.outcomes])
         print("Chosen qualities:", self.controller.chosen_qualities)
         # self.controller.show_frame(0)
 
+class AutoSortScreen(HomeScreen):
+    def __init__(self, parent, controller, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Robotic cell sorting in progress...", font=("Arial", 10))
+        self.label.pack()
+
+class ManualSortScreen(HomeScreen):
+    def __init__(self, parent, controller, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"HELP!", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack(side='bottom')
+        confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+    
+    def confirm(self):
+        self.controller.done = True
+        
 if __name__ == "__main__":
     # camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
     camera_frame = cv2.imread("./data/camera_frame.jpg")

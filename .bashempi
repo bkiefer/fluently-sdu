@@ -1,0 +1,2 @@
+export MEM_PATH="$HOME/fluently_mem_ws/fluently_mem"
+export PYTHONPATH="${PYTHONPATH}:$MEM_PATH/../hfc-thrift/src/main/python/src"
