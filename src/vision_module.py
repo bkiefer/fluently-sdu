@@ -71,14 +71,16 @@ class VisionModule():
         if circles is not None:
             print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
-            cells_positions = circles[0][:, 0:2]
+            print(circles)
+            cells_positions = circles[0][:, 0:3] # x, y, radius
             drawing_frame = copy.deepcopy(frame)
             for i in circles[0, :]:
                 center = (i[0], i[1])
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 radius = i[2]
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            #vision.show_frames("Detection", [drawing_frame])
+            
+            #vision.show_frames("Detection", [drawing_frame]) # !!!
         else:
             print("No circles found")
         return cells_positions
@@ -118,7 +120,8 @@ class VisionModule():
             cv2.circle(result_bgr, position, 3, (0, 0, 255), 3)
         else:
             cv2.circle(result_bgr, position, 3, (0, 255, 0), 3)
-        vision.show_frames("Verify pick up", [result_bgr])
+        
+        #vision.show_frames("Verify pick up", [result_bgr]) # !!!
 
         return pickedup
 

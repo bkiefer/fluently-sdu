@@ -15,9 +15,11 @@ class Cell():
         
 class PackState():
     def __init__(self, rows: int=2, cols: int=2):
+        # rows and cols useful for sanity check
         self.rows = rows
         self.cols = cols
         self.model = "unknown"
+        # TODO: relative positions between cells to benefit pick and place action
         self.cells = []
         for _ in range(rows):
             row = []

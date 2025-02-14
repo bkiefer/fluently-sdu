@@ -105,16 +105,24 @@ class Detect(pt.behaviour.Behaviour):
     def update(self):
         if self.gui.active_frame != 3:
             print("First update for behavior", self.name)
-            #current_frame = self.vision.get_current_frame()
-            #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
+            current_frame = self.vision.get_current_frame()
+            proposed = self.vision.cell_detection(current_frame) # center, radius
+            proposed_locations = []
+            for circle in proposed:
+                proposed_locations.append((circle[0]-circle[2], circle[1]-circle[2],circle[0]+circle[2], circle[1]+circle[2]))
+            self.gui.proposed_locations = proposed_locations
             self.gui.show_frame(3)
 
         if self.gui.chosen_locations: # if not chosen_locations not empty
+            # for now it is just one long row, but this info could come from the pack information / visual / user input
             self.pack_state.update_dim(rows=len(self.gui.chosen_locations),cols=1) # change to known dimensions
             i = 0
+            # change to known dimensions
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     frame_position = self.gui.chosen_locations[i]
+                     # get the center position
+                    frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
                     pose = self.robot.frame_to_world(frame_position)
                     self.pack_state.update_cell(row, col, frame_position=frame_position, pose=pose)
                     i += 1
@@ -149,12 +157,22 @@ class Assess(pt.behaviour.Behaviour):
     def update(self):
         if self.gui.active_frame != 4:
             print("First update for behavior", self.name)
-            #current_frame = self.vision.get_current_frame()
-            #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
+            current_frame = self.vision.get_current_frame() # keep old frame ???
+            bbs_positions = self.gui.chosen_locations
+            qualities = self.vision.assess_cells_qualities(frame=current_frame,bbs_positions=bbs_positions)
+            self.gui.proposed_qualities = qualities
             self.gui.show_frame(4)
         
         if len(self.gui.chosen_qualities) != 0:
+            # change to known dimensions
+            i = 0
+            for row in range(self.pack_state.rows):
+                for col in range(self.pack_state.cols):
+                    quality = self.gui.chosen_qualities[i]
+                    self.pack_state.update_cell(row, col, quality=quality)
+                    i += 1
             new_status = pt.common.Status.SUCCESS
+
         else:
             new_status = pt.common.Status.RUNNING
 
@@ -195,11 +213,27 @@ class AutoSort(pt.behaviour.Behaviour):
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.show_frame(5)
             new_status = pt.common.Status.RUNNING
-
-        #if all(cell.sorted for cell in self.pack_state.cells):      
-            #new_status = pt.common.Status.SUCCESS  
+        
         else:
-            new_status = pt.common.Status.FAILURE
+            current_frame = self.vision.get_current_frame() # keep old frame ???
+            i = 0
+            for row in range(self.pack_state.rows):
+                for col in range(self.pack_state.cols):
+                    frame_position = self.pack_state.cells[i][0].frame_position
+                    pose = self.pack_state.cells[i][0].pose
+                    discard = (self.pack_state.cells[i][0].quality >= 0.5)
+                    # TODO: perform pick and place based on pose and discard True/False
+                    self.robot.pick_and_place(pose, pose)
+                    sorted = self.vision.verify_pickup(current_frame, frame_position)
+                    if sorted:
+                        self.pack_state.update_cell(row, col, sorted=sorted)
+                    else:
+                        # Fails if a single pick and place fails, maybe change this
+                        new_status = pt.common.Status.FAILURE 
+                        return new_status
+                    i += 1
+
+            new_status = pt.common.Status.SUCCESS
 
         return new_status
     
@@ -215,10 +249,10 @@ class HelpedSort(pt.behaviour.Behaviour):
     Human extracts the battery cells.
     SUCCESS when human input is received (task done).
     """
-
-    def __init__(self, name, blackboard, rdf, pack_state, gui):
+    def __init__(self, name, blackboard, rdf, pack_state, gui, vision):
         super(HelpedSort, self).__init__(name)
         self.gui = gui
+        self.vision = vision
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
@@ -232,12 +266,23 @@ class HelpedSort(pt.behaviour.Behaviour):
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.show_frame(6)
 
-        #if all(cell.sorted for cell in self.pack_state.cells):      
-            #new_status = pt.common.Status.SUCCESS  
         if self.gui.done:
+            # visual check that all cells are sorted
+            current_frame = self.vision.get_current_frame() # keep old frame ???
+            i = 0
+            print("Final check...")
+            for row in range(self.pack_state.rows):
+                for col in range(self.pack_state.cols):
+                    frame_position = self.pack_state.cells[i][0].frame_position
+                    sorted = self.vision.verify_pickup(current_frame, frame_position)
+                    if sorted:
+                        self.pack_state.update_cell(row, col, sorted=sorted)
+                    else:
+                        # TODO: warn user that not all batteries are sorted?
+                        print("UserWarning: Battery cell not sorted")
+                    i += 1
             new_status = pt.common.Status.SUCCESS
-
-        else: 
+        else:
             new_status = pt.common.Status.RUNNING
             
         return new_status

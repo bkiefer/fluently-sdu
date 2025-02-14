@@ -176,11 +176,11 @@ class MemGui(tk.Tk):
         
         self.proposed_models = []#[{'model': "NMC21700", 'prob': 0.97}, {'model': "CCN12900", 'prob': 0.76}, {'model': "ASD123", 'prob': 0.46}, {'model': "QWE456", 'prob': 0.26}]
         self.chosen_model = ""
-        self.proposed_locations = [(80, 80, 140, 140), (240, 240, 300, 300), (400, 400, 460, 460)]
+        self.proposed_locations = []#[(80, 80, 140, 140), (240, 240, 300, 300), (400, 400, 460, 460)]
         self.chosen_locations = []
-        self.proposed_qualities = [0.81, 0.61, 0.43]
+        self.proposed_qualities = []
         self.chosen_qualities = []
-        self.outcomes = [False, True, True]
+        self.outcomes = []#[False, True, True]
         self.class_reject = False # !!!
         self.done = False
         
@@ -214,7 +214,7 @@ class MemGui(tk.Tk):
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
         # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
-        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, AutoSortScreen, ManualSortScreen]):
+        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, AutoSortScreen, ManualSortScreen, HomeScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
@@ -395,7 +395,7 @@ class ManualClassScreen(tk.Frame):
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
-        self.label = tk.Label(self, text=f"Proposed bouding boxes on the screen", font=("Arial", 10))
+        self.label = tk.Label(self, text=f"Proposed bounding boxes on the screen", font=("Arial", 10))
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
@@ -406,10 +406,10 @@ class AutoDetectScreen(HomeScreen):
 
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
-        self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations))
+        #self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations)) #!!!
         # self.controller.show_frame(self.idx + 1)
         print("Chosen locations:", self.controller.chosen_locations)
-        print("Generated qualities:", [self.controller.proposed_qualities])
+        #print("Generated qualities:", [self.controller.proposed_qualities])
     
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
@@ -423,6 +423,7 @@ class AutoAssessScreen(HomeScreen):
         btns_frame.pack(side='bottom')
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
+        print("Generated qualities:", [self.controller.proposed_qualities])
 
     def confirm(self):
         self.controller.chosen_qualities = self.controller.quals_editor.qualities 
@@ -442,7 +443,7 @@ class AutoSortScreen(HomeScreen):
 class ManualSortScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
-        self.label = tk.Label(self, text=f"HELP!", font=("Arial", 10))
+        self.label = tk.Label(self, text=f"Please help extracting the battery cells.", font=("Arial", 10))
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
@@ -451,7 +452,7 @@ class ManualSortScreen(HomeScreen):
     
     def confirm(self):
         self.controller.done = True
-        
+
 if __name__ == "__main__":
     # camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")
     camera_frame = cv2.imread("./data/camera_frame.jpg")

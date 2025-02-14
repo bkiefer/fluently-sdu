@@ -28,7 +28,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.detect = Detect(name="detect", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)
         self.assess = Assess(name="assess", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.auto_sort = AutoSort(name="auto_sort", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, robot=self.robot, gui=self.gui)
-        self.helped_sort = HelpedSort(name="helped_sort", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
+        self.helped_sort = HelpedSort(name="helped_sort", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
 
         # Selectors
         self.class_selector = pt.composites.Selector(name="class_selector", memory=True, children=[self.auto_class, self.helped_class]) # memory=True to avoid GUI state switch
