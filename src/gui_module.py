@@ -8,10 +8,6 @@ import cv2
 import PIL
 import numpy as np
 
-import tkinter as tk
-
-import tkinter as tk
-
 class _BoundingBoxEditor:
     def __init__(self, canvas, bbs_position):
         self.canvas = canvas
@@ -20,7 +16,8 @@ class _BoundingBoxEditor:
         self.dragging = None  # "move" or "resize"
         self.start_x = 0
         self.start_y = 0
-        
+        self.delete_mode = False
+
         self.box_items = []  # Store drawn objects
         self.draw_boxes()
         self.canvas.bind("<ButtonPress-1>", self.on_click)
@@ -39,9 +36,11 @@ class _BoundingBoxEditor:
         resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
         text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
         text_label = self.canvas.create_text(x_max-7, y_max, text=f"{len(self.box_items):02d}", font=("Arial", 5), tags='bbs')
+        delete_btn = self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs')
+        delete_label = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
 
-        self.box_items.append((box, move_handle, resize_handle, text_bg, text_label))
-
+        self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
+       
     def draw_boxes(self):
         """Draws bounding boxes with resize/move handles"""
         self.canvas.delete('bbs')
@@ -58,13 +57,18 @@ class _BoundingBoxEditor:
             text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
             text_label = self.canvas.create_text(x_max-7, y_max, text=f"{i:02d}", font=("Arial", 5), tags='bbs')
 
-            self.box_items.append([box, move_handle, resize_handle, text_bg, text_label])
+            if self.delete_mode:
+                delete_btn = self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs')
+                delete_label = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
+                self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
+            else:
+                self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, None, None])
 
     def on_click(self, event):
         """Detects which part of a box was clicked (move/resize)"""
         if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
             item = self.canvas.find_withtag(tk.CURRENT)[0]
-            for i, [box, move_handle, resize_handle, text_bg, text_label] in enumerate(self.box_items):
+            for i, [box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label] in enumerate(self.box_items):
                 if item == move_handle:
                     self.selected_box = i
                     self.dragging = "move"
@@ -75,7 +79,14 @@ class _BoundingBoxEditor:
                     self.dragging = "resize"
                     self.start_x, self.start_y = event.x, event.y
                     break  
-
+                elif item == delete_label: # if clicked on close button, remove bb
+                    if len(self.bbs_position) > 1:
+                        self.selected_box = i
+                        print("delete box number: ", self.selected_box)
+                        self.bbs_position.pop(self.selected_box)
+                        self.draw_boxes()
+                        break
+                       
     def on_drag(self, event):
         """Moves or resizes the selected bounding box"""
         if self.selected_box is None:
@@ -93,8 +104,9 @@ class _BoundingBoxEditor:
         elif self.dragging == "resize":
             x_min += dx
             y_min += dy
-        
+
         self.bbs_position[self.selected_box] = (x_min, y_min, x_max, y_max)
+
         self.start_x = event.x
         self.start_y = event.y
         self.draw_boxes()
@@ -268,14 +280,20 @@ class MemGui(tk.Tk):
         self.frames[int(state_id)].tkraise()
         self.expand_btn.place(x=self.camera_frame.width-50, y=self.camera_frame.height*1.2-50)
         # will be done by bt ----
+        
         if state_id > 2:
             self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])
+        if state_id == 3: # if in detect step enable removing bbs
+            self.bbs_editor.delete_mode = True
+            print("Delete mode True")
+            self.bbs_editor.draw_boxes()
         if state_id > 3:
             self.write_qualities(self.proposed_locations, self.proposed_qualities, self.frames[int(state_id)])
         if len(self.chosen_locations) != 0 and len(self.chosen_qualities) != 0:
             self.draw_bbs(self.chosen_locations, self.frames[int(state_id)])
             self.write_qualities(self.chosen_locations, self.chosen_qualities, self.frames[int(state_id)])
             self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
+        
         self.active_frame = state_id
 
     def ask_for_help(self,  query: str):
@@ -363,12 +381,14 @@ class AutoClassScreen(HomeScreen):
     def confirm(self):
         self.controller.chosen_model = self.proposed_model
         # self.controller.show_frame(self.idx + 2)
+        #self.controller.bbs_editor.delete_mode = True
     
     def deny(self):
         # need to comunicate with bt
         self.controller.class_reject = True # !!!
         #pass
         # self.controller.show_frame(self.idx + 1)
+        #self.controller.bbs_editor.delete_mode = True
 
 class ManualClassScreen(tk.Frame):
     def __init__(self, parent, controller, idx):
@@ -380,7 +400,6 @@ class ManualClassScreen(tk.Frame):
         self.after(1, self.change_label)
         
     def change_label(self):
-
         if self.controller.proposed_models:
             for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied by the user
                 button1 = tk.Button(self.btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.chose_model(propose['model']))
@@ -391,6 +410,8 @@ class ManualClassScreen(tk.Frame):
     def chose_model(self, model: str):
         self.controller.chosen_model = model
         # self.controller.show_frame(self.idx + 1)
+        #self.controller.bbs_editor.delete_mode = True
+        #self.controller.bbs_editor.draw_boxes()
 
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
@@ -403,6 +424,7 @@ class AutoDetectScreen(HomeScreen):
         confirm_btn.pack(side='left')
         deny_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.add_box())
         deny_btn.pack(side='left')
+        #self.controller.bbs_editor.delete_mode = True
 
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
@@ -410,7 +432,7 @@ class AutoDetectScreen(HomeScreen):
         # self.controller.show_frame(self.idx + 1)
         print("Chosen locations:", self.controller.chosen_locations)
         #print("Generated qualities:", [self.controller.proposed_qualities])
-    
+
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
 
