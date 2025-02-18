@@ -6,16 +6,16 @@ import time
 from gui_module import MemGui
 from robot_module import RobotModule
 from battery_pack_module import PackState
-#from rdf_store import RdfStore
+from rdf_store import RdfStore
 from vision_module import VisionModule
-from behaviors import AutoClass, HelpedClass, Detect, Assess, AutoSort, HelpedSort
+from behaviors import AutoClass, HelpedClass, Detect, Assess, AutoSort, HelpedSort, BeginSession
 
 class BehaviourTree(pt.trees.BehaviourTree):
     def __init__(self):        
         # Blackboard and registering keys 
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
-        #self.rdf = RdfStore()
-        self.rdf = None
+        self.rdf = RdfStore()
+        #self.rdf = None
         self.vision = VisionModule()
         self.gui = MemGui(self.vision.get_current_frame(format='pil'))
         self.robot = RobotModule([0,0,0,0,0,0])
@@ -23,6 +23,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.done = False
 
         # Leaf nodes
+        self.begin_session = BeginSession(name="begin_session", blackboard=self.blackboard, rdf=self.rdf, gui=self.gui)        
         self.auto_class = AutoClass(name="auto_class", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.helped_class = HelpedClass(name="helped_class", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
         self.detect = Detect(name="detect", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)
@@ -36,7 +37,8 @@ class BehaviourTree(pt.trees.BehaviourTree):
 
         # Main sequence 
         self.main_sequence = pt.composites.Sequence(name="main_sequence",memory=True)
-        self.main_sequence.add_children([self.class_selector,
+        self.main_sequence.add_children([self.begin_session,
+                                         self.class_selector,
                                          self.detect,
                                          self.assess,
                                          self.sort_selector])

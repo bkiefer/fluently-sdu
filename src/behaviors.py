@@ -5,6 +5,25 @@ from battery_pack_module import PackState
 from vision_module import VisionModule
 #from rdf_store import RdfStore
 
+class BeginSession(pt.behaviour.Behaviour):
+    """
+    Sets up the user and session in the RDF store
+    """
+    def __init__(self, name, blackboard, rdf, gui):
+        super(BeginSession, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+        self.status = pt.common.Status.INVALID
+
+    def update(self):
+        self.rdf.get_user(node = self.name, first_name = "", last_name = "")
+        self.rdf.start_session(node = self.name)
+        
+        new_status = pt.common.Status.SUCCESS
+        
+        return new_status
+
 class AutoClass(pt.behaviour.Behaviour):
     """
     The vision module classifies the battery pack.
@@ -38,11 +57,10 @@ class AutoClass(pt.behaviour.Behaviour):
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     self.pack_state.update_cell(row, col, model=model)
-            #for cell in self.pack_state.cells[0]:
-            #    cell.model = self.gui.chosen_model
             new_status = pt.common.Status.SUCCESS
         else:
             new_status = pt.common.Status.RUNNING
+
         return new_status
 
 class HelpedClass(pt.behaviour.Behaviour):
@@ -265,6 +283,8 @@ class HelpedSort(pt.behaviour.Behaviour):
             #current_frame = self.vision.get_current_frame()
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.show_frame(6)
+            # record system asks for help, TODO: put the class under RobotAction
+            self.rdf.request_help(node=self.name)
 
         if self.gui.done:
             # visual check that all cells are sorted
@@ -281,6 +301,7 @@ class HelpedSort(pt.behaviour.Behaviour):
                         # TODO: warn user that not all batteries are sorted?
                         print("UserWarning: Battery cell not sorted")
                     i += 1
+            self.rdf.end_session(node=self.name)
             new_status = pt.common.Status.SUCCESS
         else:
             new_status = pt.common.Status.RUNNING

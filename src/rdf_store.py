@@ -6,7 +6,6 @@ import re
 
 from hfc_thrift.rdfproxy import RdfProxy
 
-
 class RdfStore:
     """
     This class provides all API functions to register the data from the
@@ -76,6 +75,11 @@ class RdfStore:
     def dimensions_checked(self, node):
         """record system has checked dimension"""
         return self.__session_part("CheckedDimensions")
-
-    def update_rdf(node):
-        pass
+    
+    def request_help(self, node):
+        """ 
+        TODO: specify what the system is asking for help about
+        TODO: put class under RobotAction
+        """
+        requesthelp = self.__session_part("RequestHelp")
+        return requesthelp
