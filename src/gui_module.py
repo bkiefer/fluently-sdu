@@ -280,7 +280,6 @@ class MemGui(tk.Tk):
         self.frames[int(state_id)].tkraise()
         self.expand_btn.place(x=self.camera_frame.width-50, y=self.camera_frame.height*1.2-50)
         # will be done by bt ----
-        
         if state_id > 2:
             self.draw_bbs(self.proposed_locations, self.frames[int(state_id)])
         if state_id == 3: # if in detect step enable removing bbs
@@ -416,16 +415,28 @@ class ManualClassScreen(tk.Frame):
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
+        self.controller = controller
+
         self.label = tk.Label(self, text=f"Proposed bounding boxes on the screen", font=("Arial", 10))
         self.label.pack()
+        self.number_label = tk.Label(self, text="\nNumber of cells:\n", font=("Arial", 10))
+        self.number_label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
-        deny_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.add_box())
-        deny_btn.pack(side='left')
-        #self.controller.bbs_editor.delete_mode = True
+        add_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.add_box())
+        add_btn.pack(side='left')
 
+        self.after(1, self.change_label)
+    
+    def change_label(self):
+        if self.controller.proposed_locations:
+            no_of_cells = len(self.controller.proposed_locations)
+            text = f"\nNumber of cells: {no_of_cells}\n"
+            self.number_label.configure(text=text)
+        self.number_label.after(1, self.change_label)
+        
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
         #self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations)) #!!!
@@ -459,19 +470,45 @@ class AutoAssessScreen(HomeScreen):
 class AutoSortScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
-        self.label = tk.Label(self, text=f"Robotic cell sorting in progress...", font=("Arial", 10))
+        self.controller = controller
+        self.label = tk.Label(self, text="Robotic cell sorting in progress...", font=("Arial", 10))
         self.label.pack()
+        self.number_label = tk.Label(self, text="\nCells sorted:\n", font=("Arial", 10))
+        self.number_label.pack()
+
+        self.after(1, self.change_label)
+    
+    def change_label(self):
+        if self.controller.proposed_locations:
+            no_of_cells = len(self.controller.proposed_locations)
+
+            # NOTE: Here it is assumed that the list "outcomes" describes successfully sorted cells?
+            text=f"\nCells sorted: {sum(self.controller.outcomes)} out of {len(self.controller.chosen_locations)}\n"
+            self.number_label.configure(text=text)
+        self.number_label.after(1, self.change_label)      
 
 class ManualSortScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
         super().__init__(parent, controller, idx)
         self.label = tk.Label(self, text=f"Please help extracting the battery cells.", font=("Arial", 10))
         self.label.pack()
+        self.number_label = tk.Label(self, text="\nCells sorted:\n", font=("Arial", 10))
+        self.number_label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack(side='bottom')
         confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
+        self.after(1, self.change_label)
     
+    def change_label(self):
+        if self.controller.proposed_locations:
+            no_of_cells = len(self.controller.proposed_locations)
+
+            # NOTE: Here it is assumed that the list "outcomes" describes successfully sorted cells?
+            text=f"\nCells sorted: {sum(self.controller.outcomes)} out of {len(self.controller.chosen_locations)}\n"
+            self.number_label.configure(text=text)
+        self.number_label.after(1, self.change_label)      
+        
     def confirm(self):
         self.controller.done = True
 

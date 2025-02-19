@@ -19,11 +19,17 @@ class RdfStore:
                      "<cim:Question>" : "Question",
                      "<cim:YNQuestion>" : "YNQuestion"}
         RdfProxy.init_rdfproxy(port=port, classmapping=mapclass)
-        self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
+        self.robot = RdfProxy.getObject('Cobot')
         self.user = None
         self.session = None
+        self.battery_pack = None
+        self.battery_cells = []
 
-    def get_user(self, node, first_name: str, last_name: str):
+    def get_user(self, first_name: str, last_name: str):
+        """
+        If the user already exists in the RDF store we return this user object.
+        Else create a new user object with the input names.
+        """
         users = RdfProxy.selectQuery(
             'select ?uri where ?uri <rdf:type> <cim:User> ?_ '
             '& ?uri <soho:hasName> "{first_name}" ?_ '
@@ -36,23 +42,79 @@ class RdfStore:
             self.user = users[0]
         return self.user
 
-    def start_session(self, node):
+    def start_session(self):
+        """
+        Records that a user session has started. 
+        A user session can comprise several processes (e.g., scans, disassembly task, sorting task).
+        Thus the user session describes an entire interaction from beginning to end.
+        """
         if self.session is not None:
-            self.end_session(node)
+            self.end_session()
         self.session = RdfProxy.getObject("UserSession")
         self.user.userSessions.add(self.session)
         self.session.user = self.user
+        
         return self.session
-
-    def end_session(self, node):
+    
+    def end_session(self):
+        """
+        Records that a user session has ended. 
+        A user session describes an entire interaction from beginning to end.
+        """
         self.session = None
+    
+    def start_sorting_process(self):
+        """
+        Records that a sorting process has started. 
+        A process is part of the session, which can include multiple processes.
+        """
+        self.sorting_process = self.__session_part("SortingProcess")
+        self.battery_pack = RdfProxy.getObject("BatteryPack")
+        self.single_battery_cell = RdfProxy.getObject("BatteryCell")
+        now = time.time()
+        self.sorting_process.fromTime = round(now*1000)
 
-    def __session_part(self, what: str):
-        part = RdfProxy.getObject(what)
+    def end_sorting_process(self):
+        """
+        Records that a sorting process has ended. 
+        A process is part of the session, which can include multiple processes.
+        """
+        now = time.time()
+        self.sorting_process.toTime = round(now*1000)
+    
+    def getModelInstance(self, model: str):
+        query = 'select ?inst where ?inst <rdf:type> <cim:BatteryCell> ?_' \
+            ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+        insts = RdfProxy.selectQuery(query)
+        return None if not insts else insts[0]
+
+    def get_dimensions_from_cell_type(self, model: str):
+        """
+        Records the cell model name following the classification step. 
+        Returns the dimensions of the cell type in (height, diameter)
+        """
+
+        model_str = self.getModelInstance(model) # verify that cell model is in the ontology 
+        self.single_battery_cell.hasPart.add(model_str) # add the verified model as a property of the single battery cell
+
+        # TODO: Get in float 
+        height = self.single_battery_cell.hasHeight
+        diameter = self.single_battery_cell.hasDiameter
+        return (height,diameter)
+
+    def __session_part(self, object: str):
+        """
+        Links the session (subject) with another part (object) as a constituent (the predicate).
+        Takes the object as input.
+        """
+        part = RdfProxy.getObject(object)
         self.session.hasConstituent.add(part)
         return part
 
     def __get_last_session_constituent(self, clazz):
+        """
+        Returns the last constituent (object) that has been linked to the session.
+        """
         lastoffer = RdfProxy.selectQuery(
             'select ?off ?t where ?off <rdf:type> {} ?t'
             ' & {} <dul:hasConstituent> ?off ?_'
@@ -71,15 +133,23 @@ class RdfStore:
         instruction = self.__session_part("Instruction")
         instruction.hasParticipant.union(lastoffer.hasParticipant)
         return instruction
-
-    def dimensions_checked(self, node):
-        """record system has checked dimension"""
-        return self.__session_part("CheckedDimensions")
     
-    def request_help(self, node):
+    def object_classification(self):
+        """record the robot has classified object (session constituent)"""
+        return self.__session_part("ObjectClassification")
+    
+    def object_detection(self):
+        """record the robot has detected object (session constituent)"""
+        return self.__session_part("ObjectDetection")
+    
+    def quality_assessment(self):
+        """record the robot has assessed quality of object (session constituent)"""
+        return self.__session_part("QualityAssessment")
+    
+    def request_help(self):
         """ 
-        TODO: specify what the system is asking for help about
-        TODO: put class under RobotAction
+        TODO: specify what the robot is asking for help about (request.hasConstituent.add(?))
         """
         requesthelp = self.__session_part("RequestHelp")
+        requesthelp.hasParticipant.add(self.robot)
         return requesthelp

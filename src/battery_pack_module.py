@@ -14,7 +14,7 @@ class Cell():
         return f"{self.quality:05.2f}"
         
 class PackState():
-    def __init__(self, rows: int=2, cols: int=2):
+    def __init__(self, rows: int=1, cols: int=1):
         # rows and cols useful for sanity check
         self.rows = rows
         self.cols = cols
