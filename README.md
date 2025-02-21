@@ -62,7 +62,7 @@ Install the dependencies (make sure pip and setuptools are recent versions):
 
 ### 2. Fluently ontology:
 
-Install raptor2 utilities: 
+Navitage back to the fluently_ontology folder and install raptor2 utilities: 
 
 	$ cd fluently_ontology 
 	$ sudo apt install raptor2-utils 
