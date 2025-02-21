@@ -9,6 +9,7 @@ from battery_pack_module import PackState
 from rdf_store import RdfStore
 from vision_module import VisionModule
 from behaviors import AutoClass, HelpedClass, Detect, Assess, AutoSort, HelpedSort, BeginSession
+from viewer import BtViewer
 
 class BehaviourTree(pt.trees.BehaviourTree):
     def __init__(self):        
@@ -46,6 +47,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         tree = self.main_sequence
 
         super(BehaviourTree, self).__init__(tree)
+        #self.viewer = BtViewer(self)
 
         #self.gui.after(1000, self.tick_tree_in_gui)
         #self.gui.mainloop()
@@ -53,6 +55,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
     def tick_tree_in_gui(self):
         if self.root.status != (pt.common.Status.SUCCESS or pt.common.Status.FAILURE):
             self.tick()
+            #self.viewer.update()
             self.gui.after(1000, self.tick_tree_in_gui)
             print("\n"+pt.display.unicode_tree(root=self.root,show_status=True))
         else: 

@@ -1,4 +1,5 @@
 import py_trees as pt
+import time
 
 class BeginSession(pt.behaviour.Behaviour):
     """
@@ -53,18 +54,15 @@ class AutoClass(pt.behaviour.Behaviour):
             new_status = pt.common.Status.FAILURE
 
         elif self.gui.chosen_model != "":
-            # TODO: add to RDF store and extract dimensions of cell 
             model = self.gui.chosen_model
-            print(model)
             size = self.rdf.get_dimensions_from_cell_type(model)
-            print(size)
-            # update cells information
+            # update cells information with model and size
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    self.pack_state.update_cell(row, col, model=model)
+                    self.pack_state.update_cell(row, col, model=model, size=(size))
             new_status = pt.common.Status.SUCCESS
+            # record classification is done
             self.rdf.object_classification()
-            # TODO: add cell information to RDF store
         else:
             new_status = pt.common.Status.RUNNING
 
@@ -93,12 +91,15 @@ class HelpedClass(pt.behaviour.Behaviour):
 
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            # update cells information
+            size = self.rdf.get_dimensions_from_cell_type(model)
+            # update cells information with model and size
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    self.pack_state.update_cell(row, col, model=model)
+                    print(model)
+                    self.pack_state.update_cell(row, col, model=model, size=(size))
+            # record classification is done
+            self.rdf.object_classification()
             new_status = pt.common.Status.SUCCESS
-            # TODO: add cell information to RDF store
         else:
             new_status = pt.common.Status.RUNNING
 
@@ -135,7 +136,7 @@ class Detect(pt.behaviour.Behaviour):
 
         if self.gui.chosen_locations: # if not chosen_locations not empty
             # for now it is just one long row, but this info could come from the pack information / visual / user input
-            self.pack_state.update_dim(rows=len(self.gui.chosen_locations),cols=1) # change to known dimensions
+            self.pack_state.update_dim(rows=1,cols=len(self.gui.chosen_locations)) # change to known dimensions
             i = 0
             # change to known dimensions
             for row in range(self.pack_state.rows):
@@ -146,6 +147,8 @@ class Detect(pt.behaviour.Behaviour):
                     pose = self.robot.frame_to_world(frame_position)
                     self.pack_state.update_cell(row, col, frame_position=frame_position, pose=pose)
                     i += 1
+            # we add all of the cells and their properties to the RDF store as part of the battery pack object
+            self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
             new_status = pt.common.Status.SUCCESS
             self.rdf.object_detection()
         else:
@@ -228,16 +231,18 @@ class AutoSort(pt.behaviour.Behaviour):
         
         else:
             current_frame = self.vision.get_current_frame() # keep old frame ???
-            i = 0
             # get the pose of each cell + quality and perform pick and place
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    frame_position = self.pack_state.cells[i][0].frame_position
-                    pose = self.pack_state.cells[i][0].pose
-                    discard = (self.pack_state.cells[i][0].quality >= 0.5)
+                    frame_position = self.pack_state.cells[row][col].frame_position
+                    pose = self.pack_state.cells[row][col].pose
+                    discard = (self.pack_state.cells[row][col].quality >= 0.5)
                     # TODO: perform pick and place based on pose and discard True/False
                     self.robot.pick_and_place(pose, pose)
                     sorted = self.vision.verify_pickup(current_frame, frame_position)
+                    # update RDF
+                    #time.sleep(7)
+                    self.rdf.update_cell_sorted(row=row,col=col,sorted=sorted)
                     if sorted:
                         self.pack_state.update_cell(row, col, sorted=sorted)
                     else:
@@ -245,7 +250,6 @@ class AutoSort(pt.behaviour.Behaviour):
                         new_status = pt.common.Status.FAILURE 
                         return new_status
                     # TODO: update self.gui.outcomes
-                    i += 1
 
             new_status = pt.common.Status.SUCCESS
             self.rdf.end_sorting_process()
@@ -281,19 +285,17 @@ class HelpedSort(pt.behaviour.Behaviour):
         if self.gui.done:
             # visual check that all cells are sorted
             current_frame = self.vision.get_current_frame() # keep old frame ???
-            i = 0
             print("Final check...")
             # Verify that all cells have been picked up
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    frame_position = self.pack_state.cells[i][0].frame_position
+                    frame_position = self.pack_state.cells[row][col].frame_position
                     sorted = self.vision.verify_pickup(current_frame, frame_position)
                     if sorted:
                         self.pack_state.update_cell(row, col, sorted=sorted)
                     else:
                         # TODO: warn user that not all batteries are sorted through GUI (?)
                         print("UserWarning: Battery cell not sorted")
-                    i += 1
             new_status = pt.common.Status.SUCCESS
             self.rdf.end_sorting_process()
             self.rdf.end_session()

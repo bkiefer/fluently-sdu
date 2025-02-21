@@ -70,6 +70,7 @@ class RdfStore:
         """
         self.sorting_process = self.__session_part("SortingProcess")
         self.battery_pack = RdfProxy.getObject("BatteryPack")
+        self.session.hasConstituent.add(self.battery_pack)
         self.single_battery_cell = RdfProxy.getObject("BatteryCell")
         now = time.time()
         self.sorting_process.fromTime = round(now*1000)
@@ -82,7 +83,7 @@ class RdfStore:
         now = time.time()
         self.sorting_process.toTime = round(now*1000)
     
-    def getModelInstance(self, model: str):
+    def get_model_instance(self, model: str):
         query = 'select ?inst where ?inst <rdf:type> <cim:BatteryCell> ?_' \
             ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
         insts = RdfProxy.selectQuery(query)
@@ -93,14 +94,41 @@ class RdfStore:
         Records the cell model name following the classification step. 
         Returns the dimensions of the cell type in (height, diameter)
         """
-
-        model_str = self.getModelInstance(model) # verify that cell model is in the ontology 
+        model_str = self.get_model_instance(model) # verify that cell model is in the ontology 
         self.single_battery_cell.hasPart.add(model_str) # add the verified model as a property of the single battery cell
 
-        # TODO: Get in float 
-        height = self.single_battery_cell.hasHeight
-        diameter = self.single_battery_cell.hasDiameter
+        # Get the height of the battery cell "model" from the ontology
+        query = 'select distinct ?height where ?cell <soma:hasHeight> ?height ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
+            ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+        height = RdfProxy.selectQuery(query)[0]
+        
+        # Get the diameter of the battery cell from the ontology
+        query = 'select distinct ?diam where ?cell <cim:hasDiameter> ?diam ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
+            ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+        diameter = RdfProxy.selectQuery(query)[0]
+
+        # Record cell size in RDF store
+        self.single_battery_cell.hasDiameter = diameter
+        self.single_battery_cell.hasHeight = height
+
+        print(height, diameter)
         return (height,diameter)
+
+    def update_number_of_cells(self, rows: int, cols:int, model: str):
+        for row in range(rows):
+            for col in range(cols):
+                cell = RdfProxy.getObject("BatteryCell")
+                cell.hasHeight = self.single_battery_cell.hasHeight
+                cell.hasDiameter = self.single_battery_cell.hasDiameter
+                cell.hasPositionData = str((row,col))
+                model_str = self.get_model_instance(model)            
+                cell.hasPart.add(model_str)
+                self.battery_pack.hasPart.add(cell)
+    
+    def update_cell_sorted(self, row: int, col:int, sorted: bool):
+        for cell in self.battery_pack.hasPart:
+            if cell.hasPositionData == str((row,col)):
+                cell.wasSorted = sorted
 
     def __session_part(self, object: str):
         """
