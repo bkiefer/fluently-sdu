@@ -335,7 +335,7 @@ class MemGui(tk.Tk):
                     else:
                         frame.canvas.create_text((bb[0]+bb[2])//2, (bb[1]+bb[3])//2, text="✗", font=("Arial", 35), fill='firebrick1')
 
-    def update_image(self, new_frame: cv2.Mat):
+    def update_image(self, new_frame: ndarray):
         self.camera_frame = new_frame
 
 class HomeScreen(tk.Frame):
