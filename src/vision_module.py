@@ -1,3 +1,4 @@
+import PIL.Image
 import numpy as np
 from numpy import ndarray
 import cv2
@@ -38,7 +39,7 @@ class VisionModule():
         Returns:
             list[tuple[str, float]]: list of model with associated probability
         """
-        cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49}]
+        cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}]
         return cells_probs
 
     def cell_detection(self, frame: cv2.Mat) -> list[ndarray]:
@@ -51,7 +52,12 @@ class VisionModule():
             list[ndarray]: positons list
         """
         cells_positions = []
-        preprocessed = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cp_frame = copy.deepcopy(frame)
+        if isinstance(frame, PIL.Image.Image):
+            cp_frame = np.array(cp_frame)
+            if frame.mode == "RGB":
+                cv2.cvtColor(cp_frame, cv2.COLOR_RGB2BGR)
+        preprocessed = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
         # kernel_size = 5
         # kernel = np.ones((kernel_size, kernel_size),np.float32) / (kernel_size*kernel_size)
         # gauss = cv2.filter2D(frame, -1, kernel)
@@ -69,11 +75,11 @@ class VisionModule():
         # vision.show_frames("Edges", [edges])
         circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, 1, edges.shape[0] / 8, param1=100, param2=30, minRadius=1, maxRadius=100)
         if circles is not None:
-            print(f"found: {len(circles[0])} circles")
+            # print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
-            print(circles)
+            # print(circles)
             cells_positions = circles[0][:, 0:3] # x, y, radius
-            drawing_frame = copy.deepcopy(frame)
+            drawing_frame = copy.deepcopy(cp_frame)
             for i in circles[0, :]:
                 center = (i[0], i[1])
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
@@ -108,7 +114,12 @@ class VisionModule():
             bool: if or not the cell was picked up
         """
         start_frame = cv2.cvtColor(self.start_frame, cv2.COLOR_BGR2GRAY)
-        current_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cp_frame = copy.deepcopy(frame)
+        if isinstance(frame, PIL.Image.Image):
+            cp_frame = np.array(cp_frame)
+            if frame.mode == "RGB":
+                cv2.cvtColor(cp_frame, cv2.COLOR_RGB2BGR)
+        current_frame = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, start_frame)
         _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
@@ -122,7 +133,6 @@ class VisionModule():
             cv2.circle(result_bgr, position, 3, (0, 255, 0), 3)
         
         #vision.show_frames("Verify pick up", [result_bgr]) # !!!
-
         return pickedup
 
 if __name__ == "__main__":

@@ -52,22 +52,28 @@ class BehaviourTree(pt.trees.BehaviourTree):
         #self.gui.after(1000, self.tick_tree_in_gui)
         #self.gui.mainloop()
 
+    def on_gui_closure(self):
+        self.root.status = pt.common.Status.FAILURE
+        print("GUI closed")
+        self.gui.destroy()
+
     def tick_tree_in_gui(self):
         if self.root.status != (pt.common.Status.SUCCESS or pt.common.Status.FAILURE):
             self.tick()
             #self.viewer.update()
-            self.gui.after(1000, self.tick_tree_in_gui)
-            print("\n"+pt.display.unicode_tree(root=self.root,show_status=True))
+            self.gui.after(1, self.tick_tree_in_gui)
+            # print("\n"+pt.display.unicode_tree(root=self.root,show_status=True))
         else: 
-            self.done = True
+            self.done = True # why using a done variable if we have the status of the root?
             self.gui.quit()
         
 def main(args=None):
     tree = BehaviourTree()
-
-    while not tree.done:
-        tree.gui.after(1000, tree.tick_tree_in_gui)
-        tree.gui.mainloop()
+    
+    tree.gui.protocol("WM_DELETE_WINDOW", tree.on_gui_closure)
+    # while not tree.done:
+    tree.gui.after(1, tree.tick_tree_in_gui)
+    tree.gui.mainloop()
 
     if tree.root.status == pt.common.Status.SUCCESS:
         print("Behavior tree succeeded")
