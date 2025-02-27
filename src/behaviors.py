@@ -226,11 +226,10 @@ class AutoSort(pt.behaviour.Behaviour):
 
     def update(self):
         if self.gui.active_frame != 5:
-            # self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
             print("First update for behavior", self.name)
-            #current_frame = self.vision.get_current_frame()
-            #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
+            # self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
+            self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
             self.gui.show_frame(5)
             new_status = pt.common.Status.RUNNING
         else:
@@ -249,12 +248,9 @@ class AutoSort(pt.behaviour.Behaviour):
                         place_pose = self.hig_q_pose
                     self.robot.pick_and_place(pick_pose, place_pose)
                     sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position)
-                    print(frame_position)
-                    #TODO: does not write on frame
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
-                    time.sleep(1)
+                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
                     # update RDF
-                    #time.sleep(7)
                     self.rdf.update_cell_sorted(i, j, sorted=sorted)
                     if sorted:
                         self.pack_state.update_cell(i, j, sorted=sorted)
@@ -289,10 +285,9 @@ class HelpedSort(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
             #current_frame = self.vision.get_current_frame()
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
-            self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
             self.gui.show_frame(6)
             # record system asks for help, TODO: put the class under RobotAction
-            self.rdf.request_help()
+            # self.rdf.request_help()
 
         if self.gui.done:
             # visual check that all cells are sorted

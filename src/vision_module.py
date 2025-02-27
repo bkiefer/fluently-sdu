@@ -125,7 +125,7 @@ class VisionModule():
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
         pickedup = bool(result[position[1]][position[0]])
         
-        print(f"The cell was pickedup: {pickedup}")
+        # print(f"The cell was pickedup: {pickedup}")
         result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
         if not pickedup:
             cv2.circle(result_bgr, position, 3, (0, 0, 255), 3)

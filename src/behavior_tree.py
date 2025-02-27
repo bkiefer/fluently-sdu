@@ -19,7 +19,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         #self.rdf = None
         self.vision = VisionModule()
         self.gui = MemGui(self.vision.get_current_frame(format='pil'))
-        self.robot = RobotModule([0,0,0,0,0,0])
+        self.robot = RobotModule("192.168.1.100", [0,0,0,0,0,0])
         self.pack_state = PackState()
         self.done = False
 

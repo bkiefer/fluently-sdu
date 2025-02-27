@@ -342,11 +342,11 @@ class MemGui(tk.Tk):
         Args:
             bbs_position (list[ndarray]): postions of bounding boxes
         """
-        print("asd")
         if outcome:
             frame.canvas.create_text(centre[0], centre[1], text="✓", font=("Arial", 35), fill='green2')
         else:
             frame.canvas.create_text(centre[0], centre[1], text="✗", font=("Arial", 35), fill='firebrick1')
+        frame.canvas.update()
 
     def update_image(self, new_frame: ndarray):
         self.camera_frame = new_frame
