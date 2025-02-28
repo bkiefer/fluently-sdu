@@ -7,13 +7,17 @@ import matplotlib.pyplot as plt
 import copy
 import PIL
 import pyrealsense2 as rs
-# from gubokit import vision
+from gubokit import vision
 
 class VisionModule():
     def __init__(self):
         pass
         # camera initialization
-        # self.camera = vision.RealSenseCamera() 
+        try:
+            self.camera = vision.RealSenseCamera({'color': [1280, 720], 'depth': [640, 480], 'infrared': [640, 480]})
+            print("Starting vision module")
+        except RuntimeError:
+            print("The vision module could not be started, the module will run for debug purpose")
         self.start_frame = cv2.imread("./data/NMC21700-from-top.png")     
         
     def get_current_frame(self, format="cv2") -> cv2.Mat:

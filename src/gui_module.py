@@ -122,13 +122,12 @@ class _BoundingBoxEditor:
         self.dragging = None
 
 class _QualitiesEditor:
-    def __init__(self, canvas, bbs_position, qualities):
+    def __init__(self, canvas, bbs_position, qualities, cell_m_q,  cell_h_q, editable=False):
         self.canvas = canvas
         self.bbs_position = bbs_position
         self.qualities = qualities
 
-        self.h = 0.8
-        self.m = 0.6
+        self.m, self.h = cell_m_q, cell_h_q        
         
         self.old_quality = None
         self.editing = False
@@ -137,9 +136,10 @@ class _QualitiesEditor:
 
         self.boxes = []
         self.write_qualities()
-        self.canvas.bind("<ButtonPress-1>", self.on_click)
-        self.edit_entry.bind("<Return>", self.on_enter)
-        self.edit_entry.bind("<Escape>", self.on_esc)
+        if editable:
+            self.canvas.bind("<ButtonPress-1>", self.on_click)
+            self.edit_entry.bind("<Return>", self.on_enter)
+            self.edit_entry.bind("<Escape>", self.on_esc)
     
     def write_qualities(self):
         for i, (bb, q) in enumerate(zip(self.bbs_position, self.qualities)):
@@ -169,14 +169,24 @@ class _QualitiesEditor:
                     self.edit_entry.focus_set()
         
     def on_enter(self, event):
-        new_q = float(self.edit_entry.get()) / 100
-        self.qualities[self.editing_qual_id] = new_q
-        self.canvas.itemconfig(self.editing_item_id, state="normal")
-        self.canvas.itemconfig(self.editing_item_id, text=f"{int(self.edit_entry.get()):02d}%")
-        self.canvas.itemconfig(self.editing_item_id, fill='green2' if new_q > self.h else 'yellow2' if new_q > self.m else 'firebrick1')
-        self.canvas.winfo_toplevel().focus_set() # defocus entry
-        self.edit_entry.delete(0, tk.END)
-        self.edit_entry.place_forget()
+        try:
+            new_q = float(self.edit_entry.get()) / 100
+            if not 0 < new_q < 1: 
+                raise ValueError
+            self.qualities[self.editing_qual_id] = new_q
+            self.canvas.itemconfig(self.editing_item_id, text=f"{int(self.edit_entry.get()):02d}%")
+            self.canvas.itemconfig(self.editing_item_id, fill='green2' if new_q > self.h else 'yellow2' if new_q > self.m else 'firebrick1')
+            
+            
+            
+        except:
+            print("Inserted value not supported")
+        finally:
+            self.canvas.itemconfig(self.editing_item_id, state="normal")
+            self.canvas.winfo_toplevel().focus_set() # defocus entry
+            self.edit_entry.delete(0, tk.END)
+            self.edit_entry.place_forget()
+
     
     def on_esc(self, event):
         self.canvas.itemconfig(self.editing_item_id, state="normal")
@@ -185,7 +195,7 @@ class _QualitiesEditor:
         self.edit_entry.place_forget()
 
 class MemGui(tk.Tk):
-    def __init__(self, camera_frame: PIL.Image):
+    def __init__(self, camera_frame: PIL.Image, cell_m_q, cell_h_q):
         super().__init__()
         self.title("MeM use case")
         # self.geometry("800x600+400+400") # 2nd and 3rd number will move the window spawn point (with multiple screen will start from most left screen)
@@ -196,15 +206,15 @@ class MemGui(tk.Tk):
         
         self.camera_frame = camera_frame
         self.active_frame = 0
-        self.wait_interaction = False
         
-        self.proposed_models = []#[{'model': "NMC21700", 'prob': 0.97}, {'model': "CCN12900", 'prob': 0.76}, {'model': "ASD123", 'prob': 0.46}, {'model': "QWE456", 'prob': 0.26}]
+        self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
+        self.proposed_models = []
         self.chosen_model = ""
-        self.proposed_locations = []#[(80, 80, 140, 140), (240, 240, 300, 300), (400, 400, 460, 460)]
+        self.proposed_locations = []
         self.chosen_locations = []
         self.proposed_qualities = []
         self.chosen_qualities = []
-        self.outcomes = []#[False, True, True]
+        self.outcomes = []
         self.class_reject = False # !!!
         self.done = False
         
@@ -270,8 +280,8 @@ class MemGui(tk.Tk):
         self.proposed_models = proposed_models
         self.frames[1].label.configure(text=f"Cells are: {self.proposed_models[0]['model']}")
         for propose in self.proposed_models[1:]: # we skip the first one as it was already denied by the user
-                btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.frames[2].chose_model(propose['model']))
-                btn.pack()
+            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.frames[2].chose_model(propose['model']))
+            btn.pack()
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
         self.x_min = tk.Entry(self.infos_container, width=4, justify="center")
@@ -325,7 +335,7 @@ class MemGui(tk.Tk):
         self.proposed_locations = bbs_position
         self.bbs_editor = _BoundingBoxEditor(frame.canvas, bbs_position, frame)
 
-    def write_qualities(self, qualities: list[float], frame: tk.Frame):
+    def write_qualities(self, qualities: list[float], frame: tk.Frame, editable=False):
         """write the quality of each cell on the frame showed to the user
 
         Args:
@@ -334,7 +344,7 @@ class MemGui(tk.Tk):
         """
         # frames[0].focus_set()
         self.proposed_qualities = qualities
-        self.quals_editor = _QualitiesEditor(frame.canvas, bbs_position=self.chosen_locations, qualities=qualities)
+        self.quals_editor = _QualitiesEditor(frame.canvas, bbs_position=self.chosen_locations, qualities=qualities, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q, editable=editable)
 
     def write_outcome_picked_cell(self, centre: ndarray, outcome: bool, frame: tk.Frame):
         """mark on the image whether or not the battery cell was picked up
@@ -350,6 +360,24 @@ class MemGui(tk.Tk):
 
     def update_image(self, new_frame: ndarray):
         self.camera_frame = new_frame
+
+    def reset_gui(self):
+        self.proposed_models = []
+        self.chosen_model = ""
+        self.proposed_locations = []
+        self.chosen_locations = []
+        self.proposed_qualities = []
+        self.chosen_qualities = []
+        self.outcomes = []
+        self.class_reject = False # !!!
+        self.done = False
+        for frame in self.frames:
+            if hasattr(frame, "canvas"):
+                frame.canvas.delete("all")
+                frame.draw_image(self.camera_frame)
+        for btn in self.frames[2].btns_frame.winfo_children():
+            btn.pack_forget()
+        self.show_frame(0)
 
 class HomeScreen(tk.Frame):
     def __init__(self, parent, controller, idx):
@@ -450,11 +478,7 @@ class AutoDetectScreen(HomeScreen):
     #     self.number_label.after(1, self.change_label)
         
     def confirm(self):
-        self.controller.chosen_locations = self.controller.bbs_editor.bbs_position 
-        #self.controller.proposed_qualities = np.random.rand(len(self.controller.chosen_locations)) #!!!
-        # self.controller.show_frame(self.idx + 1)
-        # print("Chosen locations:", self.controller.chosen_locations)
-        #print("Generated qualities:", [self.controller.proposed_qualities])
+        self.controller.chosen_locations = self.controller.bbs_editor.bbs_position
 
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
@@ -470,13 +494,9 @@ class AutoAssessScreen(HomeScreen):
         confirm_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.chosen_qualities = self.controller.quals_editor.qualities 
-        #self.controller.outcomes = np.random.choice([0, 1], len(self.controller.chosen_locations))
+        self.controller.chosen_qualities = self.controller.quals_editor.qualities
         self.controller.outcomes = [(el>=0.5) for el in self.controller.chosen_qualities]
-        # print("Generated outcomes:", self.controller.outcomes)
-        #print("Generated outcomes:", [(el>=0.5) for el in self.controller.outcomes])
-        # print("Chosen qualities:", self.controller.chosen_qualities)
-        # self.controller.show_frame(0)
+        self.canvas.unbind("<ButtonPress-1>")
 
 class AutoSortScreen(HomeScreen):
     def __init__(self, parent, controller, idx):

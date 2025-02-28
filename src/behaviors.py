@@ -11,16 +11,17 @@ class BeginSession(pt.behaviour.Behaviour):
         self.gui = gui
         self.blackboard = blackboard
         self.rdf = rdf
-        self.status = pt.common.Status.INVALID
-        self.tried = False
+        # self.status = pt.common.Status.INVALID
+        # self.tried = False
 
     def update(self):
-        if not self.tried:  
+        if self.status == pt.common.Status.INVALID:  
+            print("First update for behavior", self.name)
             self.rdf.get_user(first_name = "", last_name = "")
             self.rdf.start_session()
-            self.tried = True
-        new_status = pt.common.Status.SUCCESS
-        
+            # self.tried = True
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
         return new_status
 
 class AutoClass(pt.behaviour.Behaviour):
@@ -37,16 +38,16 @@ class AutoClass(pt.behaviour.Behaviour):
         self.blackboard = blackboard
         self.rdf = rdf
         self.status = pt.common.Status.INVALID
-        self.tried = False
+        # self.tried = False
 
     def update(self):
-        if not self.tried:
+        if self.status == pt.common.Status.INVALID:
             self.rdf.start_sorting_process()
-            self.tried = True
+            # self.tried = True
 
         if self.gui.active_frame != 1:
             print("First update for behavior", self.name)
-            self.gui.update_proposed_models(self.vision.classify_cell(frames=[self.gui.camera_frame]) )
+            self.gui.update_proposed_models(self.vision.classify_cell(frames=[self.gui.camera_frame]))
             self.gui.show_frame(1)
 
         if self.gui.class_reject:
@@ -119,7 +120,7 @@ class Detect(pt.behaviour.Behaviour):
         self.robot = robot
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
@@ -168,7 +169,7 @@ class Assess(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
@@ -178,7 +179,7 @@ class Assess(pt.behaviour.Behaviour):
             bbs_positions = self.gui.chosen_locations
             # get proposed qualities from vision module and update GUI
             qualities = self.vision.assess_cells_qualities(frame=self.gui.camera_frame, bbs_positions=bbs_positions)
-            self.gui.write_qualities(qualities, self.gui.frames[4])
+            self.gui.write_qualities(qualities, self.gui.frames[4], editable=True)
             self.gui.proposed_qualities = qualities
             self.gui.show_frame(4)
         
@@ -210,7 +211,7 @@ class AutoSort(pt.behaviour.Behaviour):
 
     NOTE: SUCCESS if all pick and place actions succeed or some other criterion? 
     """
-    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui):
+    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui, cell_m_q, cell_h_q, discard_T, keep_T):
         super(AutoSort, self).__init__(name)
         self.vision = vision
         self.gui = gui
@@ -218,11 +219,10 @@ class AutoSort(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
+        self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.status = pt.common.Status.INVALID
-        self.low_q_pose = sm.SE3([0, 0, 0]) # maye we get it from file/blackboard/behaviour tree? personally I'd say beahviour tree so that it also give it to the gui
-        self.med_q_pose = sm.SE3([0, 0, 0]) # maye we get it from file/blackboard/behaviour tree? personally I'd say beahviour tree so that it also give it to the gui
-        self.hig_q_pose = sm.SE3([0, 0, 0]) # maye we get it from file/blackboard/behaviour tree? personally I'd say beahviour tree so that it also give it to the gui
+        self.discard_T, self.keep_T = discard_T, keep_T
 
     def update(self):
         if self.gui.active_frame != 5:
@@ -240,12 +240,10 @@ class AutoSort(pt.behaviour.Behaviour):
                 for j, cell in enumerate(row):
                     frame_position = cell.frame_position
                     pick_pose = cell.pose
-                    if cell.quality < 0.6:
-                        place_pose = self.low_q_pose
-                    if 0.6 <= cell.quality < 0.8:
-                        place_pose = self.med_q_pose
-                    if cell.quality >= 0.5:
-                        place_pose = self.hig_q_pose
+                    if cell.quality < self.cell_m_q:
+                        place_pose = self.discard_T
+                    else:
+                        place_pose = self.keep_T    
                     self.robot.pick_and_place(pick_pose, place_pose)
                     sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
@@ -257,7 +255,7 @@ class AutoSort(pt.behaviour.Behaviour):
                     else:
                         # Fails if a single pick and place fails, maybe change this
                         new_status = pt.common.Status.FAILURE 
-                        # return new_status
+                        # return new_status # removed otherwise does not tries them all
                     # TODO: update self.gui.outcomes
             self.rdf.end_sorting_process()
             self.rdf.end_session()
@@ -277,7 +275,7 @@ class HelpedSort(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
