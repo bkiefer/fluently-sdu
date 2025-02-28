@@ -14,7 +14,11 @@ class VisionModule():
         pass
         # camera initialization
         try:
-            self.camera = vision.RealSenseCamera({'color': [1280, 720], 'depth': [640, 480], 'infrared': [640, 480]})
+            self.camera = vision.RealSenseCamera({
+                                                    'color': [1280, 720],
+                                                    'depth': [640, 480],
+                                                    'infrared': [640, 480]
+                                                    })
             print("Starting vision module")
         except RuntimeError:
             print("The vision module could not be started, the module will run for debug purpose")
