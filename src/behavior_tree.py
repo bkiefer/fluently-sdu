@@ -69,7 +69,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
             self.gui.reset_gui()
             self.main_sequence.stop(pt.common.Status.INVALID) # reset the tree
             self.gui.after(1, self.tick_tree_in_gui)
-        elif self.root.status == (pt.common.Status.SUCCESS or pt.common.Status.FAILURE):
+        elif self.root.status == pt.common.Status.FAILURE:
             # self.done = True # are we using this?
             print("Behavior tree failed") 
             self.gui.quit()
