@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # print(pose)
     # print((robot_module.robot.getActualQ()))
     # robot_module.robot.moveL([-0.3, -0., 0.48, 1.15, -2.92, 0])
-    robot_module.robot.move_to_cart_position(sm.SE3([0, -0.3, 0.4]) * sm.SE3.Rx(180, unit='deg'))
+    robot_module.robot.move_to_cart_pose(sm.SE3([0, -0.3, 0.4]) * sm.SE3.Rx(180, unit='deg'))
     robot_module.robot.close_gripper()
     print(robot_module.robot.get_gripper_status())
     robot_module.robot.open_gripper()
