@@ -6,7 +6,7 @@ class Cell():
         self.model = ""
         self.size = (0.0, 0.0) # diameter, height
         self.quality = -1.0
-        self.pose = sm.SE3
+        self.pose = sm.SE3()
         self.frame_position = [-1, -1]
         self.sorted = False
 

@@ -3,13 +3,17 @@ import numpy as np
 from numpy import ndarray
 import spatialmath as sm
 from scipy.spatial.transform import Rotation
+import time
 
 class RobotModule:
     def __init__(self, ip: str, home_position: ndarray):
-        self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
-        self.gripper = robotics.VacuumGripper(self.robot, 1) # find correct id
-        self.robot.add_gripper(gripper=self.gripper)
-        # print("Starting robot module")
+        try:
+            self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
+            self.gripper = robotics.VacuumGripper(self.robot, 1) # find correct id
+            self.robot.add_gripper(gripper=self.gripper)
+            print("Starting robot module")
+        except RuntimeError:
+            print("The robot could not be started, the module will run for debug purpose")
 
     def pick_and_place(self, pick_T: sm.SE3, place_T: sm.SE3):
         """pick and place an object 
@@ -18,8 +22,9 @@ class RobotModule:
             pick_T (sm.SE3): position and orientation for pick
             place_T (sm.SE3): position and orientation for place
         """
-        self.robot.pick_and_place(pick_pose=np.hstack((pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(pick_T.R)))), 
-                                  place_pose=np.hstack((place_T.t, Rotation.as_rotvec(Rotation.from_matrix(place_T.R)))))
+        # self.robot.pick_and_place(pick_pose=np.hstack((pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(pick_T.R)))), 
+                                #   place_pose=np.hstack((place_T.t, Rotation.as_rotvec(Rotation.from_matrix(place_T.R)))))
+        time.sleep(1)
 
     def frame_to_world(self, frame_pos:ndarray) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame

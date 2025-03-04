@@ -1,5 +1,6 @@
 import py_trees as pt
 import time
+import spatialmath as sm
 
 class BeginSession(pt.behaviour.Behaviour):
     """
@@ -10,16 +11,17 @@ class BeginSession(pt.behaviour.Behaviour):
         self.gui = gui
         self.blackboard = blackboard
         self.rdf = rdf
-        self.status = pt.common.Status.INVALID
-        self.tried = False
+        # self.status = pt.common.Status.INVALID
+        # self.tried = False
 
     def update(self):
-        if not self.tried:  
+        if self.status == pt.common.Status.INVALID:  
+            print("First update for behavior", self.name)
             self.rdf.get_user(first_name = "", last_name = "")
             self.rdf.start_session()
-            self.tried = True
-        new_status = pt.common.Status.SUCCESS
-        
+            # self.tried = True
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
         return new_status
 
 class AutoClass(pt.behaviour.Behaviour):
@@ -36,26 +38,26 @@ class AutoClass(pt.behaviour.Behaviour):
         self.blackboard = blackboard
         self.rdf = rdf
         self.status = pt.common.Status.INVALID
-        self.tried = False
+        # self.tried = False
 
     def update(self):
-        if not self.tried:
+        if self.status == pt.common.Status.INVALID:
             self.rdf.start_sorting_process()
-            self.tried = True
+            # self.tried = True
 
         if self.gui.active_frame != 1:
-            self.gui.show_frame(1)
             print("First update for behavior", self.name)
-            current_frame_list = [self.vision.get_current_frame()]
-            # value will be updated in the GUI shortly
-            self.gui.proposed_models = self.vision.classify_cell(frames=current_frame_list) 
+            self.gui.update_proposed_models(self.vision.classify_cell(frames=[self.gui.camera_frame]))
+            self.gui.show_frame(1)
 
         if self.gui.class_reject:
             new_status = pt.common.Status.FAILURE
+            print(self.name, new_status)
 
         elif self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            size = self.rdf.get_dimensions_from_cell_type(model)
+            # size = self.rdf.get_dimensions_from_cell_type(model)
+            size = (0, 0)
             # update cells information with model and size
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
@@ -63,9 +65,9 @@ class AutoClass(pt.behaviour.Behaviour):
             new_status = pt.common.Status.SUCCESS
             # record classification is done
             self.rdf.object_classification()
+            print(self.name, new_status)
         else:
             new_status = pt.common.Status.RUNNING
-
         return new_status
 
 class HelpedClass(pt.behaviour.Behaviour):
@@ -91,18 +93,18 @@ class HelpedClass(pt.behaviour.Behaviour):
 
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            size = self.rdf.get_dimensions_from_cell_type(model)
+            # size = self.rdf.get_dimensions_from_cell_type(model)
+            size = (0, 0)
             # update cells information with model and size
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    print(model)
                     self.pack_state.update_cell(row, col, model=model, size=(size))
             # record classification is done
             self.rdf.object_classification()
             new_status = pt.common.Status.SUCCESS
+            print(self.name, new_status)
         else:
             new_status = pt.common.Status.RUNNING
-
         return new_status
 
 class Detect(pt.behaviour.Behaviour):
@@ -118,20 +120,18 @@ class Detect(pt.behaviour.Behaviour):
         self.robot = robot
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
         if self.gui.active_frame != 3:
-            print("First update for behavior", self.name)
-            current_frame = self.vision.get_current_frame()
-            # get detected cells from vision module
-            proposed = self.vision.cell_detection(current_frame) # center, radius
+            # current_frame = self.vision.get_current_frame()
+            proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             proposed_locations = []
-            # update cell locations in GUI
+            # # update cell locations in GUI
             for circle in proposed:
                 proposed_locations.append((circle[0]-circle[2], circle[1]-circle[2],circle[0]+circle[2], circle[1]+circle[2]))
-            self.gui.proposed_locations = proposed_locations
+            self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
 
         if self.gui.chosen_locations: # if not chosen_locations not empty
@@ -148,12 +148,12 @@ class Detect(pt.behaviour.Behaviour):
                     self.pack_state.update_cell(row, col, frame_position=frame_position, pose=pose)
                     i += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
-            self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
+            # self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
             new_status = pt.common.Status.SUCCESS
-            self.rdf.object_detection()
+            # self.rdf.object_detection()
+            print(self.name, new_status)
         else:
             new_status = pt.common.Status.RUNNING
-        
         return new_status
 
 class Assess(pt.behaviour.Behaviour):
@@ -169,16 +169,17 @@ class Assess(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
         if self.gui.active_frame != 4:
             print("First update for behavior", self.name)
-            current_frame = self.vision.get_current_frame() # keep old frame ???
+            # current_frame = self.vision.get_current_frame() # keep old frame ???
             bbs_positions = self.gui.chosen_locations
             # get proposed qualities from vision module and update GUI
-            qualities = self.vision.assess_cells_qualities(frame=current_frame,bbs_positions=bbs_positions)
+            qualities = self.vision.assess_cells_qualities(frame=self.gui.camera_frame, bbs_positions=bbs_positions)
+            self.gui.write_qualities(qualities, self.gui.frames[4], editable=True)
             self.gui.proposed_qualities = qualities
             self.gui.show_frame(4)
         
@@ -193,10 +194,10 @@ class Assess(pt.behaviour.Behaviour):
                     i += 1
             new_status = pt.common.Status.SUCCESS
             self.rdf.quality_assessment()
+            print(self.name, new_status)
 
         else:
             new_status = pt.common.Status.RUNNING
-
         return new_status
 
 class AutoSort(pt.behaviour.Behaviour):
@@ -210,7 +211,7 @@ class AutoSort(pt.behaviour.Behaviour):
 
     NOTE: SUCCESS if all pick and place actions succeed or some other criterion? 
     """
-    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui):
+    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui, cell_m_q, cell_h_q, discard_T, keep_T):
         super(AutoSort, self).__init__(name)
         self.vision = vision
         self.gui = gui
@@ -218,43 +219,47 @@ class AutoSort(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
+        self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.status = pt.common.Status.INVALID
+        self.discard_T, self.keep_T = discard_T, keep_T
 
     def update(self):
         if self.gui.active_frame != 5:
             print("First update for behavior", self.name)
-            #current_frame = self.vision.get_current_frame()
-            #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
+            # self.gui.proposed_locations = self.vision.cell_detection(current_frame)
+            self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
+            self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
             self.gui.show_frame(5)
             new_status = pt.common.Status.RUNNING
-        
         else:
-            current_frame = self.vision.get_current_frame() # keep old frame ???
+            # current_frame = self.vision.get_current_frame() # keep old frame ???
             # get the pose of each cell + quality and perform pick and place
-            for row in range(self.pack_state.rows):
-                for col in range(self.pack_state.cols):
-                    frame_position = self.pack_state.cells[row][col].frame_position
-                    pose = self.pack_state.cells[row][col].pose
-                    discard = (self.pack_state.cells[row][col].quality >= 0.5)
-                    # TODO: perform pick and place based on pose and discard True/False
-                    self.robot.pick_and_place(pose, pose)
-                    sorted = self.vision.verify_pickup(current_frame, frame_position)
+            new_status = pt.common.Status.SUCCESS
+            for i, row in enumerate(self.pack_state.cells):
+                for j, cell in enumerate(row):
+                    frame_position = cell.frame_position
+                    pick_pose = cell.pose
+                    if cell.quality < self.cell_m_q:
+                        place_pose = self.discard_T
+                    else:
+                        place_pose = self.keep_T    
+                    self.robot.pick_and_place(pick_pose, place_pose)
+                    sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position)
+                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
+                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
                     # update RDF
-                    #time.sleep(7)
-                    self.rdf.update_cell_sorted(row=row,col=col,sorted=sorted)
+                    self.rdf.update_cell_sorted(i, j, sorted=sorted)
                     if sorted:
-                        self.pack_state.update_cell(row, col, sorted=sorted)
+                        self.pack_state.update_cell(i, j, sorted=sorted)
                     else:
                         # Fails if a single pick and place fails, maybe change this
                         new_status = pt.common.Status.FAILURE 
-                        return new_status
+                        # return new_status # removed otherwise does not tries them all
                     # TODO: update self.gui.outcomes
-
-            new_status = pt.common.Status.SUCCESS
             self.rdf.end_sorting_process()
             self.rdf.end_session()
-
+            print(self.name, new_status)
         return new_status
 
 class HelpedSort(pt.behaviour.Behaviour):
@@ -270,7 +275,7 @@ class HelpedSort(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.blackboard = blackboard
         self.rdf = rdf
-        self.tried = False
+        # self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
@@ -280,7 +285,7 @@ class HelpedSort(pt.behaviour.Behaviour):
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.show_frame(6)
             # record system asks for help, TODO: put the class under RobotAction
-            self.rdf.request_help()
+            # self.rdf.request_help()
 
         if self.gui.done:
             # visual check that all cells are sorted
@@ -299,7 +304,7 @@ class HelpedSort(pt.behaviour.Behaviour):
             new_status = pt.common.Status.SUCCESS
             self.rdf.end_sorting_process()
             self.rdf.end_session()
+            print(self.name, new_status)   
         else:
             new_status = pt.common.Status.RUNNING
-            
         return new_status
