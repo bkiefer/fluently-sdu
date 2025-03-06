@@ -28,11 +28,11 @@ class VisionModule():
         new_bg = self.get_current_frame()
         self.background = new_bg
 
-    def get_current_frame(self, format="cv2") -> cv2.Mat:
+    def get_current_frame(self, format="cv2") -> np.ndarray:
         """get the current frame from the camera
 
         Returns:
-            cv2.Mat: frame
+            np.ndarray: frame
         """
         frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
         # self.frame = self.camera.get_color_frame()
@@ -41,12 +41,12 @@ class VisionModule():
             frame = PIL.Image.fromarray(frame)
         return frame
 
-    def classify_cell(self, frames: list[cv2.Mat]) -> dict[tuple[str, float]]:
+    def classify_cell(self, frames: list[np.ndarray]) -> dict[tuple[str, float]]:
         """
         classify the cell model from one or multiple frames
 
         Args:
-            frame (list[cv2.Mat]): list of frame(s) used for the classification 
+            frame (list[np.ndarray]): list of frame(s) used for the classification 
 
         Returns:
             list[tuple[str, float]]: list of model with associated probability
@@ -54,11 +54,11 @@ class VisionModule():
         cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}]
         return cells_probs
 
-    def cell_detection(self, frame: cv2.Mat) -> list[ndarray]:
+    def cell_detection(self, frame: np.ndarray) -> list[ndarray]:
         """detect cells positions based on image
 
         Args:
-            frame (cv2.Mat): frame for the detection
+            frame (np.ndarray): frame for the detection
 
         Returns:
             list[ndarray]: positons list
@@ -103,11 +103,11 @@ class VisionModule():
             print("No circles found")
         return cells_positions
 
-    def assess_cells_qualities(self, frame:cv2.Mat, bbs_positions: list[ndarray]) -> list[float]:
+    def assess_cells_qualities(self, frame:np.ndarray, bbs_positions: list[ndarray]) -> list[float]:
         """assign to each cell a score based on quality
 
         Args:
-            frame (cv2.Mat): frame for assessment
+            frame (np.ndarray): frame for assessment
             bbs_positions (list[ndarray]): the position of the bounding boxes to create a close up of the battery cell
 
         Returns:
@@ -116,7 +116,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def verify_pickup(self, frame: cv2.Mat, position: ndarray) -> list[bool]:
+    def verify_pickup(self, frame: np.ndarray, position: ndarray) -> list[bool]:
         """verify if a cell hs been picked up
 
         Args:
@@ -144,7 +144,8 @@ class VisionModule():
             cv2.circle(result_bgr, position[:2], 3, (0, 0, 255), 3)
         else:
             cv2.circle(result_bgr, position[:2], 3, (0, 255, 0), 3)
-        
+        cv2.imshow("frame", result_bgr)
+        key = cv2.waitKey(0)
         vision.show_frames("Verify pick up", [result_bgr]) # !!!
         return pickedup
 
