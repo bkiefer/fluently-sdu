@@ -22,8 +22,12 @@ class VisionModule():
             print("Starting vision module")
         except RuntimeError:
             print("The vision module could not be started, the module will run for debug purpose")
-        self.start_frame = cv2.imread("./data/NMC21700-from-top.png")     
+        self.background = cv2.imread("./data/background.jpg")     
         
+    def set_background(self):
+        new_bg = self.get_current_frame()
+        self.background = new_bg
+
     def get_current_frame(self, format="cv2") -> cv2.Mat:
         """get the current frame from the camera
 
@@ -94,7 +98,7 @@ class VisionModule():
                 radius = i[2]
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
             
-            #vision.show_frames("Detection", [drawing_frame]) # !!!
+            vision.show_frames("Detection", [drawing_frame]) # !!!
         else:
             print("No circles found")
         return cells_positions
@@ -121,7 +125,7 @@ class VisionModule():
         Returns:
             bool: if or not the cell was picked up
         """
-        start_frame = cv2.cvtColor(self.start_frame, cv2.COLOR_BGR2GRAY)
+        start_frame = cv2.cvtColor(self.background, cv2.COLOR_BGR2GRAY)
         cp_frame = copy.deepcopy(frame)
         if isinstance(frame, PIL.Image.Image):
             cp_frame = np.array(cp_frame)
@@ -135,23 +139,22 @@ class VisionModule():
         
         # print(f"The cell was pickedup: {pickedup}")
         result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+        print(pickedup)
         if not pickedup:
-            cv2.circle(result_bgr, position, 3, (0, 0, 255), 3)
+            cv2.circle(result_bgr, position[:2], 3, (0, 0, 255), 3)
         else:
-            cv2.circle(result_bgr, position, 3, (0, 255, 0), 3)
+            cv2.circle(result_bgr, position[:2], 3, (0, 255, 0), 3)
         
-        #vision.show_frames("Verify pick up", [result_bgr]) # !!!
+        vision.show_frames("Verify pick up", [result_bgr]) # !!!
         return pickedup
 
 if __name__ == "__main__":
-    camera_frame = cv2.imread("./data/NMC21700-from-top.png")
-    # camera_frame = cv2.imread("./data/camera_frame_02.jpg")
-    # camera_frame = cv2.imread("./data/Camera02.jpg")
+    camera_frame = cv2.imread("./data/background.jpg")
     vision_module = VisionModule()
     vision_module.classify_cell(camera_frame)
     bbs_positions = vision_module.cell_detection(camera_frame)
     vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
-    camera_frame = cv2.imread("./data/NMC21700-from-top-one_missing.png")
+    camera_frame = cv2.imread("./data/frame.jpg")
     for bb in bbs_positions:
         vision_module.verify_pickup(camera_frame, bb)
     
