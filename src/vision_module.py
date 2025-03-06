@@ -83,9 +83,10 @@ class VisionModule():
         # img_erosion = cv2.erode(frame, kernel, iterations=1) 
         # img_dilation = cv2.dilate(frame, kernel, iterations=1) 
 
-        edges = cv2.Canny(preprocessed, 100 ,200)
-        # vision.show_frames("Edges", [edges])
-        circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, 1, edges.shape[0] / 8, param1=100, param2=30, minRadius=1, maxRadius=100)
+        # edges = cv2.Canny(preprocessed, 0, 300)
+        # vision.show_frames("Detection", [preprocessed]) # !!!
+
+        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=100, minRadius=40, maxRadius=100)
         if circles is not None:
             # print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
@@ -94,11 +95,11 @@ class VisionModule():
             drawing_frame = copy.deepcopy(cp_frame)
             for i in circles[0, :]:
                 center = (i[0], i[1])
-                cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 radius = i[2]
+                # cv2.putText(drawing_frame, f"c: {center}; r: {radius}", np.array(center)+(-50-int(radius/2), - 50-int(radius/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (155, 255, 255), 1)
+                cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            
-            vision.show_frames("Detection", [drawing_frame]) # !!!
+            # vision.show_frames("Detection", [drawing_frame]) # !!!
         else:
             print("No circles found")
         return cells_positions
@@ -116,7 +117,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def verify_pickup(self, frame: np.ndarray, position: ndarray) -> list[bool]:
+    def verify_pickup(self, frame: np.ndarray, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
 
         Args:
@@ -133,20 +134,23 @@ class VisionModule():
                 cv2.cvtColor(cp_frame, cv2.COLOR_RGB2BGR)
         current_frame = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, start_frame)
-        _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(diff, 70, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
-        pickedup = bool(result[position[1]][position[0]])
-        
+        cx, cy, radius = position[0], position[1], position[2]
+        n_deg, n_r = 8, 10
+        voting, votes = n_deg*n_r, 0
+        for  deg in np.linspace(0, 2*np.pi, num=n_deg):
+            for r in np.linspace(0, radius, num=n_r):
+                point = (np.array([cx, cy]) + (np.array([np.cos(deg), np.sin(deg)]) * r)).astype(int)
+                votes += result[point[1]][point[0]]/255 # access to opnecv mat x, y inverted if white=255, then we add a vote for a hit otherwise 0
+        pickedup = (votes/voting > 0.5)
         # print(f"The cell was pickedup: {pickedup}")
         result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
-        print(pickedup)
         if not pickedup:
-            cv2.circle(result_bgr, position[:2], 3, (0, 0, 255), 3)
+            cv2.circle(result_bgr, (cx, cy), 3, (0, 0, 255), 3)
         else:
-            cv2.circle(result_bgr, position[:2], 3, (0, 255, 0), 3)
-        cv2.imshow("frame", result_bgr)
-        key = cv2.waitKey(0)
-        vision.show_frames("Verify pick up", [result_bgr]) # !!!
+            cv2.circle(result_bgr, (cx, cy), 3, (0, 255, 0), 3)
+        # vision.show_frames("Verify pick up", [result_bgr]) # !!!
         return pickedup
 
 if __name__ == "__main__":
