@@ -6,25 +6,30 @@ class BeginSession(pt.behaviour.Behaviour):
     """
     Sets up the user and session in the RDF store
     """
-    def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui, robot):
         super(BeginSession, self).__init__(name)
         self.gui = gui
         self.blackboard = blackboard
         self.rdf = rdf
         self.vision = vision
         self.pack_state = pack_state
+        self.robot = robot
         # self.status = pt.common.Status.INVALID
         # self.tried = False
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:  
+        if self.status == pt.common.Status.INVALID:
             print("First update for behavior", self.name)
             self.rdf.get_user(first_name = "", last_name = "")
             self.rdf.start_session()
             results = self.vision.cell_detection(self.gui.camera_frame) # center, radius
-            for detection in results:
-                self.pack_state.
-            print(results)
+            results = sorted(results, key=lambda el: (el[1], el[0]))
+            k = 0
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    frame_position = (results[k][1], results[k][2])
+                    pose = self.robot.frame_to_world(frame_position)
+                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
             new_status = pt.common.Status.SUCCESS
             print(self.name, self.status)
         return new_status
@@ -134,16 +139,14 @@ class Detect(pt.behaviour.Behaviour):
             # proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             proposed_locations = []
             # # update cell locations in GUI
-            for circle in proposed:
-                proposed_locations.append((circle[0]-circle[2], circle[1]-circle[2],circle[0]+circle[2], circle[1]+circle[2]))
+            for cell in self.pack_state.cells:
+                print(cell)
+                # proposed_locations.append((circle[0]-circle[2], circle[1]-circle[2],circle[0]+circle[2], circle[1]+circle[2]))
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
 
         if self.gui.chosen_locations: # if not chosen_locations not empty
             # for now it is just one long row, but this info could come from the pack information / visual / user input
-            self.pack_state.update_dim(rows=1,cols=len(self.gui.chosen_locations)) # change to known dimensions
-            i = 0
-            # change to known dimensions
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     frame_position = self.gui.chosen_locations[i]

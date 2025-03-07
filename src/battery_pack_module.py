@@ -21,16 +21,16 @@ class PackState():
         self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):
+        self.cells = []
         self.rows = rows
         self.cols = cols
-        self.cells = []
         for _ in range(rows):
             row = []
             for _ in range(cols):
                 row.append(Cell())
             self.cells.append(row)
-        
-    def update_cell(self, i, j, model=None, size=None, quality=None, pose=None, frame_position=None, sorted=None):
+
+    def update_cell(self, i, j, model=None, radius=None, height=None, quality=None, pose=None, frame_position=None, sorted=None):
         """_summary_
 
         Args:
@@ -45,8 +45,10 @@ class PackState():
         """
         if model is not None:
             self.cells[i][j].model = model
-        if size is not None:
-            self.cells[i][j].size = size
+        if radius is not None:
+            self.cells[i][j].size = radius
+        if height is not None:
+            self.cells[i][j].size = height
         if quality is not None:
             self.cells[i][j].quality =  quality
         if pose is not None:
