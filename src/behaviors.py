@@ -66,12 +66,6 @@ class AutoClass(pt.behaviour.Behaviour):
 
         elif self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            # size = self.rdf.get_dimensions_from_cell_type(model)
-            size = (0, 0)
-            # update cells information with model and size
-            for row in range(self.pack_state.rows):
-                for col in range(self.pack_state.cols):
-                    self.pack_state.update_cell(row, col, model=model, size=(size))
             new_status = pt.common.Status.SUCCESS
             # record classification is done
             self.rdf.object_classification()
@@ -104,11 +98,12 @@ class HelpedClass(pt.behaviour.Behaviour):
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
             # size = self.rdf.get_dimensions_from_cell_type(model)
-            size = (0, 0)
+            radius = 85
+            height = 26
             # update cells information with model and size
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
-                    self.pack_state.update_cell(row, col, model=model, size=(size))
+                    self.pack_state.update_cell(row, col, model=model, radius=radius, height=height)
             # record classification is done
             self.rdf.object_classification()
             new_status = pt.common.Status.SUCCESS
@@ -139,9 +134,13 @@ class Detect(pt.behaviour.Behaviour):
             # proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             proposed_locations = []
             # # update cell locations in GUI
-            for cell in self.pack_state.cells:
-                print(cell)
-                # proposed_locations.append((circle[0]-circle[2], circle[1]-circle[2],circle[0]+circle[2], circle[1]+circle[2]))
+            for row in self.pack_state.cells:
+                for cell in row:
+                    cx, cy = cell.frame_position
+                    r = cell.radius
+                    print(cx, cy, r)
+                    proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
+                    # TODO: it is not drawing check if they are correctly initialized
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
 
