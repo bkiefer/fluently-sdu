@@ -239,13 +239,15 @@ class AutoSort(pt.behaviour.Behaviour):
             for i, row in enumerate(self.pack_state.cells):
                 for j, cell in enumerate(row):
                     frame_position = cell.frame_position
+                    radius = cell.radius
                     pick_pose = cell.pose
                     if cell.quality < self.cell_m_q:
                         place_pose = self.discard_T
                     else:
                         place_pose = self.keep_T    
                     self.robot.pick_and_place(pick_pose, place_pose)
-                    sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position)
+
+                    sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position, radius)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
                     # update RDF
