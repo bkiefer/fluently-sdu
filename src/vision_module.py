@@ -16,8 +16,8 @@ class VisionModule():
         try:
             self.camera = vision.RealSenseCamera({
                                                     'color': [1280, 720],
-                                                    'depth': [640, 480],
-                                                    'infrared': [640, 480]
+                                                    # 'depth': [640, 480],
+                                                    # 'infrared': [640, 480]
                                                     })
             print("Starting vision module")
         except RuntimeError:
