@@ -6,11 +6,13 @@ class BeginSession(pt.behaviour.Behaviour):
     """
     Sets up the user and session in the RDF store
     """
-    def __init__(self, name, blackboard, rdf, gui):
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
         super(BeginSession, self).__init__(name)
         self.gui = gui
         self.blackboard = blackboard
         self.rdf = rdf
+        self.vision = vision
+        self.pack_state = pack_state
         # self.status = pt.common.Status.INVALID
         # self.tried = False
 
@@ -19,7 +21,10 @@ class BeginSession(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
             self.rdf.get_user(first_name = "", last_name = "")
             self.rdf.start_session()
-            # self.tried = True
+            results = self.vision.cell_detection(self.gui.camera_frame) # center, radius
+            for detection in results:
+                self.pack_state.
+            print(results)
             new_status = pt.common.Status.SUCCESS
             print(self.name, self.status)
         return new_status
@@ -126,7 +131,7 @@ class Detect(pt.behaviour.Behaviour):
     def update(self):
         if self.gui.active_frame != 3:
             # current_frame = self.vision.get_current_frame()
-            proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
+            # proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             proposed_locations = []
             # # update cell locations in GUI
             for circle in proposed:

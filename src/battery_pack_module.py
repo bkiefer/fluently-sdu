@@ -15,22 +15,13 @@ class Cell():
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
-        # rows and cols useful for sanity check
-        self.rows = rows
-        self.cols = cols
         self.model = "unknown"
         # TODO: relative positions between cells to benefit pick and place action
-        self.cells = []
-        for _ in range(rows):
-            row = []
-            for _ in range(cols):
-                row.append(Cell())
-            self.cells.append(row)
+        self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):
         self.rows = rows
         self.cols = cols
-        self.model = "unknown"
         self.cells = []
         for _ in range(rows):
             row = []
