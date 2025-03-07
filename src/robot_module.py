@@ -6,13 +6,14 @@ from scipy.spatial.transform import Rotation
 import time
 
 class RobotModule:
-    def __init__(self, ip: str, home_position: ndarray):
+    def __init__(self, ip: str, home_position: ndarray, gripper_id=0):
         try:
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
-            self.gripper = robotics.VacuumGripper(self.robot, 1) # find correct id
+            self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.robot.add_gripper(gripper=self.gripper)
             print("Starting robot module")
         except RuntimeError:
+            self.robot = None
             print("The robot could not be started, the module will run for debug purpose")
 
     def pick_and_place(self, pick_T: sm.SE3, place_T: sm.SE3):
@@ -45,16 +46,17 @@ class RobotModule:
         self.robot.open_gripper()
 
 if __name__ == "__main__":
-    robot_module = RobotModule("192.168.1.100", [0,0,0,0,0,0])
+    robot_module = RobotModule("192.168.1.100", [0,0,0,0,0,0], gripper_id=0)
+
     # print(robot_module.robot.getActualTCPPose())
     # pose = sm.SE3.Rt(sm.SO3.EulerVec(robot_module.robot.getActualTCPPose()[3:]), robot_module.robot.getActualTCPPose()[:3])
     # print(pose)
     # print((robot_module.robot.getActualQ()))
     # robot_module.robot.moveL([-0.3, -0., 0.48, 1.15, -2.92, 0])
-    robot_module.robot.move_to_cart_pose(sm.SE3([0, -0.3, 0.4]) * sm.SE3.Rx(180, unit='deg'))
+    robot_module.robot.moveJ([0.330, -1.577, 2.448, -2.428, -1.556, 4.648],  0.3, 0.3)
+    input(">>>")
     robot_module.robot.close_gripper()
-    print(robot_module.robot.get_gripper_status())
+    input(">>>")
     robot_module.robot.open_gripper()
-    print(robot_module.robot.get_gripper_status())
 
     

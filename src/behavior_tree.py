@@ -16,18 +16,25 @@ import numpy as np
 class BehaviourTree(pt.trees.BehaviourTree):
     def __init__(self):        
         # Blackboard and registering keys 
-        self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
-        self.rdf = RdfStore()
         #self.rdf = None
         cell_m_q, cell_h_q = 0.6, 0.8                       # this defines them everywhere
         discard_T = sm.SE3([0, 0, 0]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         keep_T = sm.SE3([0, 0, 0]) * sm.SE3.Rx(np.pi)       # needs to be defined from the real setup
+        self.over_pack_jpos = [0.330, -1.577, 2.448, -2.428, -1.556, 4.648]
+
+        self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
+        self.rdf = RdfStore()
         self.vision = VisionModule()
         self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
-        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0])
+        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], gripper_id=0)
         self.pack_state = PackState()
         self.done = False
 
+        # since we analyze only the cells section of the task at the beginning we move into the position we would be in if we had done the part with the pack
+        if self.robot.robot is not None:
+            input("The robot will start moving now, presse enter when ready >>>")
+            self.robot.robot.moveJ(self.over_pack_jpos,  0.1, 0.3)
+            
         # Leaf nodes
         self.begin_session = BeginSession(name="begin_session", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)        
         self.auto_class = AutoClass(name="auto_class", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
