@@ -280,7 +280,7 @@ class MemGui(tk.Tk):
         self.proposed_models = proposed_models
         self.frames[1].label.configure(text=f"Cells are: {self.proposed_models[0]['model']}")
         for propose in self.proposed_models[1:]: # we skip the first one as it was already denied by the user
-            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.frames[2].chose_model(propose['model']))
+            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda model = propose['model']: self.frames[2].chose_model(model))
             btn.pack()
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):

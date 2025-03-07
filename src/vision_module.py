@@ -136,7 +136,7 @@ class VisionModule():
         diff = cv2.absdiff(current_frame, start_frame)
         _, thresh = cv2.threshold(diff, 70, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
-        cx, cy, radius = position[0], position[1], position[2]
+        cx, cy = position[0], position[1]
         n_deg, n_r = 8, 10
         voting, votes = n_deg*n_r, 0
         for  deg in np.linspace(0, 2*np.pi, num=n_deg):
