@@ -3,7 +3,7 @@ import numpy as np
 
 class Cell():
     def __init__(self):
-        self.model = ""
+        self.model = "unknown"
         self.radius = 0.0
         self.height = 0.0
         self.quality = -1.0
@@ -12,7 +12,7 @@ class Cell():
         self.sorted = False
 
     def __repr__(self):
-        return f"mod: {self.model:^10} r: {self.radius:02d} h: {self.height:05.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
+        return f"mod: {self.model:^10} r: {self.radius:05.2f} h: {self.height:05.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
@@ -86,7 +86,8 @@ class PackState():
                 printable += (str(cell) + " | ")
                 print("len", len(str(cell)))
             printable += "\n"
-        return printable # we add an additional enter
+        return printable
 
-ps = PackState(5, 6)
-# print(ps)
+if __name__ == "__main__":
+    ps = PackState(2, 2)
+    print(ps)
