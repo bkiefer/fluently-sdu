@@ -6,17 +6,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import PIL
-import pyrealsense2 as rs
 from gubokit import vision
+import time
+import spatialmath as sm
+from gubokit.vision import frame_pos_to_3dpos
 
 class VisionModule():
-    def __init__(self):
+    def __init__(self, camera_Ext: sm.SE3):
         pass
         # camera initialization
         try:
             self.camera = vision.RealSenseCamera({
                                                     'color': [1280, 720],
-                                                    # 'depth': [640, 480],
+                                                    'depth': [640, 480],
                                                     # 'infrared': [640, 480]
                                                     })
             print("Starting vision module")
@@ -34,8 +36,9 @@ class VisionModule():
         Returns:
             np.ndarray: frame
         """
-        frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
-        # self.frame = self.camera.get_color_frame()
+        # frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
+        time.sleep(1)
+        frame = self.camera.get_color_frame()
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -84,9 +87,10 @@ class VisionModule():
         # img_dilation = cv2.dilate(frame, kernel, iterations=1) 
 
         # edges = cv2.Canny(preprocessed, 0, 300)
-        # vision.show_frames("Detection", [preprocessed]) # !!!
+        # vision.show_frames("Detection", [preprocessed])
+        cv2.imshow("Preprocessed", preprocessed)
 
-        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=100, minRadius=40, maxRadius=100)
+        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=80, minRadius=40, maxRadius=100)
         if circles is not None:
             # print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
@@ -99,7 +103,9 @@ class VisionModule():
                 # cv2.putText(drawing_frame, f"c: {center}; r: {radius}", np.array(center)+(-50-int(radius/2), - 50-int(radius/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (155, 255, 255), 1)
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            # vision.show_frames("Detection", [drawing_frame]) # !!!
+            # cv2.imshow("Detection", drawing_frame)
+            # cv2.waitKey(0)
+            # vision.show_frames("Detection", [drawing_frame])
         else:
             print("No circles found")
         return cells_positions
@@ -117,7 +123,19 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def verify_pickup(self, frame: np.ndarray, position: ndarray, radius=0.5) -> list[bool]:
+    def frame_to_3d(self, frame_pos:ndarray, camera) -> sm.SE3:
+        """convert a position in the frame into a 4x4 pose in world frame
+
+        Args:
+            frame_pos (ndarray): position in the frame
+
+        Returns:
+            sm.SE3: 4x4 pose in world frame
+        """
+        pose = frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera)
+        return pose
+
+    def verify_pickup(self, start_frame: ndarray, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
 
         Args:
@@ -126,14 +144,15 @@ class VisionModule():
         Returns:
             bool: if or not the cell was picked up
         """
-        start_frame = cv2.cvtColor(self.background, cv2.COLOR_BGR2GRAY)
-        cp_frame = copy.deepcopy(frame)
-        if isinstance(frame, PIL.Image.Image):
-            cp_frame = np.array(cp_frame)
-            if frame.mode == "RGB":
-                cv2.cvtColor(cp_frame, cv2.COLOR_RGB2BGR)
-        current_frame = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
-        diff = cv2.absdiff(current_frame, start_frame)
+        cp_current_frame = copy.deepcopy(self.get_current_frame())
+        cp_start_frame = copy.deepcopy(start_frame)
+        if isinstance(start_frame, PIL.Image.Image):
+            cp_start_frame = np.array(cp_start_frame)
+            if start_frame.mode == "RGB":
+                cv2.cvtColor(cp_start_frame, cv2.COLOR_RGB2BGR)
+        cp_start_frame = cv2.cvtColor(cp_start_frame, cv2.COLOR_BGR2GRAY)
+        current_frame = cv2.cvtColor(cp_current_frame, cv2.COLOR_BGR2GRAY)
+        diff = cv2.absdiff(current_frame, cp_start_frame)
         _, thresh = cv2.threshold(diff, 70, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
         cx, cy = position[0], position[1]
@@ -150,16 +169,22 @@ class VisionModule():
             cv2.circle(result_bgr, (cx, cy), 3, (0, 0, 255), 3)
         else:
             cv2.circle(result_bgr, (cx, cy), 3, (0, 255, 0), 3)
-        # vision.show_frames("Verify pick up", [result_bgr]) # !!!
+        cv2.imwrite(f"background.jpg", cp_start_frame)
+        cv2.imwrite(f"{position}.jpg", result_bgr)
+        # vision.show_frames("Verify pick up", [result_bgr])
+        # cv2.imshow("Verify pick up", result_bgr)
+        # cv2.waitKey(0)
         return pickedup
 
 if __name__ == "__main__":
-    camera_frame = cv2.imread("./data/background.jpg")
-    vision_module = VisionModule()
+    vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
+    time.sleep(2)
+    camera_frame = vision_module.get_current_frame()
     vision_module.classify_cell(camera_frame)
     bbs_positions = vision_module.cell_detection(camera_frame)
     vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
-    camera_frame = cv2.imread("./data/frame.jpg")
+    input("Remove one cell")
+    camera_frame = vision_module.get_current_frame()
     for bb in bbs_positions:
         vision_module.verify_pickup(camera_frame, bb)
     

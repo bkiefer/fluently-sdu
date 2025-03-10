@@ -28,10 +28,10 @@ class BeginSession(pt.behaviour.Behaviour):
             for i in range((self.pack_state.rows)):
                 for j in range(self.pack_state.cols):
                     frame_position = (results[k][0], results[k][1])
-                    pose = self.robot.frame_to_world(frame_position)
+                    pose = self.vision.frame_to_3d(frame_position, self.vision.camera)
                     self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
                     k += 1
-            new_status = pt.common.Status.SUCCESS
+            new_status = pt.common.Status.SUCCESS   
             print(self.name, self.status)
         return new_status
 
@@ -58,7 +58,9 @@ class AutoClass(pt.behaviour.Behaviour):
 
         if self.gui.active_frame != 1:
             print("First update for behavior", self.name)
-            self.gui.update_proposed_models(self.vision.classify_cell(frames=[self.gui.camera_frame]))
+            # TODO: get the probability from the rdf and the height registered in the battery pack state
+            cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}] 
+            self.gui.update_proposed_models(cells_probs)
             self.gui.show_frame(1)
 
         if self.gui.class_reject:
@@ -159,7 +161,7 @@ class Detect(pt.behaviour.Behaviour):
                     frame_position = self.gui.chosen_locations[k]
                      # get the center position
                     frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
-                    pose = self.robot.frame_to_world(frame_position)
+                    pose = self.vision.frame_to_3d(frame_position, self.vision.camera)
                     self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose)
                     k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
@@ -226,7 +228,7 @@ class AutoSort(pt.behaviour.Behaviour):
 
     NOTE: SUCCESS if all pick and place actions succeed or some other criterion? 
     """
-    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui, cell_m_q, cell_h_q, discard_T, keep_T):
+    def __init__(self, name, blackboard, rdf, pack_state, vision, robot, gui, cell_m_q, cell_h_q, discard_T, keep_T, over_pack_T):
         super(AutoSort, self).__init__(name)
         self.vision = vision
         self.gui = gui
@@ -237,7 +239,7 @@ class AutoSort(pt.behaviour.Behaviour):
         # self.tried = False
         self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.status = pt.common.Status.INVALID
-        self.discard_T, self.keep_T = discard_T, keep_T
+        self.discard_T, self.keep_T, self.over_pack_T = discard_T, keep_T, over_pack_T
 
     def update(self):
         if self.gui.active_frame != 5:
@@ -261,7 +263,7 @@ class AutoSort(pt.behaviour.Behaviour):
                     else:
                         place_pose = self.keep_T    
                     self.robot.pick_and_place(pick_pose, place_pose)
-
+                    self.robot.move_to_cart_pos(self.over_pack_T)
                     sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position, radius)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
@@ -312,7 +314,7 @@ class HelpedSort(pt.behaviour.Behaviour):
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     frame_position = self.pack_state.cells[row][col].frame_position
-                    sorted = self.vision.verify_pickup(current_frame, frame_position)
+                    sorted = self.vision.verify_pickup(current_frame, frame_position) # is this neecessary?
                     if sorted:
                         self.pack_state.update_cell(row, col, sorted=sorted)
                     else:

@@ -84,7 +84,6 @@ class PackState():
             printable += str(i) + " | "
             for j, cell in enumerate(row):
                 printable += (str(cell) + " | ")
-                print("len", len(str(cell)))
             printable += "\n"
         return printable
 

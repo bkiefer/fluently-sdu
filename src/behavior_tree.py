@@ -18,22 +18,26 @@ class BehaviourTree(pt.trees.BehaviourTree):
         # Blackboard and registering keys 
         #self.rdf = None
         cell_m_q, cell_h_q = 0.6, 0.8                       # this defines them everywhere
-        discard_T = sm.SE3([0, 0, 0]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
-        keep_T = sm.SE3([0, 0, 0]) * sm.SE3.Rx(np.pi)       # needs to be defined from the real setup
-        self.over_pack_jpos = [0.330, -1.577, 2.448, -2.428, -1.556, 4.648]
-
+        over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
+        discard_T = sm.SE3([0.21, -0.55, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        keep_T =    sm.SE3([0.15, -0.41, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        self.camera_Ext = sm.SE3([0,0,0])
+        
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
         self.rdf = RdfStore()
-        self.vision = VisionModule()
-        self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
+        self.vision = VisionModule(camera_Ext=self.camera_Ext)
         self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], gripper_id=0)
-        self.pack_state = PackState(rows=2, cols=2)
+        self.pack_state = PackState(rows=1, cols=2)
         self.done = False
 
         # since we analyze only the cells section of the task at the beginning we move into the position we would be in if we had done the part with the pack
         if self.robot.robot is not None:
-            input("The robot will start moving now, presse enter when ready >>>")
-            self.robot.robot.moveJ(self.over_pack_jpos,  0.1, 0.3)
+            # input("The robot will start moving now, press enter when ready >>>")
+            self.robot.robot.move_up(0.15)
+            self.robot.robot.move_to_cart_pose(over_pack_T,  0.1)
+            self.vision.set_background() # we take this to verify picke and place
+
+        self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
             
         # Leaf nodes
         self.begin_session = BeginSession(name="begin_session", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)        
@@ -42,7 +46,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.detect = Detect(name="detect", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)
         self.assess = Assess(name="assess", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.auto_sort = AutoSort(name="auto_sort", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, robot=self.robot, gui=self.gui, 
-                                  cell_h_q=cell_h_q, cell_m_q=cell_m_q, discard_T=discard_T, keep_T=keep_T)
+                                  cell_h_q=cell_h_q, cell_m_q=cell_m_q, discard_T=discard_T, keep_T=keep_T, over_pack_T=over_pack_T)
         self.helped_sort = HelpedSort(name="helped_sort", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
 
         # Selectors
