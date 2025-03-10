@@ -418,7 +418,7 @@ class AutoClassScreen(HomeScreen):
     #     self.label.after(1000,self.change_label)
 
     def confirm(self):
-        self.controller.chosen_model = self.controller.proposed_models[0]
+        self.controller.chosen_model = self.controller.proposed_models[0]['model']
         # self.controller.show_frame(self.idx + 2)
         #self.controller.bbs_editor.delete_mode = True
     

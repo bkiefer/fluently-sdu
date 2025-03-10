@@ -25,11 +25,12 @@ class BeginSession(pt.behaviour.Behaviour):
             results = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             results = sorted(results, key=lambda el: (el[1], el[0]))
             k = 0
-            for i in range(self.pack_state.rows):
+            for i in range((self.pack_state.rows)):
                 for j in range(self.pack_state.cols):
-                    frame_position = (results[k][1], results[k][2])
+                    frame_position = (results[k][0], results[k][1])
                     pose = self.robot.frame_to_world(frame_position)
                     self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
+                    k += 1
             new_status = pt.common.Status.SUCCESS
             print(self.name, self.status)
         return new_status
@@ -66,6 +67,11 @@ class AutoClass(pt.behaviour.Behaviour):
 
         elif self.gui.chosen_model != "":
             model = self.gui.chosen_model
+            k = 0
+            for i in range((self.pack_state.rows)):
+                for j in range(self.pack_state.cols):
+                    self.pack_state.update_cell(i, j, model=model)
+                    k += 1
             new_status = pt.common.Status.SUCCESS
             # record classification is done
             self.rdf.object_classification()
@@ -97,13 +103,14 @@ class HelpedClass(pt.behaviour.Behaviour):
 
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            # size = self.rdf.get_dimensions_from_cell_type(model)
-            radius = 85
-            height = 26
+            # radius, height = self.rdf.get_dimensions_from_cell_type(model)
+            radius, height = 85, 26
             # update cells information with model and size
-            for row in range(self.pack_state.rows):
-                for col in range(self.pack_state.cols):
-                    self.pack_state.update_cell(row, col, model=model, radius=radius, height=height)
+            k = 0
+            for i in range((self.pack_state.rows)):
+                for j in range(self.pack_state.cols):
+                    self.pack_state.update_cell(i, j, model=model, radius=radius, height=height)
+                    k += 1
             # record classification is done
             self.rdf.object_classification()
             new_status = pt.common.Status.SUCCESS
@@ -130,6 +137,7 @@ class Detect(pt.behaviour.Behaviour):
 
     def update(self):
         if self.gui.active_frame != 3:
+            print("First update for behavior", self.name)
             # current_frame = self.vision.get_current_frame()
             # proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             proposed_locations = []
@@ -138,7 +146,6 @@ class Detect(pt.behaviour.Behaviour):
                 for cell in row:
                     cx, cy = cell.frame_position
                     r = cell.radius
-                    print(cx, cy, r)
                     proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
                     # TODO: it is not drawing check if they are correctly initialized
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
@@ -146,14 +153,15 @@ class Detect(pt.behaviour.Behaviour):
 
         if self.gui.chosen_locations: # if not chosen_locations not empty
             # for now it is just one long row, but this info could come from the pack information / visual / user input
-            for row in range(self.pack_state.rows):
-                for col in range(self.pack_state.cols):
-                    frame_position = self.gui.chosen_locations[i]
+            k = 0
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    frame_position = self.gui.chosen_locations[k]
                      # get the center position
                     frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
                     pose = self.robot.frame_to_world(frame_position)
-                    self.pack_state.update_cell(row, col, frame_position=frame_position, pose=pose)
-                    i += 1
+                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose)
+                    k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
             # self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
             new_status = pt.common.Status.SUCCESS

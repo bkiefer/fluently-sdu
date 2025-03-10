@@ -27,7 +27,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.vision = VisionModule()
         self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
         self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], gripper_id=0)
-        self.pack_state = PackState()
+        self.pack_state = PackState(rows=2, cols=2)
         self.done = False
 
         # since we analyze only the cells section of the task at the beginning we move into the position we would be in if we had done the part with the pack
@@ -73,12 +73,14 @@ class BehaviourTree(pt.trees.BehaviourTree):
     def tick_tree_in_gui(self):
         if self.root.status == pt.common.Status.SUCCESS:
             print("Behavior tree succeeded")
+            print(self.pack_state)
             self.gui.reset_gui()
             self.main_sequence.stop(pt.common.Status.INVALID) # reset the tree
             self.gui.after(1, self.tick_tree_in_gui)
         elif self.root.status == pt.common.Status.FAILURE:
             # self.done = True # are we using this?
-            print("Behavior tree failed") 
+            print("Behavior tree failed")
+            print(self.pack_state)
             self.gui.quit()
         else:
             self.tick()

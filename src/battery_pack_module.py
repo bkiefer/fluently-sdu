@@ -12,7 +12,7 @@ class Cell():
         self.sorted = False
 
     def __repr__(self):
-        return f"{self.quality:05.2f}"
+        return f"mod: {self.model:^10} r: {self.radius:02d} h: {self.height:05.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
@@ -46,9 +46,9 @@ class PackState():
         if model is not None:
             self.cells[i][j].model = model
         if radius is not None:
-            self.cells[i][j].size = radius
+            self.cells[i][j].radius = radius
         if height is not None:
-            self.cells[i][j].size = height
+            self.cells[i][j].height = height
         if quality is not None:
             self.cells[i][j].quality =  quality
         if pose is not None:
@@ -68,18 +68,25 @@ class PackState():
             self.cells[hole[0], hole[1]] = None
 
     def __repr__(self):
-        spacer = "\t\t"
-        printable = f"Printing battery qualities of model: {self.model}\n\t"
+        printable = f"\nPrinting battery pack state of model: {self.model}\n■■| "
+        lenght_cell_str = len(str(self.cells[0][0]))
+        h_line = "■■"
         for j, _ in enumerate(self.cells[0]):
-            printable += " "*2 + str(j) + spacer
+            header = f"{str(j):^{lenght_cell_str}}" + " | "
+            tmp = "-" * len(header)
+            h_line += "|" + tmp[1:]
+            printable += header
+        printable += "\n"
+        printable += (h_line + "|")
         printable += "\n"
 
         for i, row in enumerate(self.cells):           
-            printable += str(i) + "\t"
+            printable += str(i) + " | "
             for j, cell in enumerate(row):
-                printable += str(cell) + spacer
+                printable += (str(cell) + " | ")
+                print("len", len(str(cell)))
             printable += "\n"
-        return printable[:-1] # we add an additional enter
+        return printable # we add an additional enter
 
 ps = PackState(5, 6)
 # print(ps)
