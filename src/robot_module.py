@@ -24,12 +24,19 @@ class RobotModule:
             pick_T (sm.SE3): position and orientation for pick
             place_T (sm.SE3): position and orientation for place
         """
-        self.robot.pick_and_place(pick_pose=np.hstack((pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(pick_T.R)))), 
-                                  place_pose=np.hstack((place_T.t, Rotation.as_rotvec(Rotation.from_matrix(place_T.R)))))
-        # time.sleep(1)
+        try:
+            self.robot.pick_and_place(pick_pose=np.hstack((pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(pick_T.R)))), 
+                                    place_pose=np.hstack((place_T.t, Rotation.as_rotvec(Rotation.from_matrix(place_T.R)))))
+        except AttributeError:
+            print("The robot cannot be accessed running for debug purpose")
+            time.sleep(1)
     
     def move_to_cart_pos(self, T, speed=0.1):
-        self.robot.move_to_cart_pose(T, speed)
+        try:
+            self.robot.move_to_cart_pose(T, speed)
+        except AttributeError:
+            print("The robot cannot be accessed running for debug purpose")
+            time.sleep(1)
 
     def grab(self):
         self.robot.close_gripper()

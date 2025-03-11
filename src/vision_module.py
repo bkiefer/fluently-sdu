@@ -23,6 +23,7 @@ class VisionModule():
                                                     })
             print("Starting vision module")
         except RuntimeError:
+            self.camera = None
             print("The vision module could not be started, the module will run for debug purpose")
         self.background = cv2.imread("./data/background.jpg")     
         
@@ -36,9 +37,12 @@ class VisionModule():
         Returns:
             np.ndarray: frame
         """
-        # frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
         time.sleep(1)
-        frame = self.camera.get_color_frame()
+        try :
+            frame = self.camera.get_color_frame()
+        except AttributeError:
+            print("Cannot access camera. For debuggin purpose it will acess a file in store")
+            frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)

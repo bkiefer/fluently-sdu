@@ -152,17 +152,23 @@ class Detect(pt.behaviour.Behaviour):
                     # TODO: it is not drawing check if they are correctly initialized
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
-
+            print(self.pack_state)
         if self.gui.chosen_locations: # if not chosen_locations not empty
             # for now it is just one long row, but this info could come from the pack information / visual / user input
             k = 0
             for i in range(self.pack_state.rows):
                 for j in range(self.pack_state.cols):
-                    frame_position = self.gui.chosen_locations[k]
+                    bb = tuple(map(int, self.gui.chosen_locations[k])) # convert to int to avoid overflow
                      # get the center position
-                    frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
+                    radius = max(abs(bb[0] - bb[2]), abs(bb[1] - bb[3])) / 2
+                    print(bb)
+                    print((bb[0] - bb[2]))
+                    print((bb[1] - bb[3]))
+                    print(radius)
+                    frame_position = [(bb[0]+bb[2])//2, (bb[1]+bb[3])//2]
                     pose = self.vision.frame_to_3d(frame_position, self.vision.camera)
-                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose)
+                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=radius) 
+                    print(self.pack_state)
                     k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
             # self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
