@@ -25,10 +25,10 @@ class VisionModule():
         except RuntimeError:
             self.camera = None
             print("The vision module could not be started, the module will run for debug purpose")
-        self.background = cv2.imread("./data/background.jpg")     
         
     def set_background(self):
         new_bg = self.get_current_frame()
+        # cv2.imwrite("Background.jpg", new_bg)
         self.background = new_bg
 
     def get_current_frame(self, format="cv2") -> np.ndarray:
@@ -37,7 +37,7 @@ class VisionModule():
         Returns:
             np.ndarray: frame
         """
-        time.sleep(1)
+        time.sleep(2)
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
@@ -92,7 +92,7 @@ class VisionModule():
 
         # edges = cv2.Canny(preprocessed, 0, 300)
         # vision.show_frames("Detection", [preprocessed])
-        cv2.imshow("Preprocessed", preprocessed)
+        # cv2.imshow("Preprocessed", preprocessed)
 
         circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=80, minRadius=40, maxRadius=100)
         if circles is not None:
@@ -127,7 +127,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_to_3d(self, frame_pos:ndarray, camera) -> sm.SE3:
+    def frame_to_3d(self, frame_pos:ndarray, camera, flag) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -136,10 +136,10 @@ class VisionModule():
         Returns:
             sm.SE3: 4x4 pose in world frame
         """
-        pose = frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera)
+        pose = frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, flag=flag)
         return pose
 
-    def verify_pickup(self, start_frame: ndarray, position: ndarray, radius=0.5) -> list[bool]:
+    def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
 
         Args:
@@ -149,15 +149,16 @@ class VisionModule():
             bool: if or not the cell was picked up
         """
         cp_current_frame = copy.deepcopy(self.get_current_frame())
-        cp_start_frame = copy.deepcopy(start_frame)
-        if isinstance(start_frame, PIL.Image.Image):
-            cp_start_frame = np.array(cp_start_frame)
-            if start_frame.mode == "RGB":
-                cv2.cvtColor(cp_start_frame, cv2.COLOR_RGB2BGR)
+        cp_start_frame = copy.deepcopy(self.background)
+        # if isinstance(start_frame, PIL.Image.Image):
+        #     cp_start_frame = np.array(cp_start_frame)
+        #     if start_frame.mode == "RGB":
+        #         cv2.cvtColor(cp_start_frame, cv2.COLOR_RGB2BGR)
         cp_start_frame = cv2.cvtColor(cp_start_frame, cv2.COLOR_BGR2GRAY)
         current_frame = cv2.cvtColor(cp_current_frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, cp_start_frame)
-        _, thresh = cv2.threshold(diff, 70, 255, cv2.THRESH_BINARY)
+        # cv2.imshow("Diff", diff)
+        _, thresh = cv2.threshold(diff, 50, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
         cx, cy = position[0], position[1]
         n_deg, n_r = 8, 10
@@ -173,22 +174,23 @@ class VisionModule():
             cv2.circle(result_bgr, (cx, cy), 3, (0, 0, 255), 3)
         else:
             cv2.circle(result_bgr, (cx, cy), 3, (0, 255, 0), 3)
-        cv2.imwrite(f"background.jpg", cp_start_frame)
-        cv2.imwrite(f"{position}.jpg", result_bgr)
+        # cv2.imwrite(f"{position}.jpg", result_bgr)
         # vision.show_frames("Verify pick up", [result_bgr])
+        # cv2.imshow("Background", self.background)
         # cv2.imshow("Verify pick up", result_bgr)
         # cv2.waitKey(0)
         return pickedup
 
 if __name__ == "__main__":
     vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
-    time.sleep(2)
+    vision_module.background = cv2.imread("./Background.jpg")     
     camera_frame = vision_module.get_current_frame()
     vision_module.classify_cell(camera_frame)
     bbs_positions = vision_module.cell_detection(camera_frame)
     vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
     input("Remove one cell")
     camera_frame = vision_module.get_current_frame()
+    cv2.imshow("cam", camera_frame)
     for bb in bbs_positions:
-        vision_module.verify_pickup(camera_frame, bb)
+        vision_module.verify_pickup(bb)
     

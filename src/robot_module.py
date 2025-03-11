@@ -47,16 +47,20 @@ class RobotModule:
 if __name__ == "__main__":
     robot_module = RobotModule("192.168.1.100", [0,0,0,0,0,0], gripper_id=0)
     over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
-    discard_T = sm.SE3([0.21, -0.55, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
-    keep_T =    sm.SE3([0.15, -0.41, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the r
-    cell_T = (sm.SE3([-0.2949, -0.2554, 0.1103]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
-    robot_module.robot.move_to_cart_pose(over_pack_T)
-    # input(">>>")    
+    discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)
+    keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)
+    cell_T_1 = (sm.SE3([-0.2949, -0.2554, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
+    cell_T_2 = (sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
+
+    robot_module.robot.move_to_cart_pose(cell_T_1)
+    robot_module.robot.teachMode()
+    input(">>>")
+    print(robot_module.robot.getActualTCPPose())
+    input(">>>")
+    print(robot_module.robot.getActualTCPPose())
     # robot_module.robot.pick_and_place(cell_T, discard_T)
     # robot_module.robot.move_to_cart_pose(cell_T)
     # input(">>>")    
-    # robot_module.robot.teachMode()
     # input(">>>")    
-    # print(robot_module.robot.getActualTCPPose())
     # robot_module.robot.endTeachMode()
     
