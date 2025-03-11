@@ -45,7 +45,7 @@ class RobotModule:
         self.robot.open_gripper()
 
 if __name__ == "__main__":
-    robot_module = RobotModule("192.168.1.100", [0,0,0,0,0,0], gripper_id=0)
+    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], gripper_id=0)
     over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
     discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)
     keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     print(robot_module.robot.getActualTCPPose())
     # robot_module.robot.pick_and_place(cell_T, discard_T)
     # robot_module.robot.move_to_cart_pose(cell_T)
-    # input(">>>")    
-    # input(">>>")    
+    # input(">>>")
+    # input(">>>")
     # robot_module.robot.endTeachMode()
     
