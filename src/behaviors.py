@@ -149,7 +149,6 @@ class Detect(pt.behaviour.Behaviour):
                     cx, cy = cell.frame_position
                     r = cell.radius
                     proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
-                    # TODO: it is not drawing check if they are correctly initialized
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
             print(self.pack_state)
