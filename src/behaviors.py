@@ -28,8 +28,9 @@ class BeginSession(pt.behaviour.Behaviour):
             for i in range((self.pack_state.rows)):
                 for j in range(self.pack_state.cols):
                     frame_position = (results[k][0], results[k][1])
-                    pose = self.vision.frame_to_3d(frame_position, self.vision.camera)
-                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
+                    # pose = self.vision.frame_to_3d(frame_position, self.vision.camera, flag=j)
+                    # self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
+                    self.pack_state.update_cell(i, j, frame_position=frame_position, radius=results[k][2])
                     k += 1
             new_status = pt.common.Status.SUCCESS   
             print(self.name, self.status)
@@ -151,23 +152,18 @@ class Detect(pt.behaviour.Behaviour):
                     proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
             self.gui.show_frame(3)
-            print(self.pack_state)
+
         if self.gui.chosen_locations: # if not chosen_locations not empty
             # for now it is just one long row, but this info could come from the pack information / visual / user input
             k = 0
             for i in range(self.pack_state.rows):
                 for j in range(self.pack_state.cols):
-                    bb = tuple(map(int, self.gui.chosen_locations[k])) # convert to int to avoid overflow
+                    frame_position = self.gui.chosen_locations[k]
                      # get the center position
-                    radius = max(abs(bb[0] - bb[2]), abs(bb[1] - bb[3])) / 2
-                    print(bb)
-                    print((bb[0] - bb[2]))
-                    print((bb[1] - bb[3]))
-                    print(radius)
-                    frame_position = [(bb[0]+bb[2])//2, (bb[1]+bb[3])//2]
-                    pose = self.vision.frame_to_3d(frame_position, self.vision.camera)
-                    self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=radius) 
-                    print(self.pack_state)
+                    frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
+                    # pose = self.vision.frame_to_3d(frame_position, self.vision.camera, flag=j)
+                    # self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
+                    self.pack_state.update_cell(i, j, frame_position=frame_position)
                     k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
             # self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
@@ -269,7 +265,7 @@ class AutoSort(pt.behaviour.Behaviour):
                         place_pose = self.keep_T    
                     self.robot.pick_and_place(pick_pose, place_pose)
                     self.robot.move_to_cart_pos(self.over_pack_T)
-                    sorted = self.vision.verify_pickup(self.gui.camera_frame, frame_position, radius)
+                    sorted = self.vision.verify_pickup(frame_position, radius)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
                     # update RDF
@@ -319,7 +315,7 @@ class HelpedSort(pt.behaviour.Behaviour):
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     frame_position = self.pack_state.cells[row][col].frame_position
-                    sorted = self.vision.verify_pickup(current_frame, frame_position) # is this neecessary?
+                    sorted = self.vision.verify_pickup(frame_position,  self.pack_state.cells[row][col].radius)
                     if sorted:
                         self.pack_state.update_cell(row, col, sorted=sorted)
                     else:

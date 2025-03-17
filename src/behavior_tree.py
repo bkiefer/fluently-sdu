@@ -19,8 +19,8 @@ class BehaviourTree(pt.trees.BehaviourTree):
         #self.rdf = None
         cell_m_q, cell_h_q = 0.6, 0.8                       # this defines them everywhere
         over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
-        discard_T = sm.SE3([0.21, -0.55, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
-        keep_T =    sm.SE3([0.15, -0.41, 0.25]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         self.camera_Ext = sm.SE3([0,0,0])
         
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
@@ -28,6 +28,8 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.vision = VisionModule(camera_Ext=self.camera_Ext)
         self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], gripper_id=0)
         self.pack_state = PackState(rows=1, cols=2)
+        self.pack_state.update_cell(0, 1, pose=(sm.SE3([-0.295, -0.255, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
+        self.pack_state.update_cell(0, 0, pose=(sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         self.done = False
 
         # since we analyze only the cells section of the task at the beginning we move into the position we would be in if we had done the part with the pack
