@@ -252,7 +252,8 @@ class MemGui(tk.Tk):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
-
+        
+        self.reset_gui()
         # self.show_frame(1)
 
     def debug(self):
