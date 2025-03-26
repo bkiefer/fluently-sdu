@@ -16,9 +16,12 @@ class BeginSession(pt.behaviour.Behaviour):
         self.robot = robot
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
+        if self.gui.active_frame != 8:
             print("First update for behavior", self.name)
-            self.rdf.get_user(first_name = "", last_name = "")
+            self.gui.show_frame(8)
+
+        if self.gui.first_name != None:
+            self.rdf.get_user(first_name = self.gui.first_name, last_name = self.gui.last_name)
             self.rdf.start_session()
             results = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             results = sorted(results, key=lambda el: (el[1], el[0]))
@@ -30,8 +33,11 @@ class BeginSession(pt.behaviour.Behaviour):
                     # self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
                     self.pack_state.update_cell(i, j, frame_position=frame_position, radius=results[k][2])
                     k += 1
-            new_status = pt.common.Status.SUCCESS   
-            print(self.name, self.status)
+
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, new_status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status
     
 class PackPlaced(pt.behaviour.Behaviour):
@@ -46,14 +52,21 @@ class PackPlaced(pt.behaviour.Behaviour):
         self.vision = vision # ?
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
+        if self.gui.active_frame != 9:
             print("First update for behavior", self.name)
-        
-        # TODO: await GUI / vision input
-        # TODO: RDF: update
-            
-        new_status = pt.common.Status.SUCCESS   
-        print(self.name, self.status)
+            self.gui.show_frame(9)
+
+        # TODO: await vision input
+        # current_frame = self.vision.get_current_frame()
+        # self.vision.verify_pack_placed(current_frame)
+
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status
     
 class AutoPackClass(pt.behaviour.Behaviour):
@@ -75,9 +88,17 @@ class AutoPackClass(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
         
         # TODO: vision module: classify pack
-        # TODO: GUI: await user input
-        # TODO: pack_state: update
-        # TODO: RDF: update
+        # current_frame = self.vision.get_current_frame()
+        # self.vision.classify_pack(current_frame)
+
+        # TODO: GUI: await user input (confirm / reject)
+        # if self.gui.class_reject:
+            # new_status = pt.common.Status.FAILURE
+        # elif self.gui.chosen_model != "":
+            # model = self.gui.chosen_model
+            # self.pack_state.model = model
+            # new_status = pt.common.Status.SUCCESS
+        # TODO: RDF: update and upload disassembly plan
             
         new_status = pt.common.Status.SUCCESS   
         print(self.name, self.status)
@@ -100,10 +121,14 @@ class HelpedPackClass(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
         
         # TODO: GUI: await user input
+        # if self.gui.chosen_model != "":
+            # model = self.gui.chosen_model
+            # self.pack_state.model = model
+            # new_status = pt.common.Status.SUCCESS
+
         # TODO: RDF: check if battery pack is in ontology
         #       if yes, upload disassembly plan, if no, insert new instance
         #       update
-        # TODO: pack_state: update
 
         new_status = pt.common.Status.SUCCESS   
         print(self.name, self.status)
@@ -128,8 +153,15 @@ class CheckCoverOff(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
         
         # TODO: vision module: check if battery cells are exposed
-                  
-        new_status = pt.common.Status.SUCCESS   
+        #current_frame = self.vision.get_current_frame()
+        #cell_positions = self.vision.cell_detection(current_frame)
+        #if len(cell_positions) == 0:
+        #    new_status = pt.common.Status.FAILURE
+        #else:
+        #    new_status = pt.common.Status.SUCCESS
+            # if cover off: update RDF
+
+        new_status = pt.common.Status.FAILURE
         print(self.name, self.status)
         return new_status
 
@@ -149,13 +181,26 @@ class CheckHumanRemovesCover(pt.behaviour.Behaviour):
     def update(self):
         if self.status == pt.common.Status.INVALID:
             print("First update for behavior", self.name)
-        
-        # TODO: RDF: check if pack is known
-        #       if yes, check disassembly plan, if no, await user input
-        #       update 
 
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        # TODO: RDF: check if pack is known
+        #       if yes, check disassembly plan
+
+        # if no, await user input:
+        if self.gui.active_frame != 13:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(13) 
+        
+        if self.gui.removal_strategy != "":
+            if self.gui.removal_strategy == "human":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else:
+                new_status = pt.common.Status.FAILURE 
+                print(self.name, self.status)
+            # TODO: RDF update
+        else:
+            new_status = pt.common.Status.RUNNING
+        
         return new_status
 
 class CheckColabRemoveCover(pt.behaviour.Behaviour):
@@ -176,11 +221,27 @@ class CheckColabRemoveCover(pt.behaviour.Behaviour):
             print("First update for behavior", self.name)
         
         # TODO: RDF: check if pack is known
-        #       if yes, check disassembly plan, if no, await user input
-        #       update 
+        #       if yes, check disassembly plan
 
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        # if no, await user input:
+
+        if self.gui.active_frame != 13:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(13) 
+        
+        if self.gui.removal_strategy != "":
+            # This should be extracted from RDF
+            if self.gui.removal_strategy == "colab": 
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else:
+                new_status = pt.common.Status.FAILURE 
+                print(self.name, self.status)
+            # TODO: RDF update
+        else:
+            new_status = pt.common.Status.RUNNING
+        print(self.gui.removal_strategy)
+
         return new_status
 
 class ColabAwaitHuman(pt.behaviour.Behaviour):
@@ -196,14 +257,19 @@ class ColabAwaitHuman(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
+        #if self.status == pt.common.Status.INVALID:
+        #    print("First update for behavior", self.name)
         
-        # TODO: GUI: await acknowledgement
-        # TODO: RDF: update
-
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        if self.gui.active_frame != 14:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(14)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status
     
 class RemoveCover(pt.behaviour.Behaviour):
@@ -221,13 +287,18 @@ class RemoveCover(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
+        if self.gui.active_frame != 15:
             print("First update for behavior", self.name)
+            self.gui.show_frame(15)
+            new_status = pt.common.Status.RUNNING
         
         # TODO: robot module: remove cover
+        # self.robot.remove_cover()
         # TODO: RDF: update
-
-        new_status = pt.common.Status.SUCCESS 
+        
+        else:
+            time.sleep(3)
+            new_status = pt.common.Status.SUCCESS 
         print(self.name, self.status)
         return new_status
     
@@ -269,14 +340,16 @@ class AwaitToolChange(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
+        if self.gui.active_frame != 11:
             print("First update for behavior", self.name)
-        
-        # TODO: GUI: wait for user input that tool change is complete
-        # TODO: RDF: update
-             
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+            self.gui.show_frame(11)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status
 
 class BigGripper(pt.behaviour.Behaviour):
@@ -291,16 +364,23 @@ class BigGripper(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
-        # TODO: check if equipped gripper is stored in RDF, else:
+         # TODO: check if equipped gripper is stored in RDF, else:
             # TODO: GUI: change screen
             # TODO: GUI: wait for user input about which gripper is equipped 
         # TODO: RDF: update
-             
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        if self.gui.active_frame != 10:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(10)
+        if self.gui.gripper != "":
+            if self.gui.gripper == "large":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else: 
+                new_status = pt.common.Status.FAILURE
+                print(self.name, self.status)
+            self.gui.gripper = ""
+        else:
+            new_status = pt.common.Status.RUNNING 
         return new_status
     
 class SmallGripper(pt.behaviour.Behaviour):
@@ -315,16 +395,23 @@ class SmallGripper(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
         # TODO: check if equipped gripper is stored in RDF, else:
             # TODO: GUI: change screen
             # TODO: GUI: wait for user input about which gripper is equipped 
         # TODO: RDF: update
-             
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        if self.gui.active_frame != 10:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(10)
+        if self.gui.gripper != "":
+            if self.gui.gripper == "small":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else: 
+                new_status = pt.common.Status.FAILURE
+                print(self.name, self.status)
+            self.gui.gripper = ""
+        else:
+            new_status = pt.common.Status.RUNNING 
         return new_status
 
 class CheckPackKnown(pt.behaviour.Behaviour):
@@ -346,7 +433,7 @@ class CheckPackKnown(pt.behaviour.Behaviour):
             self.rdf.start_sorting_process()
         
         # TODO: RDF: check if pack is known
-        #       update 
+        #       if yes, update cell information 
 
         new_status = pt.common.Status.FAILURE 
         print(self.name, self.status)
@@ -555,9 +642,15 @@ class CheckCellsOK(pt.behaviour.Behaviour):
         
         # TODO: RDF: check if cell quality above threshold, OR
         # TODO: pack_state: check if cell quality above threshold
-        # TODO: RDF: update 
+        
+        new_status = pt.common.Status.SUCCESS
+        for row in self.pack_state.cells:
+                for cell in row:
+                    quality = cell.quality
+                    if quality < 0.5:
+                        new_status = pt.common.Status.FAILURE
 
-        new_status = pt.common.Status.SUCCESS 
+        # TODO: RDF: update 
         print(self.name, self.status)
         return new_status
 
@@ -687,9 +780,15 @@ class AwaitCoverFastening(pt.behaviour.Behaviour):
         if self.status == pt.common.Status.INVALID:
             print("First update for behavior", self.name)
         
-        # TODO: GUI: wait for user input 
         # TODO: RDF: update
-             
-        new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        if self.gui.active_frame != 12:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(12)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status

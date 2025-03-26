@@ -48,10 +48,10 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.helped_pack_class = HelpedPackClass(name="helped_pack_class", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
         self.check_cover_off = CheckCoverOff(name="check_cover_off", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.check_human_removes_cover = CheckHumanRemovesCover(name="check_human_removes_cover", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
-        self.check_colab_remove_cover = CheckColabRemoveCover(name="check_colab_remove_cover", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
+        self.check_colab_remove_cover = pt.decorators.Inverter(name="inverter",child=CheckColabRemoveCover(name="check_colab_remove_cover", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui))
         self.colab_await_human = ColabAwaitHuman(name="colab_await_human", blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
         self.remove_cover = RemoveCover(name="remove_cover",blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)
-        self.check_cover_removed = CheckCoverRemoved(name="check_cover_removed",blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
+        #self.check_cover_removed = CheckCoverRemoved(name="check_cover_removed",blackboard=self.blackboard, rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.await_tool_change_small = AwaitToolChange(name="await_tool_change", blackboard=self.blackboard, rdf=self.rdf, gui=self.gui)
         self.await_tool_change_big = AwaitToolChange(name="await_tool_change", blackboard=self.blackboard, rdf=self.rdf, gui=self.gui)
         self.big_gripper = BigGripper(name="big_gripper", blackboard=self.blackboard, rdf=self.rdf, gui=self.gui)
@@ -75,8 +75,10 @@ class BehaviourTree(pt.trees.BehaviourTree):
 
         self.robot_remove_cover_sequence = pt.composites.Sequence(name="robot_remove_cover_sequence",memory=True, children=[self.big_tool_selector, self.colab_cover_removal_selector, self.remove_cover])
         self.remove_cover_selector = pt.composites.Selector(name="remove_cover_selector", memory=True, children=[self.check_human_removes_cover, self.robot_remove_cover_sequence])
-        self.remove_cover_sequence = pt.composites.Sequence(name="remove_cover_sequence",memory=True, children=[self.remove_cover_selector, self.check_cover_removed])
-        self.cover_selector = pt.composites.Selector(name="cover_selector", memory=True, children=[self.check_cover_off, self.remove_cover_sequence])
+        #self.remove_cover_sequence = pt.composites.Sequence(name="remove_cover_sequence",memory=True, children=[self.remove_cover_selector])#, self.check_cover_removed])
+        
+        # memory = False to keep checking whether cover is on/off until confirmed
+        self.cover_selector = pt.composites.Selector(name="cover_selector", memory=False, children=[self.check_cover_off, self.remove_cover_selector])
         
         self.class_cell_selector = pt.composites.Selector(name="class_cell_selector", memory=True, children=[self.check_pack_known, self.auto_cell_class, self.helped_cell_class]) 
         self.small_tool_selector = pt.composites.Selector(name="small_tool_selector", memory=True, children=[self.small_gripper, self.await_tool_change_small]) 
