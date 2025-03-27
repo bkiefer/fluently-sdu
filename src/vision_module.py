@@ -48,7 +48,10 @@ class VisionModule():
             frame = PIL.Image.fromarray(frame)
         return frame
 
-    def classify_cell(self, frames: list[np.ndarray]) -> dict[tuple[str, float]]:
+    def locate_pack(self, frame: ndarray):
+        return {'shape': 'trapezoid', 'size': (0, 0), 'cover_on': True, 'location': (0, 0)}
+
+    def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
         """
         classify the cell model from one or multiple frames
 
