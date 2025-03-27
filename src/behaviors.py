@@ -162,7 +162,7 @@ class CheckCoverOff(pt.behaviour.Behaviour):
             # if cover off: update RDF
 
         new_status = pt.common.Status.FAILURE
-        print(self.name, self.status)
+        #print(self.name, self.status)
         return new_status
 
 class CheckHumanRemovesCover(pt.behaviour.Behaviour):

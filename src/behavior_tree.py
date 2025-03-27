@@ -21,12 +21,12 @@ class BehaviourTree(pt.trees.BehaviourTree):
         over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
         discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
-        self.camera_Ext = sm.SE3([0, 0, 0])
-        # self.camera_Ext = sm.SE3(np.array([[     -1,  0.0046,  0.0105,  0.033],
-        #                                    [-0.0042,      -1,  0.0436,  0.055],
-        #                                    [ 0.0107,  0.0436,       1, -0.122],
-        #                                    [ 0,       0,       0,       1    ]]))
-        
+        #self.camera_Ext = sm.SE3(np.array([[-0.9999,  0.0046,  0.0105,  0.033],
+        #                                   [-0.0042, -0.9990,  0.0436,  0.055],
+        #                                   [ 0.0107,  0.0436,  0.9989, -0.122],
+        #                                   [ 0,       0,       0,       1    ]]))
+        self.camera_Ext = sm.SE3(np.array([0,0,0]))
+
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
         self.rdf = RdfStore()
         self.vision = VisionModule(camera_Ext=self.camera_Ext)
