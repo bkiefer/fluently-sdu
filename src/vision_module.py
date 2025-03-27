@@ -16,7 +16,8 @@ class VisionModule():
         pass
         # camera initialization
         try:
-            self.camera = vision.RealSenseCamera({
+            self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
+                                                    enabled_strams={
                                                     'color': [1280, 720],
                                                     'depth': [640, 480],
                                                     # 'infrared': [640, 480]
@@ -192,8 +193,7 @@ if __name__ == "__main__":
     # cv2.imshow("cam", frame)
     # cv2.waitKey(0)
     result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
-    pos_3d = (np.array([-0.442, -0.236, 0.035]))
-    print(result - pos_3d)
+    
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
     # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
