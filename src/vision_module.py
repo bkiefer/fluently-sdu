@@ -9,7 +9,7 @@ import PIL
 from gubokit import vision
 import time
 import spatialmath as sm
-from gubokit.vision import frame_pos_to_3dpos
+from gubokit import vision
 
 class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
@@ -33,13 +33,13 @@ class VisionModule():
         # cv2.imwrite("Background.jpg", new_bg)
         self.background = new_bg
 
-    def get_current_frame(self, format="cv2") -> np.ndarray:
+    def get_current_frame(self, format="cv2", wait_delay=2) -> np.ndarray:
         """get the current frame from the camera
 
         Returns:
             np.ndarray: frame
         """
-        time.sleep(2)
+        time.sleep(wait_delay)
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
@@ -132,7 +132,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_to_3d(self, frame_pos:ndarray, camera, flag) -> sm.SE3:
+    def frame_pos_to_3d(self, frame_pos:ndarray, camera, cell_heigth, camera_z) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -141,8 +141,7 @@ class VisionModule():
         Returns:
             sm.SE3: 4x4 pose in world frame
         """
-        pose = frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, flag=flag)
-        return pose
+        return vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=(camera_z - cell_heigth))
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
@@ -188,14 +187,18 @@ class VisionModule():
 
 if __name__ == "__main__":
     vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
-    vision_module.background = cv2.imread("./Background.jpg")     
-    camera_frame = vision_module.get_current_frame()
-    vision_module.classify_cell(camera_frame)
-    bbs_positions = vision_module.cell_detection(camera_frame)
-    vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
-    input("Remove one cell")
-    camera_frame = vision_module.get_current_frame()
-    cv2.imshow("cam", camera_frame)
-    for bb in bbs_positions:
-        vision_module.verify_pickup(bb)
-    
+    # vision_module.background = cv2.imread("./frame.png")     
+    frame = cv2.imread("./frame.png")
+    # cv2.imshow("cam", frame)
+    # cv2.waitKey(0)
+    result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
+    pos_3d = (np.array([-0.442, -0.236, 0.035]))
+    print(result - pos_3d)
+    # vision_module.classify_cell(camera_frame)
+    # bbs_positions = vision_module.cell_detection(camera_frame)
+    # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
+    # input("Remove one cell")
+    # camera_frame = vision_module.get_current_frame()
+    # cv2.imshow("cam", camera_frame)
+    # for bb in bbs_positions:
+    #     vision_module.verify_pickup(bb)
