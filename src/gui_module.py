@@ -177,8 +177,6 @@ class _QualitiesEditor:
             self.canvas.itemconfig(self.editing_item_id, text=f"{int(self.edit_entry.get()):02d}%")
             self.canvas.itemconfig(self.editing_item_id, fill='green2' if new_q > self.h else 'yellow2' if new_q > self.m else 'firebrick1')
             
-            
-            
         except:
             print("Inserted value not supported")
         finally:
@@ -217,6 +215,11 @@ class MemGui(tk.Tk):
         self.outcomes = []
         self.class_reject = False # !!!
         self.done = False
+        self.first_name = None
+        self.last_name = None
+        self.confirm = False
+        self.gripper = ""
+        self.removal_strategy = ""
         
         self.picture_container = tk.Frame(self, width=size[0]//2, height=size[1])
         self.picture_container.pack(side='left', padx=(10, 10))
@@ -248,11 +251,15 @@ class MemGui(tk.Tk):
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
         # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
-        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, AutoSortScreen, ManualSortScreen, HomeScreen]):
+        for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, 
+                                    AutoSortScreen, ManualSortScreen, HomeScreen, StartScreen, PlacePackScreen,
+                                    CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
+                                    ColabAwaitHumanScreen, RemoveCoverScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
-
+        
+        self.reset_gui()
         # self.show_frame(1)
 
     def debug(self):
@@ -394,6 +401,117 @@ class HomeScreen(tk.Frame):
         self.canvas.delete('all')
         self.canvas.create_image(0, 0, anchor="nw", image=self.tk_image)
 
+class StartScreen(HomeScreen):
+    def __init__(self, parent, controller, idx):
+        super().__init__(parent, controller, idx)
+        self.first_name_var = tk.StringVar()
+        self.last_name_var = tk.StringVar()
+
+        self.label_1 = tk.Label(self, text="First Name:")
+        self.label_1.pack()
+        first_name_entry = tk.Entry(self, textvariable=self.first_name_var)
+        first_name_entry.pack()
+
+        self.label_2 = tk.Label(self, text="Last Name:")
+        self.label_2.pack()
+        last_name_entry = tk.Entry(self,textvariable=self.last_name_var)
+        last_name_entry.pack()
+
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="Begin session", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+        
+    def confirm(self):
+            self.controller.first_name = self.first_name_var.get()
+            self.controller.last_name = self.last_name_var.get()
+
+            self.first_name_var.set("")
+            self.last_name_var.set("")
+
+class PlacePackScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Please place and fasten the battery pack on the worktable.", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+
+    def confirm(self):
+        self.controller.confirm = True
+
+class CheckGripperScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Which tool is currently equipped by the robot?", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        small_btn = tk.Button(btns_frame, text="Small vaccuum gripper", command=lambda: self.small())
+        small_btn.pack(side='left')
+        large_btn = tk.Button(btns_frame, text="Large vaccuum gripper", command=lambda: self.large())
+        large_btn.pack(side='left')
+
+    def small(self):
+        self.controller.gripper = "small"
+    def large(self):
+        self.controller.gripper = "large"
+
+class RemovalStrategy(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Who should remove the cover?", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        h_btn = tk.Button(btns_frame, text="Human", command=lambda: self.h_btn())
+        h_btn.pack(side='left')
+        c_btn = tk.Button(btns_frame, text="Collaborative", command=lambda: self.c_btn())
+        c_btn.pack(side='left')
+        r_btn = tk.Button(btns_frame, text="Robot", command=lambda: self.r_btn())
+        r_btn.pack(side='left')
+
+    def h_btn(self):
+        self.controller.removal_strategy = "human"
+    def c_btn(self):
+        self.controller.removal_strategy = "colab"
+    def r_btn(self):
+        self.controller.removal_strategy = "robot"
+
+class ChangeGripperScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Please change the robot tool.", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+
+    def confirm(self):
+        self.controller.confirm = True
+
+class ColabAwaitHumanScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Let the robot know when it should start picking up the cover.", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="Start robot", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+
+    def confirm(self):
+        self.controller.confirm = True
+
+class RemoveCoverScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Robot is moving...", font=("Arial", 10))
+        self.label.pack()
+
 class AutoClassScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
         super().__init__(parent, controller, idx)
@@ -401,33 +519,17 @@ class AutoClassScreen(HomeScreen):
         self.label.pack()
 
         btns_frame = tk.Frame(self)
-        # btns_frame.pack()
         btns_frame.pack()
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
         deny_btn = tk.Button(btns_frame, text="✗", background='firebrick1', command=lambda: self.deny())
         deny_btn.pack(side='left')
 
-        # self.after(1, self.change_label)
-    
-    # def change_label(self):
-    #     if self.controller.proposed_models:
-    #         self.proposed_model = self.controller.proposed_models[0]['model'] 
-    #     text = f"Cells are: {self.proposed_model}"
-    #     self.label.configure(text=text)
-    #     self.label.after(1000,self.change_label)
-
     def confirm(self):
         self.controller.chosen_model = self.controller.proposed_models[0]['model']
-        # self.controller.show_frame(self.idx + 2)
-        #self.controller.bbs_editor.delete_mode = True
     
     def deny(self):
-        # need to comunicate with bt
-        self.controller.class_reject = True # !!!
-        #pass
-        # self.controller.show_frame(self.idx + 1)
-        #self.controller.bbs_editor.delete_mode = True
+        self.controller.class_reject = True 
 
 class ManualClassScreen(tk.Frame):
     def __init__(self, parent, controller, idx):
@@ -436,15 +538,6 @@ class ManualClassScreen(tk.Frame):
         self.idx = idx
         self.btns_frame = tk.Frame(self)
         self.btns_frame.place(relx=0.5, rely=0.5, anchor='center')
-        # self.after(1, self.change_label)
-        
-    # def change_label(self):
-    #     if self.controller.proposed_models:
-    #         for propose in self.controller.proposed_models[1:]: # we skip the first one as it was already denied by the user
-    #             button1 = tk.Button(self.btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda: self.chose_model(propose['model']))
-    #             button1.pack()
-    #     else:
-    #         self.after(1, self.change_label)
             
     def chose_model(self, model: str):
         self.controller.chosen_model = model
@@ -542,6 +635,19 @@ class ManualSortScreen(HomeScreen):
         
     def confirm(self):
         self.controller.done = True
+
+class FastenCoverScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Please place and fasten the cover back on the pack.", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+
+    def confirm(self):
+        self.controller.confirm = True
 
 if __name__ == "__main__":
     # camera_frame = cv2.imread("./data/NMC21700-from-top.jpg")

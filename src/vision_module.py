@@ -26,6 +26,8 @@ class VisionModule():
             self.camera = None
             print("The vision module could not be started, the module will run for debug purpose")
         
+        self.set_background() #!
+        
     def set_background(self):
         new_bg = self.get_current_frame()
         # cv2.imwrite("Background.jpg", new_bg)

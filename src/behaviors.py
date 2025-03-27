@@ -14,13 +14,14 @@ class BeginSession(pt.behaviour.Behaviour):
         self.vision = vision
         self.pack_state = pack_state
         self.robot = robot
-        # self.status = pt.common.Status.INVALID
-        # self.tried = False
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
+        if self.gui.active_frame != 8:
             print("First update for behavior", self.name)
-            self.rdf.get_user(first_name = "", last_name = "")
+            self.gui.show_frame(8)
+
+        if self.gui.first_name != None:
+            self.rdf.get_user(first_name = self.gui.first_name, last_name = self.gui.last_name)
             self.rdf.start_session()
             results = self.vision.cell_detection(self.gui.camera_frame) # center, radius
             results = sorted(results, key=lambda el: (el[1], el[0]))
@@ -32,18 +33,420 @@ class BeginSession(pt.behaviour.Behaviour):
                     # self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
                     self.pack_state.update_cell(i, j, frame_position=frame_position, radius=results[k][2])
                     k += 1
-            new_status = pt.common.Status.SUCCESS   
-            print(self.name, self.status)
-        return new_status
 
-class AutoClass(pt.behaviour.Behaviour):
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, new_status)
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+    
+class PackPlaced(pt.behaviour.Behaviour):
     """
-    The vision module classifies the battery pack.
+    Await pack placed and fastened
+    """
+    def __init__(self, name, blackboard, rdf, vision, gui):
+        super(PackPlaced, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+        self.vision = vision # ?
+
+    def update(self):
+        if self.gui.active_frame != 9:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(9)
+
+        # TODO: await vision input
+        # current_frame = self.vision.get_current_frame()
+        # self.vision.verify_pack_placed(current_frame)
+
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+    
+class AutoPackClass(pt.behaviour.Behaviour):
+    """
+    The vision module classifies the pack.
     SUCCESS if user accepts the classification. Pack state is updated.
     FAILURE if user rejects the classification. Pack state remains unchanged.
     """
     def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
-        super(AutoClass, self).__init__(name)
+        super(AutoPackClass, self).__init__(name)
+        self.vision = vision
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: vision module: classify pack
+        # current_frame = self.vision.get_current_frame()
+        # self.vision.classify_pack(current_frame)
+
+        # TODO: GUI: await user input (confirm / reject)
+        # if self.gui.class_reject:
+            # new_status = pt.common.Status.FAILURE
+        # elif self.gui.chosen_model != "":
+            # model = self.gui.chosen_model
+            # self.pack_state.model = model
+            # new_status = pt.common.Status.SUCCESS
+        # TODO: RDF: update and upload disassembly plan
+            
+        new_status = pt.common.Status.SUCCESS   
+        print(self.name, self.status)
+        return new_status
+    
+class HelpedPackClass(pt.behaviour.Behaviour):
+    """
+    The user classifies the pack.
+    SUCCESS when the user input is received. Pack state is updated.    
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(HelpedPackClass, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: GUI: await user input
+        # if self.gui.chosen_model != "":
+            # model = self.gui.chosen_model
+            # self.pack_state.model = model
+            # new_status = pt.common.Status.SUCCESS
+
+        # TODO: RDF: check if battery pack is in ontology
+        #       if yes, upload disassembly plan, if no, insert new instance
+        #       update
+
+        new_status = pt.common.Status.SUCCESS   
+        print(self.name, self.status)
+        return new_status
+
+class CheckCoverOff(pt.behaviour.Behaviour):
+    """
+    The vision module determines if the pack is covered.
+    SUCCESS if cover is off.
+    FAILURE if cover is on.
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
+        super(CheckCoverOff, self).__init__(name)
+        self.vision = vision
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: vision module: check if battery cells are exposed
+        #current_frame = self.vision.get_current_frame()
+        #cell_positions = self.vision.cell_detection(current_frame)
+        #if len(cell_positions) == 0:
+        #    new_status = pt.common.Status.FAILURE
+        #else:
+        #    new_status = pt.common.Status.SUCCESS
+            # if cover off: update RDF
+
+        new_status = pt.common.Status.FAILURE
+        print(self.name, self.status)
+        return new_status
+
+class CheckHumanRemovesCover(pt.behaviour.Behaviour):
+    """
+    Checks the RDF store OR user input if the human should remove the cover
+    SUCCESS if human should remove cover
+    FAILURE otherwise
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(CheckHumanRemovesCover, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+
+        # TODO: RDF: check if pack is known
+        #       if yes, check disassembly plan
+
+        # if no, await user input:
+        if self.gui.active_frame != 13:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(13) 
+        
+        if self.gui.removal_strategy != "":
+            if self.gui.removal_strategy == "human":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else:
+                new_status = pt.common.Status.FAILURE 
+                print(self.name, self.status)
+            # TODO: RDF update
+        else:
+            new_status = pt.common.Status.RUNNING
+        
+        return new_status
+
+class CheckColabRemoveCover(pt.behaviour.Behaviour):
+    """
+    Checks the RDF store OR user input if cover removal is collaborative
+    SUCCESS if collaborative
+    FAILURE otherwise
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(CheckColabRemoveCover, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: RDF: check if pack is known
+        #       if yes, check disassembly plan
+
+        # if no, await user input:
+
+        if self.gui.active_frame != 13:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(13) 
+        
+        if self.gui.removal_strategy != "":
+            # This should be extracted from RDF
+            if self.gui.removal_strategy == "colab": 
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else:
+                new_status = pt.common.Status.FAILURE 
+                print(self.name, self.status)
+            # TODO: RDF update
+        else:
+            new_status = pt.common.Status.RUNNING
+        print(self.gui.removal_strategy)
+
+        return new_status
+
+class ColabAwaitHuman(pt.behaviour.Behaviour):
+    """
+    Wait for human acknowledgement that they are ready for robot to remove cover
+    SUCCESS when acknowledged
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(ColabAwaitHuman, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        #if self.status == pt.common.Status.INVALID:
+        #    print("First update for behavior", self.name)
+        
+        if self.gui.active_frame != 14:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(14)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+    
+class RemoveCover(pt.behaviour.Behaviour):
+    """
+    Robot removes cover
+    SUCCESS when done
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui, robot):
+        super(RemoveCover, self).__init__(name)
+        self.robot = robot
+        self.vision = vision
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.gui.active_frame != 15:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(15)
+            new_status = pt.common.Status.RUNNING
+        
+        # TODO: robot module: remove cover
+        # self.robot.remove_cover()
+        # TODO: RDF: update
+        
+        else:
+            time.sleep(3)
+            new_status = pt.common.Status.SUCCESS 
+        print(self.name, self.status)
+        return new_status
+    
+class CheckCoverRemoved(pt.behaviour.Behaviour):
+    """
+    Checks user input / vision module if cover is removed
+    This step is used regardless of removal method as a check
+    SUCCESS when cover is removed
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
+        super(CheckCoverRemoved, self).__init__(name)
+        self.vision = vision
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: vision or GUI: check if cover removed / battery cells exposed
+        # TODO: RDF: update
+             
+        new_status = pt.common.Status.SUCCESS 
+        print(self.name, self.status)
+        return new_status
+    
+class AwaitToolChange(pt.behaviour.Behaviour):
+    """
+    Checks user input if tool change is complete
+    This step is used for any tool change
+    SUCCESS tool change is complete 
+    """
+    def __init__(self, name, blackboard, rdf, gui):
+        super(AwaitToolChange, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.gui.active_frame != 11:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(11)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+
+class BigGripper(pt.behaviour.Behaviour):
+    """
+    Checks if big gripper is equipped.
+    SUCCESS if true.
+    """
+    def __init__(self, name, blackboard, rdf, gui):
+        super(BigGripper, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+         # TODO: check if equipped gripper is stored in RDF, else:
+            # TODO: GUI: change screen
+            # TODO: GUI: wait for user input about which gripper is equipped 
+        # TODO: RDF: update
+        if self.gui.active_frame != 10:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(10)
+        if self.gui.gripper != "":
+            if self.gui.gripper == "large":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else: 
+                new_status = pt.common.Status.FAILURE
+                print(self.name, self.status)
+            self.gui.gripper = ""
+        else:
+            new_status = pt.common.Status.RUNNING 
+        return new_status
+    
+class SmallGripper(pt.behaviour.Behaviour):
+    """
+    Checks if small gripper is equipped.
+    SUCCESS if true.
+    """
+    def __init__(self, name, blackboard, rdf, gui):
+        super(SmallGripper, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        # TODO: check if equipped gripper is stored in RDF, else:
+            # TODO: GUI: change screen
+            # TODO: GUI: wait for user input about which gripper is equipped 
+        # TODO: RDF: update
+        if self.gui.active_frame != 10:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(10)
+        if self.gui.gripper != "":
+            if self.gui.gripper == "small":
+                new_status = pt.common.Status.SUCCESS
+                print(self.name, self.status)
+            else: 
+                new_status = pt.common.Status.FAILURE
+                print(self.name, self.status)
+            self.gui.gripper = ""
+        else:
+            new_status = pt.common.Status.RUNNING 
+        return new_status
+
+class CheckPackKnown(pt.behaviour.Behaviour):
+    """
+    Checks the RDF store if pack is known
+    SUCCESS if pack is known
+    FAILURE otherwise
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(CheckPackKnown, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+            self.rdf.start_sorting_process()
+        
+        # TODO: RDF: check if pack is known
+        #       if yes, update cell information 
+
+        new_status = pt.common.Status.FAILURE 
+        print(self.name, self.status)
+        return new_status
+
+class AutoCellClass(pt.behaviour.Behaviour):
+    """
+    The vision module classifies the battery cells.
+    SUCCESS if user accepts the classification. Pack state is updated.
+    FAILURE if user rejects the classification. Pack state remains unchanged.
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, vision, gui):
+        super(AutoCellClass, self).__init__(name)
         self.vision = vision
         self.gui = gui
         self.pack_state = pack_state
@@ -53,8 +456,8 @@ class AutoClass(pt.behaviour.Behaviour):
         # self.tried = False
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            self.rdf.start_sorting_process()
+        #if self.status == pt.common.Status.INVALID:
+        #    self.rdf.start_sorting_process()
             # self.tried = True
 
         if self.gui.active_frame != 1:
@@ -69,6 +472,7 @@ class AutoClass(pt.behaviour.Behaviour):
             print(self.name, new_status)
 
         elif self.gui.chosen_model != "":
+            print(self.gui.chosen_model)
             model = self.gui.chosen_model
             k = 0
             for i in range((self.pack_state.rows)):
@@ -79,20 +483,21 @@ class AutoClass(pt.behaviour.Behaviour):
             # record classification is done
             self.rdf.object_classification()
             print(self.name, new_status)
+            print(model)
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
 
-class HelpedClass(pt.behaviour.Behaviour):
+class HelpedCellClass(pt.behaviour.Behaviour):
     """
-    The user classifies the battery pack.
+    The user classifies the battery cells.
     SUCCESS when the user input is received. Pack state is updated.
     """
     # NOTE: The system may be able to classify the pack, or may determine that the pack is unseen (!). 
     # The user can override the decision either way.
 
     def __init__(self, name, blackboard, rdf, pack_state, gui):
-        super(HelpedClass, self).__init__(name)
+        super(HelpedCellClass, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.blackboard = blackboard
@@ -218,6 +623,37 @@ class Assess(pt.behaviour.Behaviour):
             new_status = pt.common.Status.RUNNING
         return new_status
 
+class CheckCellsOK(pt.behaviour.Behaviour):
+    """
+    Checks the RDF store OR pack_state if cell quality is above some threshold
+    SUCCESS cells above threshold
+    FAILURE otherwise
+    """
+    def __init__(self, name, blackboard, rdf, pack_state, gui):
+        super(CheckCellsOK, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: RDF: check if cell quality above threshold, OR
+        # TODO: pack_state: check if cell quality above threshold
+        
+        new_status = pt.common.Status.SUCCESS
+        for row in self.pack_state.cells:
+                for cell in row:
+                    quality = cell.quality
+                    if quality < 0.5:
+                        new_status = pt.common.Status.FAILURE
+
+        # TODO: RDF: update 
+        print(self.name, self.status)
+        return new_status
+
 class AutoSort(pt.behaviour.Behaviour):
     """
     The pick up area is determined by the vision module.
@@ -325,6 +761,34 @@ class HelpedSort(pt.behaviour.Behaviour):
             self.rdf.end_sorting_process()
             self.rdf.end_session()
             print(self.name, new_status)   
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+    
+class AwaitCoverFastening(pt.behaviour.Behaviour):
+    """
+    Checks user input if cover fastening is complete
+    SUCCESS when input received
+    """
+    def __init__(self, name, blackboard, rdf, gui):
+        super(AwaitCoverFastening, self).__init__(name)
+        self.gui = gui
+        self.blackboard = blackboard
+        self.rdf = rdf
+
+    def update(self):
+        if self.status == pt.common.Status.INVALID:
+            print("First update for behavior", self.name)
+        
+        # TODO: RDF: update
+        if self.gui.active_frame != 12:
+            print("First update for behavior", self.name)
+            self.gui.show_frame(12)
+        if self.gui.confirm:
+            self.gui.confirm = False
+            # TODO: RDF: update
+            new_status = pt.common.Status.SUCCESS
+            print(self.name, self.status)
         else:
             new_status = pt.common.Status.RUNNING
         return new_status

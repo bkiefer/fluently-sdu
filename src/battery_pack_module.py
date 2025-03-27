@@ -17,7 +17,6 @@ class Cell():
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
         self.model = "unknown"
-        # TODO: relative positions between cells to benefit pick and place action
         self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):
