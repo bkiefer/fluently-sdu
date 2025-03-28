@@ -187,12 +187,61 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
-    # vision_module.background = cv2.imread("./frame.png")     
-    frame = cv2.imread("./frame.png")
-    # cv2.imshow("cam", frame)
+    # vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
+    frame1 = cv2.imread("cb_pack01.jpg")
+    frame2 = cv2.imread("cb_pack02.jpg")
+        
+    l_t, h_t = 110, 530
+    for frame in [frame1, frame2]:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, l_t, h_t)
+        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,1,0]], np.uint8), iterations=1)
+        cv2.imshow("Shape", edges)
+        cv2.waitKey(0)
+        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            # if cv2.contourArea(contour) < 50 or cv2.contourArea(contour) > 1000:
+            #     continue
+            epsilon = 0.02 * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            x, y, w, h = cv2.boundingRect(approx)
+            cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
+            cv2.putText(frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            print(str(cv2.contourArea(contour)))
+        cv2.imshow("Shape", frame)
+        cv2.waitKey(0)
+    # while True:
+    #     # 110 755 square
+    #     # 110 530 trapezoid
+    #     edges = cv2.Canny(gray, l_t, h_t)
+    #     break
+    #     # break
+    #     cv2.imshow("cam", edges)
+    #     ans = cv2.waitKey(0)
+    #     print(ans)
+    #     if ans == 13:
+    #         break
+    #     elif ans == 113:
+    #         l_t += 5
+    #     elif ans == 119:
+    #         l_t -= 5
+    #     elif ans == 97:
+    #         h_t += 5
+    #     elif ans == 115:
+    #         h_t -= 5
+    #     print(l_t, h_t)
+
+    # Find contours
+    # lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=30, maxLineGap=5)
+    # if lines is not None:
+        # for line in lines:
+            # x1, y1, x2, y2 = line[0]
+            # cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    # cv2.imshow("Detected Lines", frame)
     # cv2.waitKey(0)
-    result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
+    
+
+    # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
     
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
