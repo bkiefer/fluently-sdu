@@ -209,44 +209,25 @@ class VisionModule():
 
 if __name__ == "__main__":
     vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
-    frame1 = cv2.imread("cb_pack01.jpg")
-    frame2 = cv2.imread("cb_pack02.jpg")
-    vision_module.locate_pack(frame1)
-    vision_module.locate_pack(frame2)
-    
-    # while True:
-    #     # 110 755 square
-    #     # 110 530 trapezoid
-    #     edges = cv2.Canny(gray, l_t, h_t)
-    #     break
-    #     # break
-    #     cv2.imshow("cam", edges)
-    #     ans = cv2.waitKey(0)
-    #     print(ans)
-    #     if ans == 13:
-    #         break
-    #     elif ans == 113:
-    #         l_t += 5
-    #     elif ans == 119:
-    #         l_t -= 5
-    #     elif ans == 97:
-    #         h_t += 5
-    #     elif ans == 115:
-    #         h_t -= 5
-    #     print(l_t, h_t)
 
-    # Find contours
-    # lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50, minLineLength=30, maxLineGap=5)
-    # if lines is not None:
-        # for line in lines:
-            # x1, y1, x2, y2 = line[0]
-            # cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    # cv2.imshow("Detected Lines", frame)
-    # cv2.waitKey(0)
-    
-
+    # frame1 = cv2.imread("cb_pack01.jpg")
+    # frame2 = cv2.imread("cb_pack02.jpg")
+    # vision_module.locate_pack(frame1)
+    # vision_module.locate_pack(frame2)
     # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
-    
+    ans, i = 0, 0
+    filenames = [
+                    "empty1.png", "empty2.png", "empty3.png",
+                    "trapezoid1.png", "trapezoid2.png", "trapezoid3.png",
+                    "square1.png", "square2.png", "square3.png",
+                    ]
+    while chr(ans & 0xFF) != 'q':
+        frame = vision_module.get_current_frame(wait_delay=0)
+        cv2.imshow("frame", frame)
+        ans = cv2.waitKey(1)
+        if chr(ans & 0xFF) == 's':
+            cv2.imwrite(filenames[i], frame)
+            i += 1
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
     # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
