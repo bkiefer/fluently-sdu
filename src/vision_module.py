@@ -52,6 +52,27 @@ class VisionModule():
         return frame
 
     def locate_pack(self, frame: ndarray):
+        l_t, h_t = 110, 530
+        cp_frame = copy.deepcopy(frame)
+        gray = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, l_t, h_t)
+        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,1,0]], np.uint8), iterations=1)
+        cv2.imshow("Shape", edges)
+        cv2.waitKey(0)
+        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            length = cv2.arcLength(contour, closed=True)
+            if length < 1200 or length > 4000:
+                continue
+            epsilon = 0.02 * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            x, y, w, h = cv2.boundingRect(approx)
+            cv2.drawContours(cp_frame, [approx], -1, (0, 255, 0), 2)
+            cv2.putText(cp_frame, str(cv2.contourArea(approx)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            print("area", str(cv2.contourArea(approx)))
+            print("length", str(length))
+            cv2.imshow("Shape", cp_frame)
+            cv2.waitKey(0)
         return {'shape': 'trapezoid', 'size': (0, 0), 'cover_on': True, 'location': (0, 0)}
 
     def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
@@ -187,29 +208,12 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    # vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
+    vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
     frame1 = cv2.imread("cb_pack01.jpg")
     frame2 = cv2.imread("cb_pack02.jpg")
-        
-    l_t, h_t = 110, 530
-    for frame in [frame1, frame2]:
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, l_t, h_t)
-        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,1,0]], np.uint8), iterations=1)
-        cv2.imshow("Shape", edges)
-        cv2.waitKey(0)
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        for contour in contours:
-            # if cv2.contourArea(contour) < 50 or cv2.contourArea(contour) > 1000:
-            #     continue
-            epsilon = 0.02 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
-            x, y, w, h = cv2.boundingRect(approx)
-            cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
-            cv2.putText(frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            print(str(cv2.contourArea(contour)))
-        cv2.imshow("Shape", frame)
-        cv2.waitKey(0)
+    vision_module.locate_pack(frame1)
+    vision_module.locate_pack(frame2)
+    
     # while True:
     #     # 110 755 square
     #     # 110 530 trapezoid
