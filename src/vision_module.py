@@ -52,24 +52,64 @@ class VisionModule():
         return frame
 
     def locate_pack(self, frame: ndarray):
-        l_t, h_t = 110, 530
         cp_frame = copy.deepcopy(frame)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # cv2.imshow("Remove color", hsv)
+        # cv2.waitKey(0)
+        mask = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([120, 70, 200]))
+        cp_frame[mask > 0] = [255, 255, 255]  # Set removed color to white
+
+        ans = chr(0 & 0xFF)
+        l_t, h_t = 85, 90
+        contrast, brightness = 1.5, 20
+        # while ans != 'q':
+        #     print(f"contrast: {contrast}, brightness: {brightness}")
+        #     print(f"low: {l_t}, high: {h_t}")
+        #     enhanced = cv2.convertScaleAbs(cp_frame, alpha=contrast, beta=brightness)
+        #     cv2.imshow("Enhanced", enhanced)
+        #     gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
+        #     cv2.imshow("Gray", gray)
+        #     edges = cv2.Canny(gray, l_t, h_t)
+        #     cv2.imshow("Edges", edges)
+        #     ans = chr(cv2.waitKey(0) & 0xFF)
+        #     if ans == 'x':
+        #         contrast -= 0.1
+        #     if ans == 'c':
+        #         contrast += 0.1
+        #     if ans == 'r':
+        #         brightness -= 5
+        #     if ans == 't':
+        #         brightness += 5
+        #     if ans == 'w':
+        #         l_t -= 5
+        #     if ans == 'e':
+        #         l_t += 5
+        #     if ans == 's':
+        #         h_t -= 5
+        #     if ans == 'd':
+        #         h_t += 5
         gray = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, l_t, h_t)
-        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,1,0]], np.uint8), iterations=1)
+        edges = cv2.Canny(cp_frame, l_t, h_t)
+        # edges2 = cv2.Canny(gray, l_t, h_t)
+        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,0,0]], np.uint8), iterations=2)
+        # edges = cv2.dilate(edges, kernel=np.array([[0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0]], np.uint8), iterations=1)
+        # edges = cv2.dilate(edges, kernel=np.array([[0,0,0,0,0], [0,0,0,0,0], [1,1,1,1,1], [0,0,0,0,0], [0,0,0,0,0]], np.uint8), iterations=1)
         cv2.imshow("Shape", edges)
+        # cv2.imshow("Shape2", edges2)
         cv2.waitKey(0)
         contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            length = cv2.arcLength(contour, closed=True)
-            if length < 1200 or length > 4000:
+            length, area = cv2.arcLength(contour, closed=True), cv2.contourArea(contour)
+            if length < 1000:
                 continue
-            epsilon = 0.02 * cv2.arcLength(contour, True)
+            epsilon = 0.01 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
             x, y, w, h = cv2.boundingRect(approx)
             cv2.drawContours(cp_frame, [approx], -1, (0, 255, 0), 2)
-            cv2.putText(cp_frame, str(cv2.contourArea(approx)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            print("area", str(cv2.contourArea(approx)))
+            cv2.drawContours(cp_frame, [contour], -1, (255, 0, 0), 2)
+            cv2.rectangle(cp_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            cv2.putText(cp_frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            print("area", str(area))
             print("length", str(length))
             cv2.imshow("Shape", cp_frame)
             cv2.waitKey(0)
@@ -210,24 +250,28 @@ class VisionModule():
 if __name__ == "__main__":
     vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
 
-    # frame1 = cv2.imread("cb_pack01.jpg")
-    # frame2 = cv2.imread("cb_pack02.jpg")
-    # vision_module.locate_pack(frame1)
+    square_frames = [cv2.imread("data/i4.0_frames/square01.png"), cv2.imread("data/i4.0_frames/square02.png"), cv2.imread("data/i4.0_frames/square03.png")]
+    trapez_frames = [cv2.imread("data/i4.0_frames/trapezoid01.png"), cv2.imread("data/i4.0_frames/trapezoid02.png"), cv2.imread("data/i4.0_frames/trapezoid03.png")]
+    empty_frames = [cv2.imread("data/i4.0_frames/empty1.png"), cv2.imread("data/i4.0_frames/empty2.png"), cv2.imread("data/i4.0_frames/empty3.png")]
+    vision_module.locate_pack(square_frames[0])
     # vision_module.locate_pack(frame2)
     # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
-    ans, i = 0, 0
-    filenames = [
-                    "empty1.png", "empty2.png", "empty3.png",
-                    "trapezoid1.png", "trapezoid2.png", "trapezoid3.png",
-                    "square1.png", "square2.png", "square3.png",
-                    ]
-    while chr(ans & 0xFF) != 'q':
-        frame = vision_module.get_current_frame(wait_delay=0)
-        cv2.imshow("frame", frame)
-        ans = cv2.waitKey(1)
-        if chr(ans & 0xFF) == 's':
-            cv2.imwrite(filenames[i], frame)
-            i += 1
+    
+    # ans = 0xff & 0
+    # i = 0
+    # filenames = [
+    #     "trapezoid1.png", "trapezoid2.png", "trapezoid3.png",
+    #     "square1.png", "square2.png", "square3.png",
+    #     "empty1.png", "empty2.png", "empty3.png"
+    #     ]
+    # while ans != 'q':
+    #     frame = vision_module.get_current_frame(wait_delay=0)    
+    #     cv2.imshow("frame", frame)
+    #     ans = chr(cv2.waitKey(1) & 0xff)
+    #     if ans == 's':
+    #         cv2.imwrite(filenames[i], frame)
+    #         i += 1
+    
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
     # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
