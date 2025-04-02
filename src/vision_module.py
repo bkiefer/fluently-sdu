@@ -45,7 +45,7 @@ class VisionModule():
             frame = self.camera.get_color_frame()
         except AttributeError:
             print("Cannot access camera. For debuggin purpose it will acess a file in store")
-            frame = cv2.imread("./data/NMC21700-from-top.png") # TESTING
+            frame = None
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -89,30 +89,40 @@ class VisionModule():
         #     if ans == 'd':
         #         h_t += 5
         gray = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(cp_frame, l_t, h_t)
+        _, thresh = cv2.threshold(gray, 60, 255, cv2.THRESH_BINARY)
+        cv2.imshow("Shape", thresh)
+        # cv2.waitKey(0)
+        edges = cv2.Canny(thresh, l_t, h_t)
+        lines = cv2.HoughLinesP(gray, rho=0.1, theta=np.pi/180, threshold=10, minLineLength=0, maxLineGap=100)
         # edges2 = cv2.Canny(gray, l_t, h_t)
         # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,0,0]], np.uint8), iterations=2)
         # edges = cv2.dilate(edges, kernel=np.array([[0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0]], np.uint8), iterations=1)
         # edges = cv2.dilate(edges, kernel=np.array([[0,0,0,0,0], [0,0,0,0,0], [1,1,1,1,1], [0,0,0,0,0], [0,0,0,0,0]], np.uint8), iterations=1)
         cv2.imshow("Shape", edges)
-        # cv2.imshow("Shape2", edges2)
+        # cv2.waitKey(0)
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(gray, (x1, x2), (y1, y2), color=(0,0,255))
+        cv2.imshow("line", cp_frame)
         cv2.waitKey(0)
+
         contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        for contour in contours:
-            length, area = cv2.arcLength(contour, closed=True), cv2.contourArea(contour)
-            if length < 1000:
-                continue
-            epsilon = 0.01 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
-            x, y, w, h = cv2.boundingRect(approx)
-            cv2.drawContours(cp_frame, [approx], -1, (0, 255, 0), 2)
-            cv2.drawContours(cp_frame, [contour], -1, (255, 0, 0), 2)
-            cv2.rectangle(cp_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            cv2.putText(cp_frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            print("area", str(area))
-            print("length", str(length))
-            cv2.imshow("Shape", cp_frame)
-            cv2.waitKey(0)
+        # print(len(contours))
+        # for contour in contours:
+        #     length, area = cv2.arcLength(contour, closed=True), cv2.contourArea(contour)
+        #     if length < 200:
+        #         continue
+        #     epsilon = 0.01 * cv2.arcLength(contour, True)
+        #     approx = cv2.approxPolyDP(contour, epsilon, True)
+        #     x, y, w, h = cv2.boundingRect(approx)
+        #     cv2.drawContours(cp_frame, [approx], -1, (0, 255, 0), 2)
+        #     cv2.drawContours(cp_frame, [contour], -1, (255, 0, 0), 2)
+        #     cv2.rectangle(cp_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        #     cv2.putText(cp_frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        #     print("area", str(area))
+        #     print("length", str(length))
+        # cv2.imshow("Shape", cp_frame)
+        # cv2.waitKey(0)
         return {'shape': 'trapezoid', 'size': (0, 0), 'cover_on': True, 'location': (0, 0)}
 
     def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
@@ -253,10 +263,13 @@ if __name__ == "__main__":
     square_frames = [cv2.imread("data/i4.0_frames/square01.png"), cv2.imread("data/i4.0_frames/square02.png"), cv2.imread("data/i4.0_frames/square03.png")]
     trapez_frames = [cv2.imread("data/i4.0_frames/trapezoid01.png"), cv2.imread("data/i4.0_frames/trapezoid02.png"), cv2.imread("data/i4.0_frames/trapezoid03.png")]
     empty_frames = [cv2.imread("data/i4.0_frames/empty1.png"), cv2.imread("data/i4.0_frames/empty2.png"), cv2.imread("data/i4.0_frames/empty3.png")]
-    vision_module.locate_pack(square_frames[0])
+    # vision_module.locate_pack(square_frames[0])
     # vision_module.locate_pack(frame2)
     # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
-    
+    from ultralytics import YOLO
+    model = YOLO("yolov8n.pt")
+    results = model(trapez_frames[0])
+    results[0].show()
     # ans = 0xff & 0
     # i = 0
     # filenames = [
