@@ -267,24 +267,12 @@ if __name__ == "__main__":
     # vision_module.locate_pack(frame2)
     # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
     from ultralytics import YOLO
-    model = YOLO("yolov8n.pt")
-    results = model(trapez_frames[0])
-    results[0].show()
-    # ans = 0xff & 0
-    # i = 0
-    # filenames = [
-    #     "trapezoid1.png", "trapezoid2.png", "trapezoid3.png",
-    #     "square1.png", "square2.png", "square3.png",
-    #     "empty1.png", "empty2.png", "empty3.png"
-    #     ]
-    # while ans != 'q':
-    #     frame = vision_module.get_current_frame(wait_delay=0)    
-    #     cv2.imshow("frame", frame)
-    #     ans = chr(cv2.waitKey(1) & 0xff)
-    #     if ans == 's':
-    #         cv2.imwrite(filenames[i], frame)
-    #         i += 1
-    
+    model = YOLO("data/best.pt")
+    result = model(img_path) 
+    print((result[0].boxes[0].cls))
+    print((result[0].boxes[0].conf))    
+    print((result[0].boxes[0].xywh))
+
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
     # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
