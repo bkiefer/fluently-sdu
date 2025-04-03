@@ -10,6 +10,7 @@ from gubokit import vision
 import time
 import spatialmath as sm
 from gubokit import vision
+from ultralytics import YOLO
 
 class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
@@ -26,7 +27,7 @@ class VisionModule():
         except RuntimeError:
             self.camera = None
             print("The vision module could not be started, the module will run for debug purpose")
-        
+        self.yolo_model = YOLO("data/best.pt")
         self.set_background() #!
         
     def set_background(self):
@@ -52,77 +53,11 @@ class VisionModule():
         return frame
 
     def locate_pack(self, frame: ndarray):
-        cp_frame = copy.deepcopy(frame)
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        # cv2.imshow("Remove color", hsv)
-        # cv2.waitKey(0)
-        mask = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([120, 70, 200]))
-        cp_frame[mask > 0] = [255, 255, 255]  # Set removed color to white
-
-        ans = chr(0 & 0xFF)
-        l_t, h_t = 85, 90
-        contrast, brightness = 1.5, 20
-        # while ans != 'q':
-        #     print(f"contrast: {contrast}, brightness: {brightness}")
-        #     print(f"low: {l_t}, high: {h_t}")
-        #     enhanced = cv2.convertScaleAbs(cp_frame, alpha=contrast, beta=brightness)
-        #     cv2.imshow("Enhanced", enhanced)
-        #     gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
-        #     cv2.imshow("Gray", gray)
-        #     edges = cv2.Canny(gray, l_t, h_t)
-        #     cv2.imshow("Edges", edges)
-        #     ans = chr(cv2.waitKey(0) & 0xFF)
-        #     if ans == 'x':
-        #         contrast -= 0.1
-        #     if ans == 'c':
-        #         contrast += 0.1
-        #     if ans == 'r':
-        #         brightness -= 5
-        #     if ans == 't':
-        #         brightness += 5
-        #     if ans == 'w':
-        #         l_t -= 5
-        #     if ans == 'e':
-        #         l_t += 5
-        #     if ans == 's':
-        #         h_t -= 5
-        #     if ans == 'd':
-        #         h_t += 5
-        gray = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 60, 255, cv2.THRESH_BINARY)
-        cv2.imshow("Shape", thresh)
-        # cv2.waitKey(0)
-        edges = cv2.Canny(thresh, l_t, h_t)
-        lines = cv2.HoughLinesP(gray, rho=0.1, theta=np.pi/180, threshold=10, minLineLength=0, maxLineGap=100)
-        # edges2 = cv2.Canny(gray, l_t, h_t)
-        # edges = cv2.erode(edges, kernel=np.array([[0,1,0], [0,1,0], [0,0,0]], np.uint8), iterations=2)
-        # edges = cv2.dilate(edges, kernel=np.array([[0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0], [0,0,1,0,0]], np.uint8), iterations=1)
-        # edges = cv2.dilate(edges, kernel=np.array([[0,0,0,0,0], [0,0,0,0,0], [1,1,1,1,1], [0,0,0,0,0], [0,0,0,0,0]], np.uint8), iterations=1)
-        cv2.imshow("Shape", edges)
-        # cv2.waitKey(0)
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(gray, (x1, x2), (y1, y2), color=(0,0,255))
-        cv2.imshow("line", cp_frame)
-        cv2.waitKey(0)
-
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # print(len(contours))
-        # for contour in contours:
-        #     length, area = cv2.arcLength(contour, closed=True), cv2.contourArea(contour)
-        #     if length < 200:
-        #         continue
-        #     epsilon = 0.01 * cv2.arcLength(contour, True)
-        #     approx = cv2.approxPolyDP(contour, epsilon, True)
-        #     x, y, w, h = cv2.boundingRect(approx)
-        #     cv2.drawContours(cp_frame, [approx], -1, (0, 255, 0), 2)
-        #     cv2.drawContours(cp_frame, [contour], -1, (255, 0, 0), 2)
-        #     cv2.rectangle(cp_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-        #     cv2.putText(cp_frame, str(cv2.contourArea(contour)), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        #     print("area", str(area))
-        #     print("length", str(length))
-        # cv2.imshow("Shape", cp_frame)
-        # cv2.waitKey(0)
+        result = self.yolo_model(frame) 
+        label = (result[0].boxes[0].cls)
+        confidence = (result[0].boxes[0].conf)
+        x, y, w, h = (result[0].boxes[0].xywh)
+        print(f"label: {label}; confidence: {confidence}; x: {x}; y: {y}; w: {w}; h: {h}")
         return {'shape': 'trapezoid', 'size': (0, 0), 'cover_on': True, 'location': (0, 0)}
 
     def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
@@ -266,12 +201,9 @@ if __name__ == "__main__":
     # vision_module.locate_pack(square_frames[0])
     # vision_module.locate_pack(frame2)
     # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
-    from ultralytics import YOLO
-    model = YOLO("data/best.pt")
-    result = model(img_path) 
-    print((result[0].boxes[0].cls))
-    print((result[0].boxes[0].conf))    
-    print((result[0].boxes[0].xywh))
+    
+    
+    
 
     # vision_module.classify_cell(camera_frame)
     # bbs_positions = vision_module.cell_detection(camera_frame)
