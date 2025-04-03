@@ -54,11 +54,14 @@ class VisionModule():
 
     def locate_pack(self, frame: ndarray):
         result = self.yolo_model(frame) 
-        label = (result[0].boxes[0].cls)
+        if len(result[0].boxes) == 0:
+            return None
+        label = self.yolo_model.names[int(result[0].boxes[0].cls)]
         confidence = (result[0].boxes[0].conf)
-        x, y, w, h = (result[0].boxes[0].xywh)
-        print(f"label: {label}; confidence: {confidence}; x: {x}; y: {y}; w: {w}; h: {h}")
-        return {'shape': 'trapezoid', 'size': (0, 0), 'cover_on': True, 'location': (0, 0)}
+        xywh = result[0].boxes[0].xywh[0]
+        # result[0].show()
+        print(f"label: {label}; confidence: {confidence}; xywh: {xywh}")
+        return {'shape': label, 'size': (int(xywh[2]), int(xywh[3])), 'cover_on': True, 'location': (int(xywh[0]), int(xywh[1]))}
 
     def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
         """
@@ -106,7 +109,7 @@ class VisionModule():
         # vision.show_frames("Detection", [preprocessed])
         # cv2.imshow("Preprocessed", preprocessed)
 
-        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=80, minRadius=40, maxRadius=100)
+        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=80, minRadius=5, maxRadius=60)
         if circles is not None:
             # print(f"found: {len(circles[0])} circles")
             circles = np.uint16(np.around(circles))
