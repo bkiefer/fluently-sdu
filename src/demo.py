@@ -7,11 +7,11 @@ from gubokit import utilities
 
 robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], gripper_id=0)
 vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
-over_ws_pose = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
-pack_T = sm.SE3([-0.2957, -0.3202, 0.149]) * sm.SE3.Rx(np.pi)
-bin_T = sm.SE3([-0.03655, -0.5088, 0.20]) * sm.SE3.Rx(np.pi)
-cell_T = sm.SE3([-0.2968, -0.3108, 0.15]) * sm.SE3.Rx(np.pi)
-robot_module.robot.moveL(over_ws_pose)
+over_ws_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+pack_rotvec = [-0.2957, -0.3202, 0.149, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+cell_rotvec = [-0.2968, -0.3108, 0.15 , -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+robot_module.robot.moveL(over_ws_rotvec)
 # robot_module.robot.teachMode()
 robot_module.robot.endTeachMode()
 
@@ -29,16 +29,28 @@ while True:
             cv2.putText(frame, (str(pack_data['shape'])), (pt1[0], pt1[1]), cv2.FONT_HERSHEY_SIMPLEX,  2, (255, 0, 0), 1)
     elif ans == '2':
         # print(utilities.rotvec_to_T(robot_module.robot.getActualTCPPose()))
-        robot_module.pick_and_place(pack_T, bin_T)
-        robot_module.robot.moveL(over_ws_pose)
+        robot_module.pick_and_place(utilities.rotvec_to_T(pack_rotvec), utilities.rotvec_to_T(bin_rotvec))
+        robot_module.robot.moveL(over_ws_rotvec)
     elif ans == '3':
         cells_results = vision_module.cell_detection(frame)
     elif ans == '4':
         # print(utilities.rotvec_to_T(robot_module.robot.getActualTCPPose()))
-        robot_module.pick_and_place(cell_T, bin_T)
-        robot_module.robot.moveL(over_ws_pose)
+        robot_module.robot.moveL(cell_rotvec)
     elif ans == '5':
-        print(utilities.rotvec_to_T(robot_module.robot.getActualTCPPose()))
+        robot_module.pick_and_place(utilities.rotvec_to_T(robot_module.robot.getActualTCPPose()), utilities.rotvec_to_T(bin_rotvec))
+        robot_module.robot.moveL(over_ws_rotvec)
+    elif ans == 'w':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0.005,  0,  0,  0,  0,  0])))
+    elif ans == 'a':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([-0.005,  0,  0,  0,  0,  0])))
+    elif ans == 's':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,  0.005,  0,  0,  0,  0])))
+    elif ans == 'd':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,  -0.005,  0,  0,  0,  0])))
+    elif ans == 'p':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,  0,  0.005,  0,  0,  0])))
+    elif ans == 'l':
+        robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,  0,  -0.005,  0,  0,  0])))
     try:
         cv2.rectangle(frame, pt1, pt2, (0, 255, 0), 3)
         cv2.putText(frame, (str(pack_data['shape'])), (pt1[0], pt1[1]), cv2.FONT_HERSHEY_SIMPLEX,  2, (255, 0, 0), 1)
