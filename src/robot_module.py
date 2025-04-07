@@ -52,12 +52,5 @@ if __name__ == "__main__":
     cell_T_1 = (sm.SE3([-0.2949, -0.2554, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
     cell_T_2 = (sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
     
-    z_deg = 22.5
-    ans = ''
-    p_T_t = sm.SE3([0.1, 0.1, 0.1])
-    R = sm.SO3.Rz(22.5) * sm.SO3.Rx(np.pi)
-    t = np.array([-0.5475728840181823, -0.11426522600033209, 0.05839964950312038])
-    t_T_r = sm.SE3.Rt(R, t) 
-    print(p_T_t*t_T_r)
-    ans = input(">>>")
-    robot_module.robot.move_to_cart_pose(p_T_t*t_T_r)
+    print(robot_module.robot.getActualTCPPose())
+    

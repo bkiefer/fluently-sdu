@@ -11,6 +11,8 @@ import time
 import spatialmath as sm
 from gubokit import vision
 from ultralytics import YOLO
+from gubokit import utilities
+from robot_module import RobotModule
 
 class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
@@ -60,7 +62,7 @@ class VisionModule():
         confidence = (result[0].boxes[0].conf)
         xywh = result[0].boxes[0].xywh[0]
         # result[0].show()
-        print(f"label: {label}; confidence: {confidence}; xywh: {xywh}")
+        # print(f"label: {label}; confidence: {confidence}; xywh: {xywh}")
         return {'shape': label, 'size': (int(xywh[2]), int(xywh[3])), 'cover_on': True, 'location': (int(xywh[0]), int(xywh[1]))}
 
     def classify_cell(self, frames: list[ndarray]) -> dict[tuple[str, float]]:
@@ -142,7 +144,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_pos_to_3d(self, frame_pos:ndarray, camera, cell_heigth, camera_z) -> sm.SE3:
+    def frame_pos_to_3d(self, frame_pos:ndarray, camera, cell_heigth, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -151,7 +153,8 @@ class VisionModule():
         Returns:
             sm.SE3: 4x4 pose in world frame
         """
-        return vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=(camera_z - cell_heigth))
+        base_T_cam = base_T_TCP * camera.extrinsic
+        return vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_heigth)
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
@@ -196,23 +199,37 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    vision_module = VisionModule(camera_Ext=sm.SE3([0,0,0]))
+    R = sm.UnitQuaternion(s=0.7058517498982678, v=[0.006697022630599267, -0.0007521624314972674, 0.7083275310935719]).SO3()     
+    t = np.array([0.04627923466437427, -0.03278714750773679, 0.01545089678599013])
+    E = sm.SE3.Rt(R, t)
+    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], gripper_id=0)
+    over_ws_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+    robot_module.robot.moveL(over_ws_rotvec)
+    vision_module = VisionModule(camera_Ext=E)
+    print(vision_module.camera.intr)
+    ans = ''
+    while ans != 'q':
+        if ans == 'a':
+            robot_module.robot.moveL(robot_module.robot.getActualTCPPose() - np.array([0,0,0.002,0,0,0]))
+        ans = chr(0xff & cv2.waitKey(1))
+        cv2.imshow("frame", vision_module.get_current_frame(wait_delay=0))
+    # result_p = vision_module.locate_pack(vision_module.get_current_frame())
+    # p = result_p['location']
+    frame = vision_module.get_current_frame()
+    bbs = vision_module.cell_detection(frame)
+    if len(bbs) != 0:
+        for (x, y, r) in bbs:
+            cv2.circle(frame, (x, y), 1, (0, 100, 100), 3)
+            cv2.circle(frame, (x, y), r, (255, 0, 255), 3)
+    cv2.imshow("frame", frame)
+    cv2.waitKey(0)
+    p = bbs[0]
 
-    square_frames = [cv2.imread("data/i4.0_frames/square01.png"), cv2.imread("data/i4.0_frames/square02.png"), cv2.imread("data/i4.0_frames/square03.png")]
-    trapez_frames = [cv2.imread("data/i4.0_frames/trapezoid01.png"), cv2.imread("data/i4.0_frames/trapezoid02.png"), cv2.imread("data/i4.0_frames/trapezoid03.png")]
-    empty_frames = [cv2.imread("data/i4.0_frames/empty1.png"), cv2.imread("data/i4.0_frames/empty2.png"), cv2.imread("data/i4.0_frames/empty3.png")]
-    # vision_module.locate_pack(square_frames[0])
-    # vision_module.locate_pack(frame2)
-    # result = vision_module.frame_pos_to_3d((822, 177), vision_module.camera, cell_heigth=0.035, camera_z=0.9)
+    b_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
+    P = vision_module.frame_pos_to_3d(p, vision_module.camera, 0.090, b_T_TCP)
+    screw_T_b = (b_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
+    print(screw_T_b)
+    input(">>>")
+    # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.08]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
+    robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.041]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
     
-    
-    
-
-    # vision_module.classify_cell(camera_frame)
-    # bbs_positions = vision_module.cell_detection(camera_frame)
-    # vision_module.assess_cells_qualities(camera_frame, bbs_positions=bbs_positions)
-    # input("Remove one cell")
-    # camera_frame = vision_module.get_current_frame()
-    # cv2.imshow("cam", camera_frame)
-    # for bb in bbs_positions:
-    #     vision_module.verify_pickup(bb)
