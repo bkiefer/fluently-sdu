@@ -29,7 +29,7 @@ print(camera_pose)
 camera_pose = vision_module.camera.extrinsic * utilities.rotvec_to_T(robot_module.robot.getActualTCPPose()) # or viceversa
 print(camera_pose)
 camera_z = .610
-pos_3d = vision_module. frame_pos_to_3d(p, vision_module.camera, cell_heigth=cell_h, base_T_cam=camera_z)
+pos_3d = vision_module. frame_pos_to_pose(p, vision_module.camera, cell_heigth=cell_h, base_T_cam=camera_z)
 print("POS 3d", pos_3d)
 pose = sm.SE3(pos_3d)  * sm.SE3.Rx(np.pi)
 

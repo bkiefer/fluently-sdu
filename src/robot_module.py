@@ -53,4 +53,3 @@ if __name__ == "__main__":
     cell_T_2 = (sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
     
     print(robot_module.robot.getActualTCPPose())
-    

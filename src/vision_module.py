@@ -144,7 +144,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_pos_to_3d(self, frame_pos:ndarray, camera, cell_heigth, base_T_TCP) -> sm.SE3:
+    def frame_pos_to_pose(self, frame_pos:ndarray, camera, cell_heigth, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -154,7 +154,10 @@ class VisionModule():
             sm.SE3: 4x4 pose in world frame
         """
         base_T_cam = base_T_TCP * camera.extrinsic
-        return vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_heigth)
+        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_heigth)
+        screw_T_b = (b_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
+        screw_T_b.R = base_T_TCP.R # keep the current orientation of the tcp
+        return screw_T_b
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
@@ -206,7 +209,6 @@ if __name__ == "__main__":
     over_ws_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
     robot_module.robot.moveL(over_ws_rotvec)
     vision_module = VisionModule(camera_Ext=E)
-    print(vision_module.camera.intr)
     ans = ''
     while ans != 'q':
         if ans == 'a':
@@ -226,8 +228,7 @@ if __name__ == "__main__":
     p = bbs[0]
 
     b_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-    P = vision_module.frame_pos_to_3d(p, vision_module.camera, 0.090, b_T_TCP)
-    screw_T_b = (b_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
+    screw_T_b = vision_module.frame_pos_to_pose(p, vision_module.camera, 0.090, b_T_TCP)
     print(screw_T_b)
     input(">>>")
     # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.08]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
