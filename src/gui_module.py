@@ -207,6 +207,8 @@ class MemGui(tk.Tk):
         
         self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.proposed_models = []
+        self.proposed_pack = None
+        self.chosen_pack = ""
         self.chosen_model = ""
         self.proposed_locations = []
         self.chosen_locations = []
@@ -254,7 +256,7 @@ class MemGui(tk.Tk):
         for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, 
                                     AutoSortScreen, ManualSortScreen, HomeScreen, StartScreen, PlacePackScreen,
                                     CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
-                                    ColabAwaitHumanScreen, RemoveCoverScreen]):
+                                    ColabAwaitHumanScreen, RemoveCoverScreen, AutoPackClassScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
@@ -289,6 +291,10 @@ class MemGui(tk.Tk):
         for propose in self.proposed_models[1:]: # we skip the first one as it was already denied by the user
             btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda model = propose['model']: self.frames[2].chose_model(model))
             btn.pack()
+
+    def update_proposed_pack(self, proposed_pack: str):
+        self.proposed_pack = proposed_pack
+        self.frames[16].label.configure(text=f"Pack is: {self.proposed_pack}")
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
         self.x_min = tk.Entry(self.infos_container, width=4, justify="center")
@@ -371,6 +377,8 @@ class MemGui(tk.Tk):
     def reset_gui(self):
         self.proposed_models = []
         self.chosen_model = ""
+        self.chosen_pack = ""
+        self.proposed_pack = None
         self.proposed_locations = []
         self.chosen_locations = []
         self.proposed_qualities = []
@@ -421,6 +429,7 @@ class StartScreen(HomeScreen):
         btns_frame.pack()
         confirm_btn = tk.Button(btns_frame, text="Begin session", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
+        
         
     def confirm(self):
             self.controller.first_name = self.first_name_var.get()
@@ -511,6 +520,25 @@ class RemoveCoverScreen(HomeScreen):
         super().__init__(parent, controller, idx)
         self.label = tk.Label(self, text=f"Robot is moving...", font=("Arial", 10))
         self.label.pack()
+
+class AutoPackClassScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Pack type is: ", font=("Arial", 10))
+        self.label.pack()
+
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack(side='left')
+        deny_btn = tk.Button(btns_frame, text="✗", background='firebrick1', command=lambda: self.deny())
+        deny_btn.pack(side='left')
+
+    def confirm(self):
+        self.controller.chosen_pack = self.controller.proposed_pack
+    
+    def deny(self):
+        self.controller.class_reject = True
 
 class AutoClassScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):

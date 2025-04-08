@@ -17,6 +17,9 @@ class Cell():
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
         self.model = "unknown"
+        self.cover_on = True
+        self.size = None
+        self.location = None
         self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):

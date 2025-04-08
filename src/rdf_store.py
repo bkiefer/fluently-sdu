@@ -3,6 +3,7 @@ import sys
 import os
 import numpy as np
 import re
+import logging
 
 from hfc_thrift.rdfproxy import RdfProxy
 
@@ -19,11 +20,16 @@ class RdfStore:
                      "<cim:Question>" : "Question",
                      "<cim:YNQuestion>" : "YNQuestion"}
         RdfProxy.init_rdfproxy(port=port, classmapping=mapclass)
+        #self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
         self.robot = RdfProxy.getObject('Cobot')
+        self.robot.hasTool = "unknown"
+        #self.large_tool = RdfProxy.getObject('LargeVaccuumGripper')
+        #self.small_tool = RdfProxy.getObject('SmallVaccuumGripper')
         self.user = None
         self.session = None
         self.battery_pack = None
         self.battery_cells = []
+        
 
     def get_user(self, first_name: str, last_name: str):
         """
@@ -53,6 +59,7 @@ class RdfStore:
         self.session = RdfProxy.getObject("UserSession")
         self.user.userSessions.add(self.session)
         self.session.user = self.user
+        self.session.hasParticipant.add(self.robot)
         
         return self.session
     
@@ -69,12 +76,12 @@ class RdfStore:
         A process is part of the session, which can include multiple processes.
         """
         self.sorting_process = self.__session_part("SortingProcess")
-        self.battery_pack = RdfProxy.getObject("BatteryPack")
-        self.session.hasConstituent.add(self.battery_pack)
-        self.single_battery_cell = RdfProxy.getObject("BatteryCell")
+        #self.battery_pack = RdfProxy.getObject("BatteryPack")
+        #self.session.hasConstituent.add(self.battery_pack)
+        #self.single_battery_cell = RdfProxy.getObject("BatteryCell")
         now = time.time()
         self.sorting_process.fromTime = round(now*1000)
-
+    
     def end_sorting_process(self):
         """
         Records that a sorting process has ended. 
@@ -83,7 +90,7 @@ class RdfStore:
         now = time.time()
         self.sorting_process.toTime = round(now*1000)
     
-    def get_model_instance(self, model: str):
+    def get_cell_model_instance(self, model: str):
         query = 'select ?inst where ?inst <rdf:type> <cim:BatteryCell> ?_' \
             ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
         insts = RdfProxy.selectQuery(query)
@@ -94,18 +101,22 @@ class RdfStore:
         Records the cell model name following the classification step. 
         Returns the dimensions of the cell type in (height, diameter)
         """
-        model_str = self.get_model_instance(model) # verify that cell model is in the ontology 
-        self.single_battery_cell.hasPart.add(model_str) # add the verified model as a property of the single battery cell
+        model_str = self.get_cell_model_instance(model) # verify that cell model is in the ontology 
+        if model_str:
+            self.single_battery_cell.isClassifiedBy.add(model_str) # add the verified model as a property of the single battery cell
 
-        # Get the height of the battery cell "model" from the ontology
-        query = 'select distinct ?height where ?cell <soma:hasHeight> ?height ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
-            ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
-        height = RdfProxy.selectQuery(query)[0]
-        
-        # Get the diameter of the battery cell from the ontology
-        query = 'select distinct ?diam where ?cell <cim:hasDiameter> ?diam ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
-            ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
-        diameter = RdfProxy.selectQuery(query)[0]
+            # Get the height of the battery cell "model" from the ontology
+            query = 'select distinct ?height where ?cell <soma:hasHeight> ?height ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
+                ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+            height = RdfProxy.selectQuery(query)[0]
+            
+            # Get the diameter of the battery cell from the ontology
+            query = 'select distinct ?diam where ?cell <cim:hasDiameter> ?diam ?_ & ?cell <rdf:type> <cim:BatteryCell> ?_ '\
+                ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+            diameter = RdfProxy.selectQuery(query)[0]
+        else:
+            height = 0.0
+            diameter = 0.0
 
         # Record cell size in RDF store
         self.single_battery_cell.hasDiameter = diameter
@@ -113,6 +124,7 @@ class RdfStore:
 
         print(height, diameter)
         return (height,diameter)
+     
 
     def update_number_of_cells(self, rows: int, cols:int, model: str):
         for row in range(rows):
@@ -121,15 +133,18 @@ class RdfStore:
                 cell.hasHeight = self.single_battery_cell.hasHeight
                 cell.hasDiameter = self.single_battery_cell.hasDiameter
                 cell.hasPositionData = str((row,col))
-                model_str = self.get_model_instance(model)            
-                cell.hasPart.add(model_str)
+                model_str = self.get_cell_model_instance(model) 
+                if model_str:           
+                    cell.isClassifiedBy.add(model_str)
                 self.battery_pack.hasPart.add(cell)
+                #print("battery cell added!")
+                #print("rows: ",rows," cols: ",cols)
     
     def update_cell_sorted(self, row: int, col:int, sorted: bool):
         for cell in self.battery_pack.hasPart:
             if cell.hasPositionData == str((row,col)):
-                cell.wasSorted = sorted
-
+                cell.wasSorted = str(sorted)
+    
     def __session_part(self, object: str):
         """
         Links the session (subject) with another part (object) as a constituent (the predicate).
@@ -149,7 +164,7 @@ class RdfStore:
             ' aggregate ?res = LGetLatest2 ?off ?t "1"^^<xsd:int>'.format(
                 clazz, self.session.uri))
         if not lastoffer:
-            # TODO: at least log a warning
+            logging.warning(" No last session constituent found for class: %s",clazz)
             return None
         return lastoffer[0]
 
@@ -162,18 +177,112 @@ class RdfStore:
         instruction.hasParticipant.union(lastoffer.hasParticipant)
         return instruction
     
-    def object_classification(self):
+    def human_place_battery(self):
+        """record the human has placed and fastening the battery pack on the worktable"""
+        self.battery_pack = RdfProxy.getObject("BatteryPack")
+        self.session.hasConstituent.add(self.battery_pack)
+        self.single_battery_cell = RdfProxy.getObject("BatteryCell")
+        place_battery = self.__session_part("PlaceBattery")
+        return place_battery
+        
+    def battery_classification(self):
+        """record the robot has classified the battery pack type"""
+        # TODO: add information about success/failure of classification, was the pack in the DB, etc...
+        # BatteryClassification data properties: hasNameString, wasSuccessful, isKnown
+        # e.g., hasNameString = "unknown", wasSuccessful = "False", isKnown = "False"
+        # hasNameString = ""
+        return self.__session_part("BatteryClassification")
+    
+    def get_pack_model_instance(self, pack_name: str):
+        query = 'select ?inst where ?inst <rdf:type> <cim:BatteryPack> ?_' \
+            ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
+        insts = RdfProxy.selectQuery(query)
+        return None if not insts else insts[0]
+
+    def record_pack_type(self, pack_name: str):
+        model_str = self.get_pack_model_instance(pack_name) # verify that cell model is in the ontology 
+        if model_str:
+            self.battery_pack.isClassifiedBy.add(model_str) # add the verified model as a property of the single battery cell
+        self.battery_pack.hasNameString = pack_name
+
+    def identify_battery_type(self):
+        """record the human has identified the battery pack type"""
+        return self.__session_part("IdentifyBatteryType")
+    
+    def cell_classification(self):
         """record the robot has classified object (session constituent)"""
-        return self.__session_part("ObjectClassification")
+        return self.__session_part("CellClassification")
     
     def object_detection(self):
         """record the robot has detected object (session constituent)"""
-        return self.__session_part("ObjectDetection")
+        return self.__session_part("CellDetection")
     
     def quality_assessment(self):
         """record the robot has assessed quality of object (session constituent)"""
         return self.__session_part("QualityAssessment")
+
+    def check_cover(self, cells_visible):
+        """record that the robot has assessed whether or not the cover is on and the result (cellsVisible True/False)"""
+        check_cover = self.__session_part("CheckCover")  
+        check_cover.cellsVisible = str(cells_visible) 
+        return check_cover
+
+    def robot_pick_place(self):
+        # TODO: change to a split into pickobjectaction and placeobjectaction?
+        pick_place = self.__session_part("PickPlace")
+        pick_place.hasParticipant.add(self.robot)
+        return pick_place
     
+    def pick_place_outcome(self, outcome):
+        # get last pick place
+        lastpickplace = self.__get_last_session_constituent("<soho:PickPlace>")
+        lastpickplace.wasSuccessful = str(outcome)
+        return lastpickplace
+    
+    def robot_remove_cover(self):
+        return self.__session_part("RobotRemoveCover")
+    
+    def record_robot_tool(self, tool: str):
+        if tool == "small":
+            #small_tool = RdfProxy.getObject('SmallVaccuumGripper')
+            #self.robot.hasTool.add(small_tool)
+            self.robot.hasTool = "small"
+        elif tool == "large":
+            #large_tool = RdfProxy.getObject('LargeVaccuumGripper')
+            #self.robot.hasTool.add(large_tool)
+            self.robot.hasTool = "large"
+        return
+    
+    def get_robot_tool(self):
+        #last_tool = RdfProxy.selectQuery(
+        #    'select ?tool ?t where ?cobot <cim:hasTool> ?tool ?t'
+        #    ' & ?cobot <rdf:type> <soho:Cobot> ?_'
+        #    ' & {} <dul:hasParticipant> ?cobot ?_'
+        #    ' aggregate ?res = LGetLatest2 ?tool ?t "1"^^<xsd:int>'.format(self.session.uri))
+        
+        #if not last_tool:
+        #    return None
+        
+        #last_tool = RdfProxy.python2rdf(last_tool[0])
+        #last_tool = last_tool.lower()[5:10] # e.g., reduce "<dom:SmallVaccuumGripperfb06f68f_236>"" to "small"
+
+        # TODO: maybe get information from previous session and not just the current session???
+        if self.robot.hasTool == "unknown":
+            return None
+        return self.robot.hasTool
+    
+    def switch_tool(self):
+        #last_tool = self.get_robot_tool()
+        #if last_tool == "small":
+        #    self.record_robot_tool(tool="large")
+        #elif last_tool == "large":
+        #    self.record_robot_tool(tool="small")
+        if self.robot.hasTool == "small":
+            self.robot.hasTool = "large"
+        elif self.robot.hasTool == "large":
+            self.robot.hasTool = "small"
+        return 
+
     def request_help(self):
         """ 
         TODO: specify what the robot is asking for help about (request.hasConstituent.add(?))
@@ -181,3 +290,39 @@ class RdfStore:
         requesthelp = self.__session_part("RequestHelp")
         requesthelp.hasParticipant.add(self.robot)
         return requesthelp
+    
+    def get_same_pack_sessions(self):        
+        pack_name = self.battery_pack.hasNameString
+        query = 'select distinct ?sess where ?sess <rdf:type> <cim:UserSession> ?_ ' \
+                ' & ?sess <dul:hasConstituent> ?pack ?_ & ?pack <rdf:type> <cim:BatteryPack> ?_ ' \
+                ' & ?pack <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
+        same_pack_sessions = RdfProxy.selectQuery(query)
+        return same_pack_sessions
+    
+    """
+    def name_battery_pack(self, rows, cols, model):
+        self.battery_pack.hasNameString = "R"+str(rows)+"C"+str(cols)+"M"+model
+        return
+    """
+
+    def should_try_again(self):
+        same_pack_sessions = self.get_same_pack_sessions()
+        no_pick_place = 0
+        no_failures = 0
+        for sess in same_pack_sessions:
+            rdf_sess = RdfProxy.python2rdf(sess)
+            no_pick_place += len(RdfProxy.selectQuery('select ?p where {} <dul:hasConstituent> ?p ?_ ' \
+                                                      '& ?p <rdf:type> <soho:PickPlace> ?_ ' \
+                                                      '& ?p <dul:hasParticipant> ?c ?_ ' \
+                                                      '& ?c <rdf:type> <soho:Cobot> ?_ '.format(rdf_sess)))
+            no_failures += len(RdfProxy.selectQuery('select ?p where {} <dul:hasConstituent> ?p ?_ ' \
+                                                      '& ?p <rdf:type> <soho:PickPlace> ?_ ' \
+                                                      '& ?p <dul:hasParticipant> ?c ?_ ' \
+                                                      '& ?p <cim:wasSuccessful> "False"^^<xsd:string> ?_ ' \
+                                                      '& ?c <rdf:type> <soho:Cobot> ?_ '.format(rdf_sess)))
+        failure_rate = no_failures/no_pick_place
+        print("Failure rate: ", int(failure_rate*100), "%")
+        if failure_rate < 0.2:
+            return True
+        else:
+            return False
