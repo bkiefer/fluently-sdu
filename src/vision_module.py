@@ -232,5 +232,5 @@ if __name__ == "__main__":
     print(screw_T_b)
     input(">>>")
     # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.08]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
-    robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.041]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
+    # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.041]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
     
