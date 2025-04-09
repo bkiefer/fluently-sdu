@@ -207,11 +207,12 @@ class MemGui(tk.Tk):
         
         self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.proposed_models = []
-        self.proposed_pack = None
+        self.proposed_packs = None
         self.chosen_pack = ""
         self.chosen_model = ""
         self.proposed_locations = []
         self.chosen_locations = []
+        self.chosen_pack_location = None
         self.proposed_qualities = []
         self.chosen_qualities = []
         self.outcomes = []
@@ -256,7 +257,8 @@ class MemGui(tk.Tk):
         for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, 
                                     AutoSortScreen, ManualSortScreen, HomeScreen, StartScreen, PlacePackScreen,
                                     CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
-                                    ColabAwaitHumanScreen, RemoveCoverScreen, AutoPackClassScreen]):
+                                    ColabAwaitHumanScreen, RemoveCoverScreen, AutoPackClassScreen, ManualPackClassScreen,
+                                    LocatePackScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
@@ -292,9 +294,12 @@ class MemGui(tk.Tk):
             btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda model = propose['model']: self.frames[2].chose_model(model))
             btn.pack()
 
-    def update_proposed_pack(self, proposed_pack: str):
-        self.proposed_pack = proposed_pack
-        self.frames[16].label.configure(text=f"Pack is: {self.proposed_pack}")
+    def update_proposed_packs(self, proposed_packs):
+        self.proposed_packs = proposed_packs
+        self.frames[16].label.configure(text=f"Pack is: {self.proposed_packs[0]}")
+        for propose in self.proposed_packs[1:]: # we skip the first one as it was already denied by the user
+            btn = tk.Button(self.frames[17].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[17].chosen_pack(model))
+            btn.pack()
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
         self.x_min = tk.Entry(self.infos_container, width=4, justify="center")
@@ -378,7 +383,7 @@ class MemGui(tk.Tk):
         self.proposed_models = []
         self.chosen_model = ""
         self.chosen_pack = ""
-        self.proposed_pack = None
+        self.proposed_packs = None
         self.proposed_locations = []
         self.chosen_locations = []
         self.proposed_qualities = []
@@ -432,6 +437,7 @@ class StartScreen(HomeScreen):
         
         
     def confirm(self):
+            self.controller.show_frame(0)
             self.controller.first_name = self.first_name_var.get()
             self.controller.last_name = self.last_name_var.get()
 
@@ -450,6 +456,7 @@ class PlacePackScreen(HomeScreen):
 
     def confirm(self):
         self.controller.confirm = True
+        self.controller.show_frame(0)
 
 class CheckGripperScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
@@ -500,6 +507,7 @@ class ChangeGripperScreen(HomeScreen):
         confirm_btn.pack(side='left')
 
     def confirm(self):
+        self.controller.show_frame(0)
         self.controller.confirm = True
 
 class ColabAwaitHumanScreen(HomeScreen):
@@ -513,6 +521,7 @@ class ColabAwaitHumanScreen(HomeScreen):
         confirm_btn.pack(side='left')
 
     def confirm(self):
+        self.controller.show_frame(0)
         self.controller.confirm = True
 
 class RemoveCoverScreen(HomeScreen):
@@ -535,10 +544,39 @@ class AutoPackClassScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.chosen_pack = self.controller.proposed_pack
+        self.controller.show_frame(0)
+        self.controller.chosen_pack = self.controller.proposed_packs
     
     def deny(self):
         self.controller.class_reject = True
+
+class ManualPackClassScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.controller = controller
+        self.idx = idx
+
+        self.btns_frame = tk.Frame(self)
+        self.btns_frame.pack()
+        self.pack_var = tk.StringVar()
+        self.pack_label = tk.Label(self, text="Other:")
+        self.pack_label.pack()
+        pack_entry = tk.Entry(self, textvariable=self.pack_var)
+        pack_entry.pack()
+
+        self.btns_frame_2 = tk.Frame(self)
+        self.btns_frame_2.pack()
+        confirm_btn = tk.Button(self.btns_frame_2, text="Confirm", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack()
+        
+    def confirm(self):
+        self.controller.show_frame(0)
+        self.controller.chosen_pack = self.pack_var.get()
+        self.pack_var.set("")
+            
+    def chosen_pack(self, model: str):
+        self.controller.show_frame(0)
+        self.controller.chosen_pack = model
 
 class AutoClassScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
@@ -554,6 +592,7 @@ class AutoClassScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
+        self.controller.show_frame(0)
         self.controller.chosen_model = self.controller.proposed_models[0]['model']
     
     def deny(self):
@@ -588,21 +627,26 @@ class AutoDetectScreen(HomeScreen):
         confirm_btn.pack(side='left')
         add_btn = tk.Button(btns_frame, text="Add", background='firebrick1', command=lambda: self.add_box())
         add_btn.pack(side='left')
-
-        # self.after(1, self.change_label)
-    
-    # def change_label(self):
-    #     if self.controller.proposed_locations:
-    #         no_of_cells = len(self.controller.proposed_locations)
-    #         text = f"\nNumber of cells: {no_of_cells}\n"
-    #         self.number_label.configure(text=text)
-    #     self.number_label.after(1, self.change_label)
         
     def confirm(self):
         self.controller.chosen_locations = self.controller.bbs_editor.bbs_position
 
     def add_box(self):
         self.controller.bbs_editor.spawn_box()
+
+class LocatePackScreen(HomeScreen):
+    def __init__(self, parent, controller, idx):
+        super().__init__(parent, controller, idx)
+        self.controller = controller
+        self.label = tk.Label(self, text=f"Please locate the pack using the bounding box.", font=("Arial", 10))
+        self.label.pack()
+        btns_frame = tk.Frame(self)
+        btns_frame.pack()
+        confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
+        confirm_btn.pack()
+        
+    def confirm(self):
+        self.controller.chosen_pack_location = self.controller.bbs_editor.bbs_position
 
 class AutoAssessScreen(HomeScreen):
     def __init__(self, parent, controller, idx):

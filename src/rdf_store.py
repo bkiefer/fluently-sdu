@@ -122,8 +122,8 @@ class RdfStore:
         self.single_battery_cell.hasDiameter = diameter
         self.single_battery_cell.hasHeight = height
 
-        print(height, diameter)
-        return (height,diameter)
+        print(height, diameter/2)
+        return (height,diameter/2)
      
 
     def update_number_of_cells(self, rows: int, cols:int, model: str):
@@ -144,6 +144,11 @@ class RdfStore:
         for cell in self.battery_pack.hasPart:
             if cell.hasPositionData == str((row,col)):
                 cell.wasSorted = str(sorted)
+    
+    def update_cell_quality(self, row:int, col:int, quality: float):
+        for cell in self.battery_pack.hasPart:
+            if cell.hasPositionData == str((row,col)):
+                cell.hasQuality = quality
     
     def __session_part(self, object: str):
         """
@@ -178,7 +183,7 @@ class RdfStore:
         return instruction
     
     def human_place_battery(self):
-        """record the human has placed and fastening the battery pack on the worktable"""
+        """record the human has placed and fastened the battery pack on the worktable"""
         self.battery_pack = RdfProxy.getObject("BatteryPack")
         self.session.hasConstituent.add(self.battery_pack)
         self.single_battery_cell = RdfProxy.getObject("BatteryCell")
@@ -198,6 +203,12 @@ class RdfStore:
             ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
         insts = RdfProxy.selectQuery(query)
         return None if not insts else insts[0]
+    
+    def get_pack_models_in_ontology(self):
+        query = 'select distinct ?str where ?inst <soho:hasLabel> ?str ?_ ' \
+                ' & ?inst <rdf:type> <cim:BatteryPack> ?_'
+        models = RdfProxy.selectQuery(query)
+        return models
 
     def record_pack_type(self, pack_name: str):
         model_str = self.get_pack_model_instance(pack_name) # verify that cell model is in the ontology 

@@ -2,6 +2,7 @@ import py_trees as pt
 import time
 import random
 import spatialmath as sm
+from gubokit import utilities
 
 class BeginSession(pt.behaviour.Behaviour):
     """
@@ -17,10 +18,8 @@ class BeginSession(pt.behaviour.Behaviour):
         frame = self.vision.get_current_frame()
         self.gui.update_image(frame)
         self.gui.show_frame(8)
-        #if self.gui.active_frame != 8: 
-        #    print("First update for behavior", self.name)
-        #    self.gui.show_frame(8)
         if self.gui.first_name != None:
+            # register name and start session
             self.rdf.get_user(first_name = self.gui.first_name, last_name = self.gui.last_name)
             self.rdf.start_session()
             new_status = pt.common.Status.SUCCESS
@@ -40,16 +39,17 @@ class PackPlaced(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
-        self.gui.update_image(frame)
-        self.gui.show_frame(9)
-
+        # register battery placed from human confirmation
         if self.gui.confirm:
             self.gui.confirm = False
             self.rdf.human_place_battery()
             new_status = pt.common.Status.SUCCESS
+            self.rdf.get_pack_models_in_ontology()
             print(self.name, new_status)
         else:
+            frame = self.vision.get_current_frame()
+            self.gui.update_image(frame)
+            self.gui.show_frame(9)
             new_status = pt.common.Status.RUNNING
         return new_status
     
@@ -75,12 +75,20 @@ class AutoPackClass(pt.behaviour.Behaviour):
 
         if not self.tried:
             self.tried = True
+            # locate pack with vision module
             self.result = self.vision.locate_pack(frame)
+            known_models = self.rdf.get_pack_models_in_ontology()
             if not self.result:
-                proposed_pack = "unknown"
+                self.gui.update_proposed_packs(["unknown"]+proposed_list)
             else:
                 proposed_pack = self.result["shape"]
-            self.gui.update_proposed_pack(proposed_pack)
+                if proposed_pack in known_models:
+                    # put proposed pack in front of list
+                    known_models.remove(proposed_pack)
+                    proposed_list = [proposed_pack]+known_models 
+                    self.gui.update_proposed_packs(proposed_list)
+                else: 
+                    self.gui.update_proposed_packs(["unknown"]+proposed_list)
             new_status = pt.common.Status.RUNNING
 
         elif self.gui.class_reject:
@@ -89,13 +97,14 @@ class AutoPackClass(pt.behaviour.Behaviour):
             print(self.name, new_status)
 
         elif self.gui.chosen_pack != "":
-            # record classification is done
+            # record classification is done, update pack state
             self.rdf.battery_classification()
-            self.rdf.record_pack_type(pack_name="Pack_A") # TODO: change to actual label
+            self.rdf.record_pack_type(self.result["shape"]) # TODO: change to actual label
             self.pack_state.model = self.result["shape"]
             self.pack_state.size = self.result["size"]
-            self.pack_state.cover_on = self.result["cover_on"]
+            self.pack_state.cover_on = self.result["cover_on"] # use vision function cell_detection()?
             self.pack_state.location = self.result["location"]
+            print("location: ",self.pack_state.location)
             new_status = pt.common.Status.SUCCESS
             # TODO: RDF: record if classification was successful
             # TODO: RDF: update and upload disassembly plan
@@ -109,29 +118,63 @@ class HelpedPackClass(pt.behaviour.Behaviour):
     The user classifies the pack.
     SUCCESS when the user input is received. Pack state is updated.    
     """
-    def __init__(self, name, rdf, pack_state, gui):
+    def __init__(self, name, rdf, pack_state, gui, vision):
         super(HelpedPackClass, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
-        # TODO: GUI: await user input
-        # if self.gui.chosen_model != "":
-            # model = self.gui.chosen_model
-            # self.pack_state.model = model
-            # new_status = pt.common.Status.SUCCESS
-        self.rdf.identify_battery_type()
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(17) 
 
-        # TODO: RDF: check if battery pack is in ontology
-        #       if yes, upload disassembly plan, if no, insert new instance
-        #       update
+        if self.gui.chosen_pack != "":
+            model = self.gui.chosen_pack
+            self.rdf.record_pack_type(pack_name=model)
+            self.pack_state.model = model
+            cells = self.vision.cell_detection(frame)
+            self.pack_state.cover_on = True if not cells else False
+            self.rdf.check_cover(cells_visible=False if not cells else True)
+            new_status = pt.common.Status.SUCCESS
+            self.rdf.cell_classification()
+            print(self.name, new_status)
+        else:
+            new_status = pt.common.Status.RUNNING
+        return new_status
+    
+class HelpedLocatePack(pt.behaviour.Behaviour):
+    """
+    The user locates the pack using the GUI.
+    SUCCESS when the user input is received. Pack state is updated.    
+    """
+    def __init__(self, name, rdf, pack_state, gui, vision):
+        super(HelpedLocatePack, self).__init__(name)
+        self.gui = gui
+        self.pack_state = pack_state
+        self.rdf = rdf
+        self.vision = vision
+        self.tried = False
 
-        new_status = pt.common.Status.SUCCESS   
-        print(self.name, self.status)
+    def update(self):
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(18) 
+        if not self.tried:
+            self.tried = True
+            self.gui.update_bbs([], self.gui.frames[18])
+            self.gui.bbs_editor.spawn_box()
+        if self.gui.chosen_pack_location:
+            location = self.gui.chosen_pack_location[0]
+            frame_position = ((location[0]+location[2])//2, (location[1]+location[3])//2)
+            self.pack_state.location = frame_position
+            #self.pack_state.size = 
+            new_status = pt.common.Status.SUCCESS
+            # TODO: RDF update
+            print(self.name, new_status)
+        else:
+            new_status = pt.common.Status.RUNNING
         return new_status
 
 class CheckCoverOff(pt.behaviour.Behaviour):
@@ -149,28 +192,23 @@ class CheckCoverOff(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
-        # TODO: vision module: check if battery cells are exposed
-        #current_frame = self.vision.get_current_frame()
-        #cell_positions = self.vision.cell_detection(current_frame)
-        #if len(cell_positions) == 0:
-        #    if not self.tried: # RDF: behavior is constantly ticked, only record once if cover is on ONCE
-        #       self.rdf.check_cover(cells_visible=False)
-        #       self.tried = True
-        #    new_status = pt.common.Status.FAILURE
-        #else:
-        #    new_status = pt.common.Status.SUCCESS
-            # if cover off: record in RDF that cellsVisible is False
-            #check = self.rdf.check_cover(cells_visible=True) # record cover is off
-        # TODO: RDF: check if removal strategy was "human", if cover is off, record RemoveCover isA HumanAction!
-
-        if not self.tried: # RDF: behavior is constantly ticked, only record once if cover is on ONCE
-            self.rdf.check_cover(cells_visible=False)
+        if not self.tried: # behavior is constantly ticked, only record once if cover is on ONCE
             self.tried = True
-        new_status = pt.common.Status.FAILURE
-        #print(self.name, self.status)
+            if not self.pack_state.cover_on:
+                #self.rdf.check_cover(cells_visible=True)
+                new_status = pt.common.Status.SUCCESS
+            else:
+                new_status = pt.common.Status.FAILURE
+        else:
+            frame = self.vision.get_current_frame()
+            cells = self.vision.cell_detection(frame)
+            if len(cells) != 0:
+                self.pack_state.cover_on = False
+                self.rdf.check_cover(cells_visible=True)
+                new_status = pt.common.Status.SUCCESS
+            else:
+                new_status = pt.common.Status.FAILURE
+            # TODO: RDF: check if removal strategy was "human", if cover is off, record RemoveCover isA HumanAction!
         return new_status
 
 class CheckHumanRemovesCover(pt.behaviour.Behaviour):
@@ -179,22 +217,20 @@ class CheckHumanRemovesCover(pt.behaviour.Behaviour):
     SUCCESS if human should remove cover
     FAILURE otherwise
     """
-    def __init__(self, name, rdf, pack_state, gui):
+    def __init__(self, name, rdf, pack_state, gui, vision):
         super(CheckHumanRemovesCover, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(13) 
         # TODO: RDF: check if pack is known
         #       if yes, check disassembly plan
         # if no, await user input:
-        if self.gui.active_frame != 13:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(13) 
         
         if self.gui.removal_strategy != "":
             if self.gui.removal_strategy == "human":
@@ -215,25 +251,21 @@ class CheckColabRemoveCover(pt.behaviour.Behaviour):
     SUCCESS if collaborative
     FAILURE otherwise
     """
-    def __init__(self, name, rdf, pack_state, gui):
+    def __init__(self, name, rdf, pack_state, gui, vision):
         super(CheckColabRemoveCover, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(13) 
         # TODO: RDF: check if pack is known
         #       if yes, check disassembly plan
-
         # if no, await user input:
 
-        if self.gui.active_frame != 13:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(13) 
-        
         if self.gui.removal_strategy != "":
             # This should be extracted from RDF
             if self.gui.removal_strategy == "colab": 
@@ -261,12 +293,9 @@ class ColabAwaitHuman(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        #if self.status == pt.common.Status.INVALID:
-        #    print("First update for behavior", self.name)
-        
-        if self.gui.active_frame != 14:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(14)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(14)
         if self.gui.confirm:
             self.gui.confirm = False
             # TODO: RDF: update
@@ -290,20 +319,25 @@ class RemoveCover(pt.behaviour.Behaviour):
         self.rdf = rdf
 
     def update(self):
-        if self.gui.active_frame != 15:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(15)
-            new_status = pt.common.Status.RUNNING
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(14)
+        #new_status = pt.common.Status.RUNNING
         
         # TODO: robot module: remove cover
-        # self.robot.remove_cover()
+        pack_location = self.pack_state.location
+        try: 
+            bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, 0.090, b_T_TCP)
+            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(bin_rotvec))
+        except:
+            pass
+
         # TODO: RDF: update
-        
-        else:
-            time.sleep(3)
-            self.rdf.robot_remove_cover()
-            new_status = pt.common.Status.SUCCESS 
-        print(self.name, self.status)
+        self.rdf.robot_remove_cover()
+        new_status = pt.common.Status.SUCCESS # TODO: change to running
+        print(self.name, new_status)
         return new_status
     
 class AwaitToolChange(pt.behaviour.Behaviour):
@@ -312,15 +346,17 @@ class AwaitToolChange(pt.behaviour.Behaviour):
     This step is used for any tool change
     SUCCESS tool change is complete 
     """
-    def __init__(self, name, rdf, gui):
+    def __init__(self, name, rdf, gui, vision):
         super(AwaitToolChange, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
-        if self.gui.active_frame != 11:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(11)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(11)
+
         if self.gui.confirm:
             self.gui.confirm = False
             self.rdf.switch_tool()
@@ -336,13 +372,18 @@ class BigGripper(pt.behaviour.Behaviour):
     Checks if big gripper is equipped.
     SUCCESS if true.
     """
-    def __init__(self, name, rdf, gui):
+    def __init__(self, name, rdf, gui, vision):
         super(BigGripper, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
+        self.vision = vision
         self.tried = False
 
     def update(self):
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(10)
+
         new_status = pt.common.Status.RUNNING
 
         if not self.tried:
@@ -355,10 +396,6 @@ class BigGripper(pt.behaviour.Behaviour):
                 elif last_tool == "large":
                     new_status = pt.common.Status.SUCCESS
                 print("last tool", self.rdf.get_robot_tool())
-
-        elif self.gui.active_frame != 10:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(10)
 
         elif self.gui.gripper != "":
             if self.gui.gripper == "large":
@@ -378,13 +415,18 @@ class SmallGripper(pt.behaviour.Behaviour):
     Checks if small gripper is equipped.
     SUCCESS if true.
     """
-    def __init__(self, name, rdf, gui):
+    def __init__(self, name, rdf, gui, vision):
         super(SmallGripper, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
+        self.vision = vision
         self.tried = False
 
     def update(self):
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(10)
+
         new_status = pt.common.Status.RUNNING
         
         if not self.tried:
@@ -397,10 +439,6 @@ class SmallGripper(pt.behaviour.Behaviour):
                 elif last_tool == "large":
                     new_status = pt.common.Status.FAILURE     
                 print("last tool", self.rdf.get_robot_tool())
-
-        elif self.gui.active_frame != 10:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(10)
         
         elif self.gui.gripper != "":
             if self.gui.gripper == "small":
@@ -425,7 +463,6 @@ class CheckPackKnown(pt.behaviour.Behaviour):
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
-        #self.vision = vision
 
     def update(self):
         if self.status == pt.common.Status.INVALID:
@@ -447,8 +484,11 @@ class CheckPackKnown(pt.behaviour.Behaviour):
         """
 
         # TODO: RDF: check if pack is known
-        #       if yes, update cell information 
-
+        #       if yes, update cell information
+        known_packs = self.rdf.get_pack_models_in_ontology()
+        if self.pack_state.model in known_packs:
+            pass
+            # new_status = pt.common.Status.SUCCESS # TODO: skip cell classification and get cell model from RDF if pack is known
         new_status = pt.common.Status.FAILURE 
         print(self.name, self.status)
         return new_status
@@ -466,19 +506,19 @@ class AutoCellClass(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.rdf = rdf
         self.status = pt.common.Status.INVALID
-        # self.tried = False
+        self.tried = False
 
     def update(self):
-        #if self.status == pt.common.Status.INVALID:
-        #    self.rdf.start_sorting_process()
-            # self.tried = True
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(1)
 
-        if self.gui.active_frame != 1:
+        # TODO: get the probabilities from vision and the height registered in rdf
+        if not self.tried:
+            self.tried = True
             print("First update for behavior", self.name)
-            # TODO: get the probability from the rdf and the height registered in the battery pack state
-            cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}] 
+            cells_probs = self.vision.classify_cell(frame)
             self.gui.update_proposed_models(cells_probs)
-            self.gui.show_frame(1)
 
         if self.gui.class_reject:
             self.gui.class_reject = False
@@ -488,13 +528,13 @@ class AutoCellClass(pt.behaviour.Behaviour):
         elif self.gui.chosen_model != "":
             print(self.gui.chosen_model)
             model = self.gui.chosen_model
-            k = 0
-            for i in range((self.pack_state.rows)):
-                for j in range(self.pack_state.cols):
-                    self.pack_state.update_cell(i, j, model=model)
-                    k += 1
-            self.pack_state.model = model
-            size = self.rdf.get_dimensions_from_cell_type(model)
+            self.pack_state.cell_model = model
+            #k = 0
+            #for i in range((self.pack_state.rows)):
+            #    for j in range(self.pack_state.cols):
+            #        self.pack_state.update_cell(i, j, model=model)
+            #        k += 1
+            #size = self.rdf.get_dimensions_from_cell_type(model)
             #size = (0, 0)
             # update cells information with model and size
             #for row in range(self.pack_state.rows):
@@ -517,28 +557,30 @@ class HelpedCellClass(pt.behaviour.Behaviour):
     # NOTE: The system may be able to classify the pack, or may determine that the pack is unseen (!). 
     # The user can override the decision either way.
 
-    def __init__(self, name, rdf, pack_state, gui):
+    def __init__(self, name, rdf, pack_state, gui, vision):
         super(HelpedCellClass, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.vision = vision
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        if self.gui.active_frame != 2:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(2)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(2)
 
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            radius, height = self.rdf.get_dimensions_from_cell_type(model) # !!!
-            radius, height = 85, 26
+            self.pack_state.cell_model = model
+            #radius, height = self.rdf.get_dimensions_from_cell_type(model) # !!!
+            #radius, height = 85, 26
             # update cells information with model and size
-            k = 0
-            for i in range((self.pack_state.rows)):
-                for j in range(self.pack_state.cols):
-                    self.pack_state.update_cell(i, j, model=model, radius=radius, height=height)
-                    k += 1
+            #k = 0
+            #for i in range((self.pack_state.rows)):
+            #    for j in range(self.pack_state.cols):
+            #        self.pack_state.update_cell(i, j, model=model, radius=radius, height=height)
+            #        k += 1
             # record classification is done
             # TODO: record class done by HUMAN
             self.rdf.cell_classification()
@@ -560,43 +602,51 @@ class Detect(pt.behaviour.Behaviour):
         self.pack_state = pack_state
         self.robot = robot
         self.rdf = rdf
-        # self.tried = False
+        self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        if self.gui.active_frame != 3:
-            print("First update for behavior", self.name)
-            # current_frame = self.vision.get_current_frame()
-            # proposed = self.vision.cell_detection(self.gui.camera_frame) # center, radius
-            proposed_locations = []
-            # # update cell locations in GUI
-            for row in self.pack_state.cells:
-                for cell in row:
-                    cx, cy = cell.frame_position
-                    r = cell.radius
-                    proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(3)
+        
+        if not self.tried:
+            self.tried = True
+            print("First update for behavior", self.name)  
+            # proposed_locations = []
+            # update cell locations in GUI
+            # for row in self.pack_state.cells:
+            #    for cell in row:
+            #        cx, cy = cell.frame_position
+            #        r = cell.radius
+            #        proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
+            proposed_locations = self.vision.cell_detection(frame) # center, radius
             print("proposed: ",proposed_locations)
             self.gui.update_bbs(proposed_locations, self.gui.frames[3])
-            self.gui.show_frame(3)
 
         if self.gui.chosen_locations: # if chosen_locations not empty
-            # for now it is just one long row, but this info could come from the pack information / visual / user input
+            radius, height = self.rdf.get_dimensions_from_cell_type(self.pack_state.cell_model)
             k = 0
-            #TODO: make sure to overwrite the pack_state dimensions after the user input! 
+            # TODO: change dimensions into rows and columns rather than a single row
+            self.pack_state.update_dim(1,len(self.gui.chosen_locations)) 
             for i in range(self.pack_state.rows):
                 for j in range(self.pack_state.cols):
                     frame_position = self.gui.chosen_locations[k]
-                     # get the center position
+                    # get the center position
                     frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
-                    # pose = self.vision.frame_to_3d(frame_position, self.vision.camera, flag=j)
-                    # self.pack_state.update_cell(i, j, frame_position=frame_position, pose=pose, radius=results[k][2])
-                    self.pack_state.update_cell(i, j, frame_position=frame_position)
+                    try:
+                        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                        pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, 0.090, b_T_TCP)
+                    except:
+                        pose = None
+                    self.pack_state.update_cell(i, j, model=self.pack_state.cell_model, 
+                                                frame_position=frame_position,
+                                                radius = radius,
+                                                height = height,
+                                                pose = pose)
                     k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
-            self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.gui.chosen_model)
-            print("update number of cells")
-            # now that we have the number of rows, cols, and cell model type, we name the battery pack accordingly in the RDF store.
-            #self.rdf.name_battery_pack(self.pack_state.rows,self.pack_state.cols,self.pack_state.model)
+            self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.pack_state.cell_model)
             new_status = pt.common.Status.SUCCESS
             self.rdf.object_detection()
             print(self.name, new_status)
@@ -616,11 +666,16 @@ class Assess(pt.behaviour.Behaviour):
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
-        # self.tried = False
+        self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        if self.gui.active_frame != 4:
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(4)
+        
+        if not self.tried:
+            self.tried = True
             print("First update for behavior", self.name)
             # current_frame = self.vision.get_current_frame() # keep old frame ???
             bbs_positions = self.gui.chosen_locations
@@ -631,7 +686,6 @@ class Assess(pt.behaviour.Behaviour):
                 qualities.append(random.randint(90,100)/100)
             self.gui.write_qualities(qualities, self.gui.frames[4], editable=True)
             self.gui.proposed_qualities = qualities
-            self.gui.show_frame(4)
         
         if len(self.gui.chosen_qualities) != 0:
             # change to known dimensions
@@ -641,6 +695,7 @@ class Assess(pt.behaviour.Behaviour):
                 for col in range(self.pack_state.cols):
                     quality = self.gui.chosen_qualities[i]
                     self.pack_state.update_cell(row, col, quality=quality)
+                    self.rdf.update_cell_quality(row,col,quality)
                     i += 1
             new_status = pt.common.Status.SUCCESS
             self.rdf.quality_assessment()
@@ -697,19 +752,22 @@ class AutoSort(pt.behaviour.Behaviour):
         self.robot = robot
         self.pack_state = pack_state
         self.rdf = rdf
-        # self.tried = False
+        self.tried = False
         self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.status = pt.common.Status.INVALID
         self.discard_T, self.keep_T, self.over_pack_T = discard_T, keep_T, over_pack_T
 
     def update(self):
-        if self.gui.active_frame != 5:
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(5)
+        new_status = pt.common.Status.RUNNING
+        if not self.tried:
+            self.tried = True
             print("First update for behavior", self.name)
             # self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
-            self.gui.show_frame(5)
-            new_status = pt.common.Status.RUNNING
         else:
             # current_frame = self.vision.get_current_frame() # keep old frame ???
             # get the pose of each cell + quality and perform pick and place
@@ -725,25 +783,26 @@ class AutoSort(pt.behaviour.Behaviour):
                         place_pose = self.discard_T
                     else:
                         place_pose = self.keep_T    
-                    self.robot.pick_and_place(pick_pose, place_pose)
-                    self.robot.move_to_cart_pos(self.over_pack_T)
-                    sorted = self.vision.verify_pickup(frame_position, radius)
-                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
-                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
-                    # update RDF
-                    self.rdf.robot_pick_place()
-                    self.rdf.update_cell_sorted(i, j, sorted=sorted)
-                    self.rdf.pick_place_outcome(outcome=sorted)
-                    if sorted:
-                        self.pack_state.update_cell(i, j, sorted=sorted)
-                    else:
-                        should_try_again = self.rdf.should_try_again()
-                        print("Should try again: ", should_try_again)
-                        if not should_try_again:
-                            new_status = pt.common.Status.FAILURE
-                            return new_status
+                    if pick_pose:
+                        self.robot.pick_and_place(pick_pose, place_pose)
+                        self.robot.move_to_cart_pos(self.over_pack_T)
+                        sorted = self.vision.verify_pickup(frame_position, radius)
+                        self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
+                        self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
+                        # update RDF
+                        self.rdf.robot_pick_place()
+                        self.rdf.update_cell_sorted(i, j, sorted=sorted)
+                        self.rdf.pick_place_outcome(outcome=sorted)
+                        if sorted:
+                            self.pack_state.update_cell(i, j, sorted=sorted)
                         else:
-                            new_status = pt.common.Status.RUNNING
+                            should_try_again = self.rdf.should_try_again()
+                            print("Should try again: ", should_try_again)
+                            if not should_try_again:
+                                new_status = pt.common.Status.FAILURE
+                                return new_status
+                            else:
+                                new_status = pt.common.Status.RUNNING
             if new_status == pt.common.Status.SUCCESS:
                 self.rdf.end_sorting_process()
                 self.rdf.end_session()
@@ -751,6 +810,7 @@ class AutoSort(pt.behaviour.Behaviour):
             
         return new_status
     
+"""
 class CellsOK(pt.behaviour.Behaviour):
     def __init__(self, name, rdf, pack_state):
         super(CellsOK, self).__init__(name)
@@ -770,6 +830,7 @@ class CellsOK(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.FAILURE
         return new_status
+"""
 
 class HelpedSort(pt.behaviour.Behaviour):
     """
@@ -783,18 +844,20 @@ class HelpedSort(pt.behaviour.Behaviour):
         self.vision = vision
         self.pack_state = pack_state
         self.rdf = rdf
-        # self.tried = False
+        self.tried = False
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        if self.gui.active_frame != 6:
-            print("First update for behavior", self.name)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(6)
+        if not self.tried:
+            self.tried = True
+            print("First update for behavior", self.name) # TODO: put the class under RobotAction
+            self.rdf.request_help()
             #current_frame = self.vision.get_current_frame()
             #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
-            self.gui.show_frame(6)
-            # record system asks for help, TODO: put the class under RobotAction
-            self.rdf.request_help()
-
+            
         if self.gui.done:
             # visual check that all cells are sorted
             #current_frame = self.vision.get_current_frame() # keep old frame ???
@@ -827,34 +890,42 @@ class DiscardPack(pt.behaviour.Behaviour):
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        if self.gui.active_frame != 7:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(7)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(7)
+
+        pack_location = self.pack_state.location
+        try: 
+            bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, 0.090, b_T_TCP)
+            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(bin_rotvec))
+        except:
+            pass
 
         if self.gui.done:
             new_status = pt.common.Status.SUCCESS
+            print(self.name, new_status)
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
-    
+        
 class AwaitCoverFastening(pt.behaviour.Behaviour):
     """
     Checks user input if cover fastening is complete
     SUCCESS when input received
     """
-    def __init__(self, name, rdf, gui):
+    def __init__(self, name, rdf, gui, vision):
         super(AwaitCoverFastening, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
-        if self.status == pt.common.Status.INVALID:
-            print("First update for behavior", self.name)
-        
-        # TODO: RDF: update
-        if self.gui.active_frame != 12:
-            print("First update for behavior", self.name)
-            self.gui.show_frame(12)
+        frame = self.vision.get_current_frame()
+        self.gui.update_image(frame)
+        self.gui.show_frame(12)
+
         if self.gui.confirm:
             self.gui.confirm = False
             # TODO: RDF: update

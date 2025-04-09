@@ -50,6 +50,9 @@ class VisionModule():
             #print("Cannot access camera. For debuggin purpose it will access a file in store")
             frame = cv2.imread("data/i4.0_frames/square01.png")
             format = "pil"
+            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+            #frame = PIL.Image.fromarray(frame)
+
             #frame = None
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
@@ -77,7 +80,8 @@ class VisionModule():
         Returns:
             list[tuple[str, float]]: list of model with associated probability
         """
-        cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}]
+        #cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}]
+        cells_probs = [{'model': "INR18650", 'prob': 0.51}, {'model': "INR21700", 'prob': 0.49}]
         return cells_probs
 
     def cell_detection(self, frame: np.ndarray) -> list[ndarray]:
@@ -146,7 +150,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_pos_to_pose(self, frame_pos:ndarray, camera, cell_heigth, base_T_TCP) -> sm.SE3:
+    def frame_pos_to_pose(self, frame_pos:ndarray, camera, cell_height, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -156,7 +160,7 @@ class VisionModule():
             sm.SE3: 4x4 pose in world frame
         """
         base_T_cam = base_T_TCP * camera.extrinsic
-        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_heigth)
+        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_height)
         screw_T_b = (b_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
         screw_T_b.R = base_T_TCP.R # keep the current orientation of the tcp
         return screw_T_b
@@ -172,10 +176,14 @@ class VisionModule():
         """
         cp_current_frame = copy.deepcopy(self.get_current_frame())
         cp_start_frame = copy.deepcopy(self.background)
-        # if isinstance(start_frame, PIL.Image.Image):
-        #     cp_start_frame = np.array(cp_start_frame)
-        #     if start_frame.mode == "RGB":
-        #         cv2.cvtColor(cp_start_frame, cv2.COLOR_RGB2BGR)
+
+        #if isinstance(cp_start_frame, PIL.Image.Image):
+        #    cp_start_frame = np.array(cp_start_frame)
+        if cp_start_frame.mode == "RGB":
+            cp_start_frame = cv2.cvtColor(np.array(cp_start_frame), cv2.COLOR_RGB2BGR)
+        if cp_current_frame.mode == "RGB":
+            cp_current_frame = cv2.cvtColor(np.array(cp_current_frame), cv2.COLOR_RGB2BGR)
+
         cp_start_frame = cv2.cvtColor(cp_start_frame, cv2.COLOR_BGR2GRAY)
         current_frame = cv2.cvtColor(cp_current_frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, cp_start_frame)
