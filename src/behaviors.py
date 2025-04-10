@@ -360,11 +360,12 @@ class AwaitToolChange(pt.behaviour.Behaviour):
     This step is used for any tool change
     SUCCESS tool change is complete 
     """
-    def __init__(self, name, rdf, gui, vision):
+    def __init__(self, name, rdf, gui, vision, robot):
         super(AwaitToolChange, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
         self.vision = vision
+        self.robot = robot
 
     def update(self):
         frame = self.vision.get_current_frame()
@@ -375,7 +376,11 @@ class AwaitToolChange(pt.behaviour.Behaviour):
             self.gui.confirm = False
             self.rdf.switch_tool()
             new_status = pt.common.Status.SUCCESS
-            print("last tool", self.rdf.get_robot_tool())
+            tool = self.rdf.get_robot_tool()
+            if tool == "large":
+                self.robot.active_gripper = "big"
+            elif tool == "small": 
+                self.robot.active_gripper = "small"
             print(self.name, self.status)
         else:
             new_status = pt.common.Status.RUNNING
@@ -386,11 +391,12 @@ class BigGripper(pt.behaviour.Behaviour):
     Checks if big gripper is equipped.
     SUCCESS if true.
     """
-    def __init__(self, name, rdf, gui, vision):
+    def __init__(self, name, rdf, gui, vision, robot):
         super(BigGripper, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
         self.vision = vision
+        self.robot = robot
         self.tried = False
 
     def update(self):
@@ -406,8 +412,10 @@ class BigGripper(pt.behaviour.Behaviour):
             if last_tool:
                 self.tried = False
                 if last_tool == "small":
+                    self.robot.active_gripper = "small"
                     new_status = pt.common.Status.FAILURE
                 elif last_tool == "large":
+                    self.robot.active_gripper = "big"
                     new_status = pt.common.Status.SUCCESS
                 print("last tool", self.rdf.get_robot_tool())
 
@@ -415,10 +423,12 @@ class BigGripper(pt.behaviour.Behaviour):
             if self.gui.gripper == "large":
                 new_status = pt.common.Status.SUCCESS
                 self.rdf.record_robot_tool("large")
+                self.robot.active_gripper = "big"
                 print("last tool", self.rdf.get_robot_tool())
             else: 
                 new_status = pt.common.Status.FAILURE
                 self.rdf.record_robot_tool("small")
+                self.robot.active_gripper = "small"
                 print("last tool", self.rdf.get_robot_tool())
             self.gui.gripper = ""
              
@@ -434,11 +444,12 @@ class SmallGripper(pt.behaviour.Behaviour):
     Checks if small gripper is equipped.
     SUCCESS if true.
     """
-    def __init__(self, name, rdf, gui, vision):
+    def __init__(self, name, rdf, gui, vision, robot):
         super(SmallGripper, self).__init__(name)
         self.gui = gui
         self.rdf = rdf
         self.vision = vision
+        self.robot = robot
         self.tried = False
 
     def update(self):
@@ -454,8 +465,10 @@ class SmallGripper(pt.behaviour.Behaviour):
             if last_tool:
                 self.tried = False
                 if last_tool == "small":
+                    self.robot.active_gripper = "small"
                     new_status = pt.common.Status.SUCCESS
                 elif last_tool == "large":
+                    self.robot.active_gripper = "big"
                     new_status = pt.common.Status.FAILURE     
                 print("last tool", self.rdf.get_robot_tool())
         
@@ -463,10 +476,12 @@ class SmallGripper(pt.behaviour.Behaviour):
             if self.gui.gripper == "small":
                 new_status = pt.common.Status.SUCCESS
                 self.rdf.record_robot_tool("small")
+                self.robot.active_gripper = "small"
                 print("last tool", self.rdf.get_robot_tool())
             else: 
                 new_status = pt.common.Status.FAILURE
                 self.rdf.record_robot_tool("large")
+                self.robot.active_gripper = "big"
                 print("last tool", self.rdf.get_robot_tool())
             self.gui.gripper = ""
         return new_status
