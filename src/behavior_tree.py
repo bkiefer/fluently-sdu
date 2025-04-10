@@ -28,7 +28,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
         self.rdf = RdfStore()
         self.vision = VisionModule(camera_Ext=self.camera_Ext)
-        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], gripper_id=0)
+        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.04, 'big': 0.8}, active_gripper='small', gripper_id=0)
         self.pack_state = PackState()
         #self.pack_state = PackState(rows=1, cols=2)
         #self.pack_state.update_cell(0, 1, pose=(sm.SE3([-0.295, -0.255, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))

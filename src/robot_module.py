@@ -7,15 +7,22 @@ import time
 from gubokit import utilities
 
 class RobotModule:
-    def __init__(self, ip: str, home_position: ndarray, gripper_id=0):
+    def __init__(self, ip: str, home_position: ndarray, tcp_length_dict, gripper_id=0, active_gripper="small"):
         try:
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
+            self.active_gripper = active_gripper
+            self.tcp_length_dict = tcp_length_dict
+            self.tcp_length = self.tcp_length_dict[self.active_gripper]
             self.robot.add_gripper(gripper=self.gripper)
             print("Starting robot module")
         except RuntimeError:
             self.robot = None
             print("The robot could not be started, the module will run for debug purpose")
+
+    def change_gripper(self, active_gripper):
+        self.active_gripper = active_gripper
+        self.tcp_length = self.tcp_length_dict[self.active_gripper]
 
     def pick_and_place(self, pick_T: sm.SE3, place_T: sm.SE3):
         """pick and place an object 
@@ -25,15 +32,18 @@ class RobotModule:
             place_T (sm.SE3): position and orientation for place
         """
         try:
-            self.robot.pick_and_place(pick_pose=np.hstack((pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(pick_T.R)))), 
-                                    place_pose=np.hstack((place_T.t, Rotation.as_rotvec(Rotation.from_matrix(place_T.R)))))
+            actual_pick_T = pick_T * sm.SE3([0, 0, self.tcp_length])
+            actual_place_T = place_T * sm.SE3([0, 0, self.tcp_length])
+            self.robot.pick_and_place(pick_pose=np.hstack((actual_pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_pick_T.R)))), 
+                                    place_pose=np.hstack((actual_place_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_place_T.R)))))
         except AttributeError:
             print("The robot cannot be accessed running for debug purpose")
             time.sleep(1)
     
     def move_to_cart_pos(self, T, speed=0.1):
+        actual_T = T * sm.SE3([0, 0, self.tcp_length])
         try:
-            self.robot.move_to_cart_pose(T, speed)
+            self.robot.move_to_cart_pose(actual_T, speed)
         except AttributeError:
             print("The robot cannot be accessed running for debug purpose")
             time.sleep(1)
