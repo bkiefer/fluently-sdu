@@ -20,11 +20,8 @@ class RdfStore:
                      "<cim:Question>" : "Question",
                      "<cim:YNQuestion>" : "YNQuestion"}
         RdfProxy.init_rdfproxy(port=port, classmapping=mapclass)
-        #self.robot = RdfProxy.rdf2pyobj('<cim:robot1>')
         self.robot = RdfProxy.getObject('Cobot')
         self.robot.hasTool = "unknown"
-        #self.large_tool = RdfProxy.getObject('LargeVaccuumGripper')
-        #self.small_tool = RdfProxy.getObject('SmallVaccuumGripper')
         self.user = None
         self.session = None
         self.battery_pack = None
@@ -76,9 +73,6 @@ class RdfStore:
         A process is part of the session, which can include multiple processes.
         """
         self.sorting_process = self.__session_part("SortingProcess")
-        #self.battery_pack = RdfProxy.getObject("BatteryPack")
-        #self.session.hasConstituent.add(self.battery_pack)
-        #self.single_battery_cell = RdfProxy.getObject("BatteryCell")
         now = time.time()
         self.sorting_process.fromTime = round(now*1000)
     
@@ -125,7 +119,6 @@ class RdfStore:
         print(height, diameter/2)
         return (height,diameter/2)
      
-
     def update_number_of_cells(self, rows: int, cols:int, model: str):
         for row in range(rows):
             for col in range(cols):
@@ -137,8 +130,6 @@ class RdfStore:
                 if model_str:           
                     cell.isClassifiedBy.add(model_str)
                 self.battery_pack.hasPart.add(cell)
-                #print("battery cell added!")
-                #print("rows: ",rows," cols: ",cols)
     
     def update_cell_sorted(self, row: int, col:int, sorted: bool):
         for cell in self.battery_pack.hasPart:
@@ -255,39 +246,17 @@ class RdfStore:
     
     def record_robot_tool(self, tool: str):
         if tool == "small":
-            #small_tool = RdfProxy.getObject('SmallVaccuumGripper')
-            #self.robot.hasTool.add(small_tool)
             self.robot.hasTool = "small"
         elif tool == "large":
-            #large_tool = RdfProxy.getObject('LargeVaccuumGripper')
-            #self.robot.hasTool.add(large_tool)
             self.robot.hasTool = "large"
         return
     
     def get_robot_tool(self):
-        #last_tool = RdfProxy.selectQuery(
-        #    'select ?tool ?t where ?cobot <cim:hasTool> ?tool ?t'
-        #    ' & ?cobot <rdf:type> <soho:Cobot> ?_'
-        #    ' & {} <dul:hasParticipant> ?cobot ?_'
-        #    ' aggregate ?res = LGetLatest2 ?tool ?t "1"^^<xsd:int>'.format(self.session.uri))
-        
-        #if not last_tool:
-        #    return None
-        
-        #last_tool = RdfProxy.python2rdf(last_tool[0])
-        #last_tool = last_tool.lower()[5:10] # e.g., reduce "<dom:SmallVaccuumGripperfb06f68f_236>"" to "small"
-
-        # TODO: maybe get information from previous session and not just the current session???
         if self.robot.hasTool == "unknown":
             return None
         return self.robot.hasTool
     
     def switch_tool(self):
-        #last_tool = self.get_robot_tool()
-        #if last_tool == "small":
-        #    self.record_robot_tool(tool="large")
-        #elif last_tool == "large":
-        #    self.record_robot_tool(tool="small")
         if self.robot.hasTool == "small":
             self.robot.hasTool = "large"
         elif self.robot.hasTool == "large":
@@ -309,12 +278,6 @@ class RdfStore:
                 ' & ?pack <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
         same_pack_sessions = RdfProxy.selectQuery(query)
         return same_pack_sessions
-    
-    """
-    def name_battery_pack(self, rows, cols, model):
-        self.battery_pack.hasNameString = "R"+str(rows)+"C"+str(cols)+"M"+model
-        return
-    """
 
     def should_try_again(self):
         same_pack_sessions = self.get_same_pack_sessions()

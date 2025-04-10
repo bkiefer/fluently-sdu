@@ -286,11 +286,12 @@ class ColabAwaitHuman(pt.behaviour.Behaviour):
     Wait for human acknowledgement that they are ready for robot to remove cover
     SUCCESS when acknowledged
     """
-    def __init__(self, name, rdf, pack_state, gui):
+    def __init__(self, name, rdf, pack_state, gui, vision):
         super(ColabAwaitHuman, self).__init__(name)
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.vision = vision
 
     def update(self):
         frame = self.vision.get_current_frame()
@@ -855,23 +856,8 @@ class HelpedSort(pt.behaviour.Behaviour):
             self.tried = True
             print("First update for behavior", self.name) # TODO: put the class under RobotAction
             self.rdf.request_help()
-            #current_frame = self.vision.get_current_frame()
-            #self.gui.proposed_locations = self.vision.cell_detection(current_frame)
-            
+
         if self.gui.done:
-            # visual check that all cells are sorted
-            #current_frame = self.vision.get_current_frame() # keep old frame ???
-            #print("Final check...")
-            # Verify that all cells have been picked up
-            #for row in range(self.pack_state.rows):
-            #    for col in range(self.pack_state.cols):
-            #        frame_position = self.pack_state.cells[row][col].frame_position
-            #        sorted = self.vision.verify_pickup(frame_position,  self.pack_state.cells[row][col].radius)
-            #        if sorted:
-            #            self.pack_state.update_cell(row, col, sorted=sorted)
-            #        else:
-            #            # TODO: warn user that not all batteries are sorted through GUI (?)
-            #            print("UserWarning: Battery cell not sorted")
             new_status = pt.common.Status.SUCCESS
             self.rdf.end_sorting_process()
             self.rdf.end_session()

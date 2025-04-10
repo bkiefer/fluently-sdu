@@ -465,9 +465,9 @@ class CheckGripperScreen(HomeScreen):
         self.label.pack()
         btns_frame = tk.Frame(self)
         btns_frame.pack()
-        small_btn = tk.Button(btns_frame, text="Small vaccuum gripper", command=lambda: self.small())
+        small_btn = tk.Button(btns_frame, text="Small vacuum gripper", command=lambda: self.small())
         small_btn.pack(side='left')
-        large_btn = tk.Button(btns_frame, text="Large vaccuum gripper", command=lambda: self.large())
+        large_btn = tk.Button(btns_frame, text="Large vacuum gripper", command=lambda: self.large())
         large_btn.pack(side='left')
 
     def small(self):

@@ -17,7 +17,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
     def __init__(self):        
         # Blackboard and registering keys 
         #self.rdf = None
-        cell_m_q, cell_h_q = 0.6, 0.8                       # this defines them everywhere
+        cell_m_q, cell_h_q = 0.6, 0.8 # this defines them everywhere
         over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
         discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
@@ -53,7 +53,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.check_cover_off = CheckCoverOff(name="check_cover_off", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.check_human_removes_cover = CheckHumanRemovesCover(name="check_human_removes_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
         self.check_colab_remove_cover = pt.decorators.Inverter(name="inverter",child=CheckColabRemoveCover(name="check_colab_remove_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision))
-        self.colab_await_human = ColabAwaitHuman(name="colab_await_human", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
+        self.colab_await_human = ColabAwaitHuman(name="colab_await_human", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
         self.remove_cover = RemoveCover(name="remove_cover", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot)
         #self.check_cover_removed = CheckCoverRemoved(name="check_cover_removed", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.await_tool_change_small = AwaitToolChange(name="await_tool_change", rdf=self.rdf, gui=self.gui, vision=self.vision)
