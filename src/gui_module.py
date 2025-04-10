@@ -397,6 +397,8 @@ class MemGui(tk.Tk):
                 frame.draw_image(self.camera_frame)
         for btn in self.frames[2].btns_frame.winfo_children():
             btn.pack_forget()
+        for btn in self.frames[17].btns_frame.winfo_children():
+            btn.pack_forget()
         self.show_frame(0)
 
 class HomeScreen(tk.Frame):
@@ -437,7 +439,6 @@ class StartScreen(HomeScreen):
         
         
     def confirm(self):
-            self.controller.show_frame(0)
             self.controller.first_name = self.first_name_var.get()
             self.controller.last_name = self.last_name_var.get()
 
@@ -456,7 +457,6 @@ class PlacePackScreen(HomeScreen):
 
     def confirm(self):
         self.controller.confirm = True
-        self.controller.show_frame(0)
 
 class CheckGripperScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
@@ -507,7 +507,6 @@ class ChangeGripperScreen(HomeScreen):
         confirm_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.show_frame(0)
         self.controller.confirm = True
 
 class ColabAwaitHumanScreen(HomeScreen):
@@ -521,7 +520,6 @@ class ColabAwaitHumanScreen(HomeScreen):
         confirm_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.show_frame(0)
         self.controller.confirm = True
 
 class RemoveCoverScreen(HomeScreen):
@@ -544,7 +542,6 @@ class AutoPackClassScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.show_frame(0)
         self.controller.chosen_pack = self.controller.proposed_packs
     
     def deny(self):
@@ -570,12 +567,10 @@ class ManualPackClassScreen(HomeScreen):
         confirm_btn.pack()
         
     def confirm(self):
-        self.controller.show_frame(0)
         self.controller.chosen_pack = self.pack_var.get()
         self.pack_var.set("")
             
     def chosen_pack(self, model: str):
-        self.controller.show_frame(0)
         self.controller.chosen_pack = model
 
 class AutoClassScreen(HomeScreen):
@@ -592,7 +587,6 @@ class AutoClassScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.show_frame(0)
         self.controller.chosen_model = self.controller.proposed_models[0]['model']
     
     def deny(self):

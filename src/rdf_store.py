@@ -95,7 +95,9 @@ class RdfStore:
         Records the cell model name following the classification step. 
         Returns the dimensions of the cell type in (height, diameter)
         """
+        print("model: ",model)
         model_str = self.get_cell_model_instance(model) # verify that cell model is in the ontology 
+        print("model_str: ",model_str)
         if model_str:
             self.single_battery_cell.isClassifiedBy.add(model_str) # add the verified model as a property of the single battery cell
 
@@ -116,8 +118,8 @@ class RdfStore:
         self.single_battery_cell.hasDiameter = diameter
         self.single_battery_cell.hasHeight = height
 
-        print(height, diameter/2)
-        return (height,diameter/2)
+        print(diameter/2, height)
+        return (diameter/2,height)
      
     def update_number_of_cells(self, rows: int, cols:int, model: str):
         for row in range(rows):

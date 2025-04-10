@@ -79,16 +79,15 @@ class AutoPackClass(pt.behaviour.Behaviour):
             self.result = self.vision.locate_pack(frame)
             known_models = self.rdf.get_pack_models_in_ontology()
             if not self.result:
-                self.gui.update_proposed_packs(["unknown"]+proposed_list)
+                self.gui.update_proposed_packs(["unknown"]+known_models)
             else:
                 proposed_pack = self.result["shape"]
                 if proposed_pack in known_models:
                     # put proposed pack in front of list
                     known_models.remove(proposed_pack)
-                    proposed_list = [proposed_pack]+known_models 
-                    self.gui.update_proposed_packs(proposed_list)
+                    self.gui.update_proposed_packs([proposed_pack]+known_models)
                 else: 
-                    self.gui.update_proposed_packs(["unknown"]+proposed_list)
+                    self.gui.update_proposed_packs(["unknown"]+known_models)
             new_status = pt.common.Status.RUNNING
 
         elif self.gui.class_reject:
@@ -112,7 +111,12 @@ class AutoPackClass(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
-       
+    
+    def terminate(self, new_status):
+        if new_status != pt.common.Status.INVALID:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+            self.tried = False
+
 class HelpedPackClass(pt.behaviour.Behaviour):
     """
     The user classifies the pack.
@@ -176,6 +180,10 @@ class HelpedLocatePack(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
+    
+    def terminate(self, new_status):
+        self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+        self.tried = False
 
 class CheckCoverOff(pt.behaviour.Behaviour):
     """
@@ -210,6 +218,10 @@ class CheckCoverOff(pt.behaviour.Behaviour):
                 new_status = pt.common.Status.FAILURE
             # TODO: RDF: check if removal strategy was "human", if cover is off, record RemoveCover isA HumanAction!
         return new_status
+    
+    #def terminate(self, new_status):
+    #    self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+    #    self.tried = False
 
 class CheckHumanRemovesCover(pt.behaviour.Behaviour):
     """
@@ -311,13 +323,15 @@ class RemoveCover(pt.behaviour.Behaviour):
     Robot removes cover
     SUCCESS when done
     """
-    def __init__(self, name, rdf, pack_state, vision, gui, robot):
+    def __init__(self, name, rdf, pack_state, vision, gui, robot, bin_rotvec, pack_height):
         super(RemoveCover, self).__init__(name)
         self.robot = robot
         self.vision = vision
         self.gui = gui
         self.pack_state = pack_state
         self.rdf = rdf
+        self.bin_rotvec = bin_rotvec
+        self.pack_height = pack_height
 
     def update(self):
         frame = self.vision.get_current_frame()
@@ -328,10 +342,9 @@ class RemoveCover(pt.behaviour.Behaviour):
         # TODO: robot module: remove cover
         pack_location = self.pack_state.location
         try: 
-            bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
             b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, 0.090, b_T_TCP)
-            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(bin_rotvec))
+            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
+            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
         except:
             pass
 
@@ -411,6 +424,11 @@ class BigGripper(pt.behaviour.Behaviour):
              
         return new_status
     
+    def terminate(self, new_status):
+        if new_status != pt.common.Status.INVALID:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+            self.tried = False
+    
 class SmallGripper(pt.behaviour.Behaviour):
     """
     Checks if small gripper is equipped.
@@ -452,7 +470,12 @@ class SmallGripper(pt.behaviour.Behaviour):
                 print("last tool", self.rdf.get_robot_tool())
             self.gui.gripper = ""
         return new_status
-
+    
+    def terminate(self, new_status):
+        if new_status != pt.common.Status.INVALID:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+            self.tried = False
+        
 class CheckPackKnown(pt.behaviour.Behaviour):
     """
     Checks the RDF store if pack is known
@@ -527,9 +550,9 @@ class AutoCellClass(pt.behaviour.Behaviour):
             print(self.name, new_status)
 
         elif self.gui.chosen_model != "":
-            print(self.gui.chosen_model)
             model = self.gui.chosen_model
             self.pack_state.cell_model = model
+            print("chosen model: ", model)
             #k = 0
             #for i in range((self.pack_state.rows)):
             #    for j in range(self.pack_state.cols):
@@ -549,6 +572,11 @@ class AutoCellClass(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
+    
+    def terminate(self, new_status):
+        if new_status != pt.common.Status.INVALID:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+            self.tried = False
 
 class HelpedCellClass(pt.behaviour.Behaviour):
     """
@@ -573,6 +601,7 @@ class HelpedCellClass(pt.behaviour.Behaviour):
 
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
+            print("chosen model: ", model)
             self.pack_state.cell_model = model
             #radius, height = self.rdf.get_dimensions_from_cell_type(model) # !!!
             #radius, height = 85, 26
@@ -635,16 +664,10 @@ class Detect(pt.behaviour.Behaviour):
                     frame_position = self.gui.chosen_locations[k]
                     # get the center position
                     frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
-                    try:
-                        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                        pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, 0.090, b_T_TCP)
-                    except:
-                        pose = None
                     self.pack_state.update_cell(i, j, model=self.pack_state.cell_model, 
                                                 frame_position=frame_position,
                                                 radius = radius,
-                                                height = height,
-                                                pose = pose)
+                                                height = height)
                     k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
             self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.pack_state.cell_model)
@@ -654,6 +677,10 @@ class Detect(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
+    
+    def terminate(self, new_status):
+        self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+        self.tried = False
 
 class Assess(pt.behaviour.Behaviour):
     """
@@ -704,6 +731,10 @@ class Assess(pt.behaviour.Behaviour):
         else:
             new_status = pt.common.Status.RUNNING
         return new_status
+    
+    def terminate(self, new_status):
+        self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+        self.tried = False
 
 class CheckCellsOK(pt.behaviour.Behaviour):
     """
@@ -766,11 +797,9 @@ class AutoSort(pt.behaviour.Behaviour):
         if not self.tried:
             self.tried = True
             print("First update for behavior", self.name)
-            # self.gui.proposed_locations = self.vision.cell_detection(current_frame)
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
         else:
-            # current_frame = self.vision.get_current_frame() # keep old frame ???
             # get the pose of each cell + quality and perform pick and place
             new_status = pt.common.Status.SUCCESS
             for i, row in enumerate(self.pack_state.cells):
@@ -779,31 +808,39 @@ class AutoSort(pt.behaviour.Behaviour):
                         continue
                     frame_position = cell.frame_position
                     radius = cell.radius
-                    pick_pose = cell.pose
+                    print("cell height: ", cell.height)
+                    print("cell type: ", cell.model)
+                    print("cell position: ", cell.frame_position)
                     if cell.quality < self.cell_m_q:
                         place_pose = self.discard_T
                     else:
-                        place_pose = self.keep_T    
-                    if pick_pose:
+                        place_pose = self.keep_T   
+                    try:
+                        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                        cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
+                        pick_pose = cell.pose
                         self.robot.pick_and_place(pick_pose, place_pose)
                         self.robot.move_to_cart_pos(self.over_pack_T)
-                        sorted = self.vision.verify_pickup(frame_position, radius)
-                        self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
-                        self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
-                        # update RDF
-                        self.rdf.robot_pick_place()
-                        self.rdf.update_cell_sorted(i, j, sorted=sorted)
-                        self.rdf.pick_place_outcome(outcome=sorted)
-                        if sorted:
-                            self.pack_state.update_cell(i, j, sorted=sorted)
+                    except:
+                        pass
+                    sorted = self.vision.verify_pickup(frame_position, radius)
+                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
+                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
+                    # update RDF
+                    self.rdf.robot_pick_place()
+                    self.rdf.update_cell_sorted(i, j, sorted=sorted)
+                    self.rdf.pick_place_outcome(outcome=sorted)
+                    if sorted:
+                        self.pack_state.update_cell(i, j, sorted=sorted)
+                    else:
+                        should_try_again = self.rdf.should_try_again()
+                        print("Should try again: ", should_try_again)
+                        if not should_try_again:
+                            new_status = pt.common.Status.FAILURE
+                            return new_status
                         else:
-                            should_try_again = self.rdf.should_try_again()
-                            print("Should try again: ", should_try_again)
-                            if not should_try_again:
-                                new_status = pt.common.Status.FAILURE
-                                return new_status
-                            else:
-                                new_status = pt.common.Status.RUNNING
+                            new_status = pt.common.Status.RUNNING
+                            
             if new_status == pt.common.Status.SUCCESS:
                 self.rdf.end_sorting_process()
                 self.rdf.end_session()
@@ -811,27 +848,10 @@ class AutoSort(pt.behaviour.Behaviour):
             
         return new_status
     
-"""
-class CellsOK(pt.behaviour.Behaviour):
-    def __init__(self, name, rdf, pack_state):
-        super(CellsOK, self).__init__(name)
-        self.pack_state = pack_state
-        self.rdf = rdf
-        self.status = pt.common.Status.INVALID
-
-    def update(self):
-        # REASONER: if cells are damaged, return SUCCESS
-        # this can be adjusted to other reasoning, such as taking into account where the damaged cells are
-        # e.g., are they far away from the nondamaged cells?
-        # Once the nondamaged cells are removed --> discard pack (FAILURE)
-        # If all cells are removed --> done (SUCCESS)
-        if self.gui.done:
-            new_status = pt.common.Status.SUCCESS
-        # if cells are safe, return FAILURE
-        else:
-            new_status = pt.common.Status.FAILURE
-        return new_status
-"""
+    def terminate(self, new_status):
+        if new_status != pt.common.Status.INVALID:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+            self.tried = False
 
 class HelpedSort(pt.behaviour.Behaviour):
     """
@@ -866,13 +886,19 @@ class HelpedSort(pt.behaviour.Behaviour):
             new_status = pt.common.Status.RUNNING
         return new_status
     
+    def terminate(self, new_status):
+        self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
+        self.tried = False
+    
 class DiscardPack(pt.behaviour.Behaviour):
-    def __init__(self, name, rdf, pack_state, gui, vision):
+    def __init__(self, name, rdf, pack_state, gui, vision, bin_rotvec, pack_height):
         super(DiscardPack, self).__init__(name)
         self.gui = gui
         self.vision = vision
         self.pack_state = pack_state
         self.rdf = rdf
+        self.bin_rotvec = bin_rotvec
+        self.pack_height = pack_height
         self.status = pt.common.Status.INVALID
 
     def update(self):
@@ -882,10 +908,9 @@ class DiscardPack(pt.behaviour.Behaviour):
 
         pack_location = self.pack_state.location
         try: 
-            bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
             b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, 0.090, b_T_TCP)
-            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(bin_rotvec))
+            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
+            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
         except:
             pass
 
