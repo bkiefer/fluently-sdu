@@ -44,7 +44,7 @@ class _BoundingBoxEditor:
         self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
         if hasattr(self.frame, "number_label"):
             self.frame.number_label.configure(text=f"\nNumber of cells: {len(self.bbs_position)}\n")
-       
+
     def draw_boxes(self):
         """Draws bounding boxes with resize/move handles"""
         self.canvas.delete('bbs')
@@ -65,6 +65,8 @@ class _BoundingBoxEditor:
             delete_btn = self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs')
             delete_label = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
             self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
+            
+            self.canvas.lift("bbs")
             # else:
             #     self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, None, None])
         
@@ -255,7 +257,7 @@ class MemGui(tk.Tk):
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
         # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
         for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, 
-                                    AutoSortScreen, ManualSortScreen, HomeScreen, StartScreen, PlacePackScreen,
+                                    AutoSortScreen, ManualSortScreen, StartScreen, PlacePackScreen,
                                     CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
                                     ColabAwaitHumanScreen, RemoveCoverScreen, AutoPackClassScreen, ManualPackClassScreen,
                                     LocatePackScreen]):
@@ -296,9 +298,9 @@ class MemGui(tk.Tk):
 
     def update_proposed_packs(self, proposed_packs):
         self.proposed_packs = proposed_packs
-        self.frames[16].label.configure(text=f"Pack is: {self.proposed_packs[0]}")
+        self.frames[15].label.configure(text=f"Pack is: {self.proposed_packs[0]}")
         for propose in self.proposed_packs[1:]: # we skip the first one as it was already denied by the user
-            btn = tk.Button(self.frames[17].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[17].chosen_pack(model))
+            btn = tk.Button(self.frames[16].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[16].chosen_pack(model))
             btn.pack()
 
     def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
@@ -323,17 +325,6 @@ class MemGui(tk.Tk):
         """
         self.frames[int(state_id)].tkraise()
         self.expand_btn.place(x=self.camera_frame.width-50, y=self.camera_frame.height*1.2-50)
-        # if state_id > 2:
-        #     self.update_bbs(self.proposed_locations, self.frames[int(state_id)])
-        # if state_id == 3:
-        #     # self.bbs_editor.delete_mode = True
-        #     self.bbs_editor.draw_boxes(delete_mode=True)
-        # if state_id > 3:
-        #     self.write_qualities(self.proposed_locations, self.proposed_qualities, self.frames[int(state_id)])
-        # if len(self.chosen_locations) != 0 and len(self.chosen_qualities) != 0:
-        #     self.update_bbs(self.chosen_locations, self.frames[int(state_id)])
-        #     self.write_qualities(self.chosen_locations, self.chosen_qualities, self.frames[int(state_id)])
-        #     self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
         self.active_frame = state_id
         if hasattr(self.frames[int(state_id)], "canvas"):
             self.frames[int(state_id)].draw_image(self.camera_frame)
@@ -400,7 +391,7 @@ class MemGui(tk.Tk):
                 frame.draw_image(self.camera_frame)
         for btn in self.frames[2].btns_frame.winfo_children():
             btn.pack_forget()
-        for btn in self.frames[17].btns_frame.winfo_children():
+        for btn in self.frames[16].btns_frame.winfo_children():
             btn.pack_forget()
         self.show_frame(0)
 
@@ -416,8 +407,10 @@ class HomeScreen(tk.Frame):
     
     def draw_image(self, img):
         self.tk_image = PIL.ImageTk.PhotoImage(img)
-        self.canvas.delete('all')
-        self.canvas.create_image(0, 0, anchor="nw", image=self.tk_image)
+        #self.canvas.delete('all')
+        self.canvas.delete('image')
+        self.canvas.create_image(0, 0, anchor="nw", image=self.tk_image, tags='image')
+        self.canvas.lower('image')
 
 class StartScreen(HomeScreen):
     def __init__(self, parent, controller, idx):
@@ -439,7 +432,6 @@ class StartScreen(HomeScreen):
         btns_frame.pack()
         confirm_btn = tk.Button(btns_frame, text="Begin session", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
-        
         
     def confirm(self):
             self.controller.first_name = self.first_name_var.get()

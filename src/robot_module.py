@@ -8,18 +8,18 @@ from gubokit import utilities
 
 class RobotModule:
     def __init__(self, ip: str, home_position: ndarray, tcp_length_dict, gripper_id=0, active_gripper="small"):
-        # try:
-        self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
-        self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
-        self.active_gripper = active_gripper
-        self.tcp_length_dict = tcp_length_dict
-        self.tcp_length = self.tcp_length_dict[self.active_gripper]
-        self.robot.add_gripper(gripper=self.gripper)
-        print("Starting robot module")
-        # except RuntimeError as e:
-          #  self.robot = None
-           # print("The robot could not be started, the module will run for debug purpose")
-            #print(e)
+        try:
+            self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
+            self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
+            self.active_gripper = active_gripper
+            self.tcp_length_dict = tcp_length_dict
+            self.tcp_length = self.tcp_length_dict[self.active_gripper]
+            self.robot.add_gripper(gripper=self.gripper)
+            print("Starting robot module")
+        except RuntimeError as e:
+            self.robot = None
+            print("The robot could not be started, the module will run for debug purpose")
+            print(e)
 
     def change_gripper(self, active_gripper):
         self.active_gripper = active_gripper
