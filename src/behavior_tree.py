@@ -18,7 +18,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         # Blackboard and registering keys 
         #self.rdf = None
         cell_m_q, cell_h_q = 0.6, 0.8 # this defines them everywhere
-        over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
+        self.over_pack_T = sm.SE3([-0.23, -0.31, 0.33]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
         discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         R = sm.UnitQuaternion(s=0.7058517498982678, v=[0.006697022630599267, -0.0007521624314972674, 0.7083275310935719]).SO3()     
@@ -30,22 +30,16 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
         self.rdf = RdfStore()
         self.vision = VisionModule(camera_Ext=self.camera_Ext)
-        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.041, 'big': 0.08}, active_gripper='small', gripper_id=0)
+        self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
         self.pack_state = PackState()
         #self.pack_state = PackState(rows=1, cols=2)
         #self.pack_state.update_cell(0, 1, pose=(sm.SE3([-0.295, -0.255, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         #self.pack_state.update_cell(0, 0, pose=(sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         self.done = False
 
-        # since we analyze only the cells section of the task at the beginning we move into the position we would be in if we had done the part with the pack
-        if self.robot.robot is not None:
-            # input("The robot will start moving now, press enter when ready >>>")
-            self.robot.robot.move_up(0.15)
-            self.robot.robot.move_to_cart_pose(over_pack_T,  0.1)
-            self.vision.set_background() # we take this to verify picke and place
-
         self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
             
+        self.robot.move_to_cart_pos(self.over_pack_T)
         # Leaf nodes
         self.begin_session = BeginSession(name="begin_session", rdf=self.rdf, gui=self.gui, vision=self.vision)        
         self.pack_placed = PackPlaced(name="pack_placed", rdf=self.rdf, vision=self.vision, gui=self.gui)
@@ -56,7 +50,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.check_human_removes_cover = CheckHumanRemovesCover(name="check_human_removes_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
         self.check_colab_remove_cover = pt.decorators.Inverter(name="inverter",child=CheckColabRemoveCover(name="check_colab_remove_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision))
         self.colab_await_human = ColabAwaitHuman(name="colab_await_human", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
-        self.remove_cover = RemoveCover(name="remove_cover", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot, bin_rotvec=self.bin_rotvec, pack_height=self.pack_height)
+        self.remove_cover = RemoveCover(name="remove_cover", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, robot=self.robot, bin_rotvec=self.bin_rotvec, pack_height=self.pack_height, over_pack_T=self.over_pack_T)
         #self.check_cover_removed = CheckCoverRemoved(name="check_cover_removed", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.await_tool_change_small = AwaitToolChange(name="await_tool_change", rdf=self.rdf, gui=self.gui, vision=self.vision, robot=self.robot)
         self.await_tool_change_big = AwaitToolChange(name="await_tool_change", rdf=self.rdf, gui=self.gui, vision=self.vision, robot=self.robot)
@@ -69,17 +63,16 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.assess = Assess(name="assess", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.check_cells_ok = CheckCellsOK(name="check_cells_ok", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui)
         self.auto_sort = AutoSort(name="auto_sort", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, robot=self.robot, gui=self.gui, 
-                                  cell_h_q=cell_h_q, cell_m_q=cell_m_q, discard_T=discard_T, keep_T=keep_T, over_pack_T=over_pack_T)
+                                  cell_h_q=cell_h_q, cell_m_q=cell_m_q, discard_T=discard_T, keep_T=keep_T, over_pack_T=self.over_pack_T)
         self.helped_sort = HelpedSort(name="helped_sort", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision)
         self.await_cover_fastening = AwaitCoverFastening(name="await_cover_fastening", rdf=self.rdf, gui=self.gui, vision=self.vision)
-        self.discard_pack = RemoveCover(name="discard_pack", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision, robot=self.robot, bin_rotvec=self.bin_rotvec, pack_height=self.pack_height)
+        self.discard_pack = RemoveCover(name="discard_pack", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, vision=self.vision, robot=self.robot, bin_rotvec=self.bin_rotvec, pack_height=self.pack_height, over_pack_T=self.over_pack_T)
 
         # Selectors and sequences
         self.helped_pack_class_sequence = pt.composites.Sequence(name="helped_pack_class_sequence", memory=True, children=[self.helped_pack_class,self.helped_locate_pack])
         self.class_pack_selector = pt.composites.Selector(name="class_pack_selector", memory=True, children=[self.auto_pack_class, self.helped_pack_class_sequence]) # memory=True to avoid GUI state switch
         self.big_tool_selector = pt.composites.Selector(name="big_tool_selector", memory=True, children=[self.big_gripper, self.await_tool_change_big]) 
         self.colab_cover_removal_selector = pt.composites.Selector(name="colab_cover_removal_selector", memory=True, children=[self.check_colab_remove_cover, self.colab_await_human])
-
         self.robot_remove_cover_sequence = pt.composites.Sequence(name="robot_remove_cover_sequence",memory=True, children=[self.big_tool_selector, self.colab_cover_removal_selector, self.remove_cover])
         self.remove_cover_selector = pt.composites.Selector(name="remove_cover_selector", memory=True, children=[self.check_human_removes_cover, self.robot_remove_cover_sequence])
         #self.remove_cover_sequence = pt.composites.Sequence(name="remove_cover_sequence",memory=True, children=[self.remove_cover_selector])#, self.check_cover_removed])

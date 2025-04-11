@@ -8,17 +8,18 @@ from gubokit import utilities
 
 class RobotModule:
     def __init__(self, ip: str, home_position: ndarray, tcp_length_dict, gripper_id=0, active_gripper="small"):
-        try:
-            self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
-            self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
-            self.active_gripper = active_gripper
-            self.tcp_length_dict = tcp_length_dict
-            self.tcp_length = self.tcp_length_dict[self.active_gripper]
-            self.robot.add_gripper(gripper=self.gripper)
-            print("Starting robot module")
-        except RuntimeError:
-            self.robot = None
-            print("The robot could not be started, the module will run for debug purpose")
+        # try:
+        self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
+        self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
+        self.active_gripper = active_gripper
+        self.tcp_length_dict = tcp_length_dict
+        self.tcp_length = self.tcp_length_dict[self.active_gripper]
+        self.robot.add_gripper(gripper=self.gripper)
+        print("Starting robot module")
+        # except RuntimeError as e:
+          #  self.robot = None
+           # print("The robot could not be started, the module will run for debug purpose")
+            #print(e)
 
     def change_gripper(self, active_gripper):
         self.active_gripper = active_gripper
@@ -32,7 +33,9 @@ class RobotModule:
             place_T (sm.SE3): position and orientation for place
         """
         try:
+            print(pick_T)
             actual_pick_T = pick_T * sm.SE3([0, 0, self.tcp_length])
+            print(actual_pick_T)
             actual_place_T = place_T * sm.SE3([0, 0, self.tcp_length])
             self.robot.pick_and_place(pick_pose=np.hstack((actual_pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_pick_T.R)))), 
                                     place_pose=np.hstack((actual_place_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_place_T.R)))))
@@ -55,7 +58,7 @@ class RobotModule:
         self.robot.open_gripper()
 
 if __name__ == "__main__":
-    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], gripper_id=0)
+    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.041, 'big': 0.08}, active_gripper='small', gripper_id=0)
     over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
     discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)
     keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)

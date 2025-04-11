@@ -335,6 +335,8 @@ class MemGui(tk.Tk):
         #     self.write_qualities(self.chosen_locations, self.chosen_qualities, self.frames[int(state_id)])
         #     self.write_outcome_picked_cell(self.proposed_locations, self.outcomes)
         self.active_frame = state_id
+        if hasattr(self.frames[int(state_id)], "canvas"):
+            self.frames[int(state_id)].draw_image(self.camera_frame)
 
     def ask_for_help(self,  query: str):
         """ask human for help for something
@@ -389,6 +391,7 @@ class MemGui(tk.Tk):
         self.proposed_qualities = []
         self.chosen_qualities = []
         self.outcomes = []
+        self.confirm = False
         self.class_reject = False # !!!
         self.done = False
         for frame in self.frames:

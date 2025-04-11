@@ -37,7 +37,7 @@ class VisionModule():
         # cv2.imwrite("Background.jpg", new_bg)
         self.background = new_bg
 
-    def get_current_frame(self, format="cv2", wait_delay=2) -> np.ndarray:
+    def get_current_frame(self, format="cv2", wait_delay=0) -> np.ndarray:
         """get the current frame from the camera
 
         Returns:
@@ -47,12 +47,11 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
-            #print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/i4.0_frames/square01.png")
-            format = "pil"
+            print("Cannot access camera. For debuggin purpose it will access a file in store")
+            #frame = cv2.imread("data/i4.0_frames/square01.png")
+            #format = "pil"
             #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             #frame = PIL.Image.fromarray(frame)
-
             #frame = None
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
@@ -161,8 +160,8 @@ class VisionModule():
         """
         base_T_cam = base_T_TCP * camera.extrinsic
         P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_height)
-        screw_T_b = (b_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
-        screw_T_b.R = base_T_TCP.R # keep the current orientation of the tcp
+        tmp = (base_T_TCP * camera.extrinsic) * sm.SE3(P)
+        screw_T_b = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         return screw_T_b
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:

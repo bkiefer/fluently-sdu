@@ -15,7 +15,7 @@ class BeginSession(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(8)
         if self.gui.first_name != None:
@@ -47,7 +47,7 @@ class PackPlaced(pt.behaviour.Behaviour):
             self.rdf.get_pack_models_in_ontology()
             print(self.name, new_status)
         else:
-            frame = self.vision.get_current_frame()
+            frame = self.vision.get_current_frame(format="pil")
             self.gui.update_image(frame)
             self.gui.show_frame(9)
             new_status = pt.common.Status.RUNNING
@@ -69,7 +69,7 @@ class AutoPackClass(pt.behaviour.Behaviour):
         self.result = None
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(16) 
 
@@ -130,7 +130,7 @@ class HelpedPackClass(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(17) 
 
@@ -162,7 +162,7 @@ class HelpedLocatePack(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(18) 
         if not self.tried:
@@ -200,6 +200,7 @@ class CheckCoverOff(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
+        """
         if not self.tried: # behavior is constantly ticked, only record once if cover is on ONCE
             self.tried = True
             if not self.pack_state.cover_on:
@@ -208,7 +209,7 @@ class CheckCoverOff(pt.behaviour.Behaviour):
             else:
                 new_status = pt.common.Status.FAILURE
         else:
-            frame = self.vision.get_current_frame()
+            frame = self.vision.get_current_frame(format="pil")
             cells = self.vision.cell_detection(frame)
             if len(cells) != 0:
                 self.pack_state.cover_on = False
@@ -217,6 +218,8 @@ class CheckCoverOff(pt.behaviour.Behaviour):
             else:
                 new_status = pt.common.Status.FAILURE
             # TODO: RDF: check if removal strategy was "human", if cover is off, record RemoveCover isA HumanAction!
+        """
+        new_status = pt.common.Status.FAILURE
         return new_status
     
     #def terminate(self, new_status):
@@ -237,7 +240,7 @@ class CheckHumanRemovesCover(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(13) 
         # TODO: RDF: check if pack is known
@@ -271,7 +274,7 @@ class CheckColabRemoveCover(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(13) 
         # TODO: RDF: check if pack is known
@@ -306,7 +309,7 @@ class ColabAwaitHuman(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(14)
         if self.gui.confirm:
@@ -323,7 +326,7 @@ class RemoveCover(pt.behaviour.Behaviour):
     Robot removes cover
     SUCCESS when done
     """
-    def __init__(self, name, rdf, pack_state, vision, gui, robot, bin_rotvec, pack_height):
+    def __init__(self, name, rdf, pack_state, vision, gui, robot, bin_rotvec, pack_height, over_pack_T):
         super(RemoveCover, self).__init__(name)
         self.robot = robot
         self.vision = vision
@@ -332,22 +335,20 @@ class RemoveCover(pt.behaviour.Behaviour):
         self.rdf = rdf
         self.bin_rotvec = bin_rotvec
         self.pack_height = pack_height
+        self.over_pack_T = over_pack_T
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(14)
         #new_status = pt.common.Status.RUNNING
         
         # TODO: robot module: remove cover
         pack_location = self.pack_state.location
-        try: 
-            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-            screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
-            self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
-        except:
-            pass
-
+        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+        screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
+        self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
+        self.robot.move_to_cart_pos(screw_T_b*sm.SE3([0,0,-0.06]))
         # TODO: RDF: update
         self.rdf.robot_remove_cover()
         new_status = pt.common.Status.SUCCESS # TODO: change to running
@@ -368,7 +369,7 @@ class AwaitToolChange(pt.behaviour.Behaviour):
         self.robot = robot
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(11)
 
@@ -378,9 +379,9 @@ class AwaitToolChange(pt.behaviour.Behaviour):
             new_status = pt.common.Status.SUCCESS
             tool = self.rdf.get_robot_tool()
             if tool == "large":
-                self.robot.active_gripper = "big"
+                self.robot.change_gripper("big")
             elif tool == "small": 
-                self.robot.active_gripper = "small"
+                self.robot.change_gripper("small")
             print(self.name, self.status)
         else:
             new_status = pt.common.Status.RUNNING
@@ -400,7 +401,7 @@ class BigGripper(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(10)
 
@@ -412,10 +413,10 @@ class BigGripper(pt.behaviour.Behaviour):
             if last_tool:
                 self.tried = False
                 if last_tool == "small":
-                    self.robot.active_gripper = "small"
+                    self.robot.change_gripper("small")
                     new_status = pt.common.Status.FAILURE
                 elif last_tool == "large":
-                    self.robot.active_gripper = "big"
+                    self.robot.change_gripper("big")
                     new_status = pt.common.Status.SUCCESS
                 print("last tool", self.rdf.get_robot_tool())
 
@@ -423,12 +424,12 @@ class BigGripper(pt.behaviour.Behaviour):
             if self.gui.gripper == "large":
                 new_status = pt.common.Status.SUCCESS
                 self.rdf.record_robot_tool("large")
-                self.robot.active_gripper = "big"
+                self.robot.change_gripper("big")
                 print("last tool", self.rdf.get_robot_tool())
             else: 
                 new_status = pt.common.Status.FAILURE
                 self.rdf.record_robot_tool("small")
-                self.robot.active_gripper = "small"
+                self.robot.change_gripper("small")
                 print("last tool", self.rdf.get_robot_tool())
             self.gui.gripper = ""
              
@@ -453,7 +454,7 @@ class SmallGripper(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(10)
 
@@ -465,10 +466,10 @@ class SmallGripper(pt.behaviour.Behaviour):
             if last_tool:
                 self.tried = False
                 if last_tool == "small":
-                    self.robot.active_gripper = "small"
+                    self.robot.change_gripper("small")
                     new_status = pt.common.Status.SUCCESS
                 elif last_tool == "large":
-                    self.robot.active_gripper = "big"
+                    self.robot.change_gripper("big")
                     new_status = pt.common.Status.FAILURE     
                 print("last tool", self.rdf.get_robot_tool())
         
@@ -476,12 +477,12 @@ class SmallGripper(pt.behaviour.Behaviour):
             if self.gui.gripper == "small":
                 new_status = pt.common.Status.SUCCESS
                 self.rdf.record_robot_tool("small")
-                self.robot.active_gripper = "small"
+                self.robot.change_gripper("small")
                 print("last tool", self.rdf.get_robot_tool())
             else: 
                 new_status = pt.common.Status.FAILURE
                 self.rdf.record_robot_tool("large")
-                self.robot.active_gripper = "big"
+                self.robot.change_gripper("big")
                 print("last tool", self.rdf.get_robot_tool())
             self.gui.gripper = ""
         return new_status
@@ -548,7 +549,7 @@ class AutoCellClass(pt.behaviour.Behaviour):
         self.tried = False
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(1)
 
@@ -610,7 +611,7 @@ class HelpedCellClass(pt.behaviour.Behaviour):
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(2)
 
@@ -649,25 +650,24 @@ class Detect(pt.behaviour.Behaviour):
         self.rdf = rdf
         self.tried = False
         self.status = pt.common.Status.INVALID
+        self.proposed_bbs = []
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(3)
         
         if not self.tried:
             self.tried = True
             print("First update for behavior", self.name)  
-            # proposed_locations = []
             # update cell locations in GUI
-            # for row in self.pack_state.cells:
-            #    for cell in row:
-            #        cx, cy = cell.frame_position
-            #        r = cell.radius
-            #        proposed_locations.append((cx-r, cy-r, cx+r, cy+r))
             proposed_locations = self.vision.cell_detection(frame) # center, radius
+            
+            for cx, cy, r in proposed_locations:
+                self.proposed_bbs.append((cx-r, cy-r, cx+r, cy+r))
             print("proposed: ",proposed_locations)
-            self.gui.update_bbs(proposed_locations, self.gui.frames[3])
+        if len(self.proposed_bbs) != 0:
+            self.gui.update_bbs(self.proposed_bbs, self.gui.frames[3])
 
         if self.gui.chosen_locations: # if chosen_locations not empty
             radius, height = self.rdf.get_dimensions_from_cell_type(self.pack_state.cell_model)
@@ -713,14 +713,14 @@ class Assess(pt.behaviour.Behaviour):
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(4)
         
         if not self.tried:
             self.tried = True
             print("First update for behavior", self.name)
-            # current_frame = self.vision.get_current_frame() # keep old frame ???
+            # current_frame = self.vision.get_current_frame(format="pil") # keep old frame ???
             bbs_positions = self.gui.chosen_locations
             # get proposed qualities from vision module and update GUI
             #qualities = self.vision.assess_cells_qualities(frame=self.gui.camera_frame, bbs_positions=bbs_positions)
@@ -805,7 +805,7 @@ class AutoSort(pt.behaviour.Behaviour):
         self.discard_T, self.keep_T, self.over_pack_T = discard_T, keep_T, over_pack_T
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(5)
         new_status = pt.common.Status.RUNNING
@@ -832,7 +832,7 @@ class AutoSort(pt.behaviour.Behaviour):
                         place_pose = self.keep_T   
                     try:
                         b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                        cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
+                        cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height+0.01, b_T_TCP)
                         pick_pose = cell.pose
                         self.robot.pick_and_place(pick_pose, place_pose)
                         self.robot.move_to_cart_pos(self.over_pack_T)
@@ -884,7 +884,7 @@ class HelpedSort(pt.behaviour.Behaviour):
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(6)
         if not self.tried:
@@ -917,7 +917,7 @@ class DiscardPack(pt.behaviour.Behaviour):
         self.status = pt.common.Status.INVALID
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(7)
 
@@ -948,7 +948,7 @@ class AwaitCoverFastening(pt.behaviour.Behaviour):
         self.vision = vision
 
     def update(self):
-        frame = self.vision.get_current_frame()
+        frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(frame)
         self.gui.show_frame(12)
 
