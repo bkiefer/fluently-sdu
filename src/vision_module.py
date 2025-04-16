@@ -214,32 +214,37 @@ if __name__ == "__main__":
     R = sm.UnitQuaternion(s=0.7058517498982678, v=[0.006697022630599267, -0.0007521624314972674, 0.7083275310935719]).SO3()     
     t = np.array([0.04627923466437427, -0.03278714750773679, 0.01545089678599013])
     E = sm.SE3.Rt(R, t)
-    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], gripper_id=0)
-    over_ws_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
-    robot_module.robot.moveL(over_ws_rotvec)
+    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
+    over_pack_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+    over_ws_rotvec = [[-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]]
+    # robot_module.robot.moveL(over_ws_rotvec)
     vision_module = VisionModule(camera_Ext=E)
     ans = ''
+    i = 0
     while ans != 'q':
-        if ans == 'a':
-            robot_module.robot.moveL(robot_module.robot.getActualTCPPose() - np.array([0,0,0.002,0,0,0]))
+        frame = vision_module.get_current_frame()
+        if ans == 's':
+            cv2.imwrite("frame" + str(i) +".png", frame)
+            i += 1
+            # robot_module.robot.moveL(robot_module.robot.getActualTCPPose() - np.array([0,0,0.002,0,0,0]))
         ans = chr(0xff & cv2.waitKey(1))
-        cv2.imshow("frame", vision_module.get_current_frame(wait_delay=0))
+        cv2.imshow("frame", frame)
     # result_p = vision_module.locate_pack(vision_module.get_current_frame())
     # p = result_p['location']
-    frame = vision_module.get_current_frame()
-    bbs = vision_module.cell_detection(frame)
-    if len(bbs) != 0:
-        for (x, y, r) in bbs:
-            cv2.circle(frame, (x, y), 1, (0, 100, 100), 3)
-            cv2.circle(frame, (x, y), r, (255, 0, 255), 3)
-    cv2.imshow("frame", frame)
-    cv2.waitKey(0)
-    p = bbs[0]
+    # frame = vision_module.get_current_frame()
+    # bbs = vision_module.cell_detection(frame)
+    # if len(bbs) != 0:
+    #     for (x, y, r) in bbs:
+    #         cv2.circle(frame, (x, y), 1, (0, 100, 100), 3)
+    #         cv2.circle(frame, (x, y), r, (255, 0, 255), 3)
+    # cv2.imshow("frame", frame)
+    # cv2.waitKey(0)
+    # p = bbs[0]
 
-    b_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-    screw_T_b = vision_module.frame_pos_to_pose(p, vision_module.camera, 0.090, b_T_TCP)
-    print(screw_T_b)
-    input(">>>")
-    # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.08]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
-    # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.041]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
+    # b_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
+    # screw_T_b = vision_module.frame_pos_to_pose(p, vision_module.camera, 0.090, b_T_TCP)
+    # print(screw_T_b)
+    # input(">>>")
+    # # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.08]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
+    # # robot_module.robot.moveL(np.hstack((np.add(screw_T_b.t, [0,0,0.041]), robot_module.robot.getActualTCPPose()[3:])), speed=0.05)
     
