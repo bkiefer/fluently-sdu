@@ -30,7 +30,16 @@ class GeneralBehavior(pt.behaviour.Behaviour):
     def terminate(self, new_status):
         if new_status != pt.common.Status.INVALID:
             self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
-            
+
+class Idle(GeneralBehavior):
+    """
+    Awaits human
+    """
+    def update(self):
+        super().update()
+        new_status = pt.common.Status.RUNNING
+        return new_status
+
 class BeginSession(GeneralBehavior):
     """
     Sets up the user and session in the RDF store
@@ -179,19 +188,19 @@ class CheckCoverOff(GeneralBehavior):
                 new_status = pt.common.Status.SUCCESS
             else:
                 new_status = pt.common.Status.FAILURE
-        else:
-            frame = self.vision.get_current_frame(format="pil")
-            cells = self.vision.cell_detection(frame)
-            if len(cells) != 0:
+        """
+        cells = self.vision.cell_detection(self.frame)
+        if len(cells) != 0:
                 self.pack_state.cover_on = False
                 self.rdf.check_cover(cells_visible=True)
                 new_status = pt.common.Status.SUCCESS
-            else:
-                new_status = pt.common.Status.FAILURE
-            # TODO: RDF: check if removal strategy was "human", if cover is off, record RemoveCover isA HumanAction!
-        """
-        new_status = pt.common.Status.FAILURE
+        else:
+            new_status = pt.common.Status.FAILURE
         return new_status
+    
+    def terminate(self, new_status):
+        if new_status == pt.common.Status.SUCCESS:
+            self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
 
 class CheckHumanRemovesCover(GeneralBehavior):
     """
@@ -271,7 +280,7 @@ class RemoveCover(GeneralBehavior):
         b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
         screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
         self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
-        self.robot.move_to_cart_pos(screw_T_b*sm.SE3([0,0,-0.06]))
+        #self.robot.move_to_cart_pos(screw_T_b*sm.SE3([0,0,-0.06]))
         # TODO: RDF: update
         self.rdf.robot_remove_cover()
         new_status = pt.common.Status.SUCCESS # TODO: change to running
@@ -408,6 +417,10 @@ class AutoCellClass(GeneralBehavior):
         super().update()
         # TODO: get the probabilities from vision and the height registered in rdf
         if not self.cells_probs:
+            pack_location = self.pack_state.location
+            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+            pack_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
+            self.robot.move_to_cart_pos(pack_T_b*sm.SE3([0,0,-0.06]))
             self.cells_probs = self.vision.classify_cell(self.frame)
             self.gui.update_proposed_models(self.cells_probs)
 

@@ -43,6 +43,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.helped_locate_pack = HelpedLocatePack(name="helped_locate_pack", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, frame_id = 17, vision=self.vision)
         self.check_cover_off = CheckCoverOff(name="check_cover_off", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui)
         self.check_human_removes_cover = CheckHumanRemovesCover(name="check_human_removes_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, frame_id = 12, vision=self.vision)
+        self.await_human_removes_cover = Idle(name="await_human_removes_cover",rdf=self.rdf, gui=self.gui, vision=self.vision, frame_id = 18)
         self.check_colab_remove_cover = pt.decorators.Inverter(name="inverter",child=CheckColabRemoveCover(name="check_colab_remove_cover", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, frame_id = 12, vision=self.vision))
         self.colab_await_human = ColabAwaitHuman(name="colab_await_human", rdf=self.rdf, pack_state=self.pack_state, gui=self.gui, frame_id = 13, vision=self.vision)
         self.remove_cover = RemoveCover(name="remove_cover", rdf=self.rdf, pack_state=self.pack_state, vision=self.vision, gui=self.gui, 
@@ -70,7 +71,8 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.big_tool_selector = pt.composites.Selector(name="big_tool_selector", memory=True, children=[self.big_gripper, self.await_tool_change_big]) 
         self.colab_cover_removal_selector = pt.composites.Selector(name="colab_cover_removal_selector", memory=True, children=[self.check_colab_remove_cover, self.colab_await_human])
         self.robot_remove_cover_sequence = pt.composites.Sequence(name="robot_remove_cover_sequence",memory=True, children=[self.big_tool_selector, self.colab_cover_removal_selector, self.remove_cover])
-        self.remove_cover_selector = pt.composites.Selector(name="remove_cover_selector", memory=True, children=[self.check_human_removes_cover, self.robot_remove_cover_sequence])
+        self.human_removes_cover_sequence = pt.composites.Sequence(name="human_removes_cover",memory=True,children=[self.check_human_removes_cover,self.await_human_removes_cover])
+        self.remove_cover_selector = pt.composites.Selector(name="remove_cover_selector", memory=True, children=[self.human_removes_cover_sequence, self.robot_remove_cover_sequence])
         
         # memory = False to keep checking whether cover is on/off until confirmed
         self.cover_selector = pt.composites.Selector(name="cover_selector", memory=False, children=[self.check_cover_off, self.remove_cover_selector])

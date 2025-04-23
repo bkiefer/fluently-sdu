@@ -133,7 +133,8 @@ class VisionModule():
             # cv2.waitKey(0)
             # vision.show_frames("Detection", [drawing_frame])
         else:
-            print("No circles found")
+            #print("No circles found")
+            pass
         return cells_positions
 
     def assess_cells_qualities(self, frame:np.ndarray, bbs_positions: list[ndarray]) -> list[float]:
