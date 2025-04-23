@@ -21,6 +21,7 @@ class PackState():
         self.cover_on = True
         self.size = None
         self.location = None
+        self.pose = None
         self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):

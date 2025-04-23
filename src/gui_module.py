@@ -260,7 +260,7 @@ class MemGui(tk.Tk):
                                     AutoSortScreen, ManualSortScreen, StartScreen, PlacePackScreen,
                                     CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
                                     ColabAwaitHumanScreen, RemoveCoverScreen, AutoPackClassScreen, ManualPackClassScreen,
-                                    LocatePackScreen]):
+                                    LocatePackScreen, HumanRemoveCoverScreen]):
             frame = screen(self.picture_container, self, i)
             frame.grid(row=0, column=0, sticky='nsew')
             self.frames.append(frame)
@@ -521,6 +521,12 @@ class RemoveCoverScreen(HomeScreen):
     def __init__(self, parent:tk.Frame, controller: MemGui, idx):
         super().__init__(parent, controller, idx)
         self.label = tk.Label(self, text=f"Robot is moving...", font=("Arial", 10))
+        self.label.pack()
+
+class HumanRemoveCoverScreen(HomeScreen):
+    def __init__(self, parent:tk.Frame, controller: MemGui, idx):
+        super().__init__(parent, controller, idx)
+        self.label = tk.Label(self, text=f"Please remove the cover.", font=("Arial", 10))
         self.label.pack()
 
 class AutoPackClassScreen(HomeScreen):
