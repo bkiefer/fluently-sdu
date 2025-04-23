@@ -24,9 +24,10 @@ class GeneralBehavior(pt.behaviour.Behaviour):
     def update(self):
         self.frame = self.vision.get_current_frame(format="pil")
         self.gui.update_image(self.frame)
-        if self.frame_id and self.frame_id != self.gui.active_frame:
+        #if self.frame_id and self.frame_id != self.gui.active_frame:
+        #    self.gui.show_frame(self.frame_id)
+        if self.frame_id:
             self.gui.show_frame(self.frame_id)
-    
     def terminate(self, new_status):
         if new_status != pt.common.Status.INVALID:
             self.logger.info("Terminating: " + self.name + " with status: " + str(new_status))
@@ -78,8 +79,8 @@ class AutoPackClass(GeneralBehavior):
     SUCCESS if user accepts the classification. Pack state is updated.
     FAILURE if user rejects the classification or the robot does not recognize the pack. 
     """
-    def __init__(self, name, rdf, gui, vision, frame_id, pack_state):
-        super().__init__(name, rdf, gui, vision, frame_id, pack_state)
+    def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot, pack_height):
+        super().__init__(name=name, rdf=rdf, gui=gui, vision=vision, frame_id=frame_id, pack_state=pack_state, robot=robot, pack_height=pack_height)
         self.proposed_pack = None
         self.result = None
 
@@ -118,6 +119,9 @@ class AutoPackClass(GeneralBehavior):
                 self.pack_state.size = self.result["size"]
                 self.pack_state.cover_on = self.result["cover_on"] # use vision function cell_detection()?
                 self.pack_state.location = self.result["location"]
+                b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                pack_T_b = self.vision.frame_pos_to_pose(self.pack_state.location, self.vision.camera, self.pack_height, b_T_TCP)
+                self.pack_state.pose = pack_T_b
                 # TODO: RDF: record if classification was successful
                 # TODO: RDF: update and upload disassembly plan
                 new_status = pt.common.Status.SUCCESS
@@ -164,6 +168,9 @@ class HelpedLocatePack(GeneralBehavior):
             location = self.gui.chosen_pack_location[0]
             frame_position = ((location[0]+location[2])//2, (location[1]+location[3])//2)
             self.pack_state.location = frame_position
+            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+            pack_T_b = self.vision.frame_pos_to_pose(self.pack_state.location, self.vision.camera, self.pack_height, b_T_TCP)
+            self.pack_state.pose = pack_T_b
             #self.pack_state.size = 
             new_status = pt.common.Status.SUCCESS
             # TODO: RDF update
@@ -190,7 +197,7 @@ class CheckCoverOff(GeneralBehavior):
                 new_status = pt.common.Status.FAILURE
         """
         cells = self.vision.cell_detection(self.frame)
-        if len(cells) != 0:
+        if len(cells) > 3: #!!!
                 self.pack_state.cover_on = False
                 self.rdf.check_cover(cells_visible=True)
                 new_status = pt.common.Status.SUCCESS
@@ -276,10 +283,9 @@ class RemoveCover(GeneralBehavior):
     def update(self):
         super().update()
         # TODO: robot module: remove cover
-        pack_location = self.pack_state.location
-        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-        screw_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
-        self.robot.pick_and_place(screw_T_b,utilities.rotvec_to_T(self.bin_rotvec))
+        self.robot.pick_and_place(self.pack_state.pose,utilities.rotvec_to_T(self.bin_rotvec))
+
+        #self.robot.move_to_cart_pos(self.over_pack_T)
         #self.robot.move_to_cart_pos(screw_T_b*sm.SE3([0,0,-0.06]))
         # TODO: RDF: update
         self.rdf.robot_remove_cover()
@@ -409,18 +415,18 @@ class AutoCellClass(GeneralBehavior):
     SUCCESS if user accepts the classification. Pack state is updated.
     FAILURE if user rejects the classification. Pack state remains unchanged.
     """
-    def __init__(self, name, rdf, gui, vision, frame_id, pack_state):
-        super().__init__(name, rdf, gui, vision, frame_id, pack_state)
+    def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot, pack_height):
+        super().__init__(name=name, rdf=rdf, gui=gui, vision=vision, frame_id=frame_id, pack_state=pack_state, robot=robot, pack_height=pack_height)
         self.cells_probs = []
 
     def update(self):
         super().update()
-        # TODO: get the probabilities from vision and the height registered in rdf
         if not self.cells_probs:
-            pack_location = self.pack_state.location
-            b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-            pack_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
-            self.robot.move_to_cart_pos(pack_T_b*sm.SE3([0,0,-0.06]))
+            #pack_location = self.pack_state.location
+            self.robot.move_to_cart_pos(self.pack_state.pose*sm.SE3([-0.05, 0.03,-0.05]))
+            #b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+            #pack_T_b = self.vision.frame_pos_to_pose(pack_location, self.vision.camera, self.pack_height, b_T_TCP)
+            #self.robot.move_to_cart_pos(pack_T_b*sm.SE3([-0.05, 0.03,-0.05]))
             self.cells_probs = self.vision.classify_cell(self.frame)
             self.gui.update_proposed_models(self.cells_probs)
 
@@ -528,7 +534,6 @@ class Assess(GeneralBehavior):
 
     def update(self):
         super().update()
-
         if not self.bbs_positions:
             print("First update for behavior", self.name)
             # current_frame = self.vision.get_current_frame(format="pil") # keep old frame ???
@@ -585,18 +590,12 @@ class CheckCellsOK(GeneralBehavior):
 
 class AutoSort(GeneralBehavior):
     """
-    The pick up area is determined by the vision module.
-    The place area is determined by the pack state.
     The robot performs pick and place for each battery cell.
     The vision module determines if grasping and pick up is successful for each cell.
-    The pack state is updated.
-    If necessary there is a nozzle swap / ask for human help.
-
-    NOTE: SUCCESS if all pick and place actions succeed or some other criterion? 
     """
     
-    def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot, cell_m_q, cell_h_q, discard_T, keep_T, over_pack_T):
-        super().__init__(name, rdf, gui, vision, frame_id, pack_state, robot, cell_m_q, cell_h_q, discard_T, keep_T, over_pack_T)
+    def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot, over_pack_T, cell_m_q, cell_h_q, discard_T, keep_T):
+        super().__init__(name=name, rdf=rdf, gui=gui, vision=vision, frame_id=frame_id, pack_state=pack_state, robot=robot, over_pack_T=over_pack_T, cell_m_q=cell_m_q, cell_h_q=cell_h_q, discard_T=discard_T, keep_T=keep_T)
         self.tried = False
 
     def update(self):
@@ -622,15 +621,13 @@ class AutoSort(GeneralBehavior):
                     if cell.quality < self.cell_m_q:
                         place_pose = self.discard_T
                     else:
-                        place_pose = self.keep_T   
-                    try:
-                        b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                        cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height+0.01, b_T_TCP)
-                        pick_pose = cell.pose
-                        self.robot.pick_and_place(pick_pose, place_pose)
-                        self.robot.move_to_cart_pos(self.over_pack_T)
-                    except:
-                        pass
+                        place_pose = self.keep_T
+                    
+                    b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                    cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
+                    pick_pose = cell.pose
+                    self.robot.pick_and_place(pick_pose, place_pose)
+                    self.robot.move_to_cart_pos(self.over_pack_T)
                     sorted = self.vision.verify_pickup(frame_position, radius)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])

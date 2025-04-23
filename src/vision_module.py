@@ -179,10 +179,10 @@ class VisionModule():
 
         #if isinstance(cp_start_frame, PIL.Image.Image):
         #    cp_start_frame = np.array(cp_start_frame)
-        if cp_start_frame.mode == "RGB":
-            cp_start_frame = cv2.cvtColor(np.array(cp_start_frame), cv2.COLOR_RGB2BGR)
-        if cp_current_frame.mode == "RGB":
-            cp_current_frame = cv2.cvtColor(np.array(cp_current_frame), cv2.COLOR_RGB2BGR)
+        #if cp_start_frame.mode == "RGB":
+        #    cp_start_frame = cv2.cvtColor(np.array(cp_start_frame), cv2.COLOR_RGB2BGR)
+        #if cp_current_frame.mode == "RGB":
+        #    cp_current_frame = cv2.cvtColor(np.array(cp_current_frame), cv2.COLOR_RGB2BGR)
 
         cp_start_frame = cv2.cvtColor(cp_start_frame, cv2.COLOR_BGR2GRAY)
         current_frame = cv2.cvtColor(cp_current_frame, cv2.COLOR_BGR2GRAY)
