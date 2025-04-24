@@ -59,6 +59,14 @@ class VisionModule():
             frame = PIL.Image.fromarray(frame)
         return frame
 
+    def get_z_at_pos(self, x, y):
+        depth_frame = self.camera.get_depth_frame()
+        depth_img = np.asanyarray(depth_frame.get_data())
+        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_img, alpha=100), cv2.COLORMAP_JET)
+        # cv2.imshow("Depth Frame", depth_colormap)
+        z = depth_frame.get_distance(x, y)
+        return z
+
     def locate_pack(self, frame: ndarray):
         result = self.yolo_model(frame) 
         if len(result[0].boxes) == 0:
@@ -127,12 +135,12 @@ class VisionModule():
             for i in circles[0, :]:
                 center = (i[0], i[1])
                 radius = i[2]
-                cv2.putText(drawing_frame, f"c: {center}; r: {radius}", np.array(center)+(-50-int(radius/2), - 50-int(radius/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (155, 255, 255), 1)
+                z = self.get_z_at_pos(*center)
+                cv2.putText(drawing_frame, f"c: {center}; r: {radius}; z: {z:0.3f}", np.array(center)+(-50-int(radius/2), - 50-int(radius/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (155, 255, 255), 1)
                 cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
             cv2.imshow("Detection", drawing_frame)
-            cv2.waitKey(0)
-            # vision.show_frames("Detection", [drawing_frame])
+            # cv2.waitKey(0)
         else:
             #print("No circles found")
             pass
@@ -219,16 +227,33 @@ if __name__ == "__main__":
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
     over_pack_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
     over_ws_rotvec = [[-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]]
-    robot_module.robot.teachMode()
+    # robot_module.robot.teachMode()
     vision_module = VisionModule(camera_Ext=E)
-    
+    time.sleep(2)
+    robot_module.robot.moveL(over_pack_rotvec)
     i = 0
     ans= ''
-    while ans != 'q':
-        ans = chr(0xff & cv2.waitKey(1))
+    # while ans != 'q':
+        # ans = chr(0xff & cv2.waitKey(1))
+        # frame = vision_module.get_current_frame()
+    bbs = []
+    while len(bbs) == 0:
         frame = vision_module.get_current_frame()
-        cv2.imshow("frame", frame)
-        if ans == 's':
-            cv2.imwrite(f"data/18650/frame{i}.png", frame)
-            i += 1
-    robot_module.robot.endTeachMode()
+        bbs = vision_module.cell_detection(frame)
+    cv2.waitKey(0)
+    cx, cy = bbs[0][0], bbs[0][1]
+
+    z = vision_module.get_z_at_pos(cx, cy)
+    base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
+    base_T_cam = base_T_TCP * vision_module.camera.extrinsic
+    P = vision.frame_pos_to_3dpos(frame_pos=(cx, cy), camera=vision_module.camera, Z=z)
+    print(P)
+    tmp = (base_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
+    screw_T_b = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+    TCP_T_tool = sm.SE3([0, 0, -0.04])
+    print(screw_T_b)
+    print(screw_T_b*TCP_T_tool)
+    print(TCP_T_tool*screw_T_b)
+    input(">>>")
+    robot_module.move_to_cart_pos(screw_T_b*TCP_T_tool)
+    # robot_module.robot.endTeachMode()
