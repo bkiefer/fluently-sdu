@@ -233,17 +233,27 @@ if __name__ == "__main__":
     robot_module.robot.moveL(over_pack_rotvec)
     i = 0
     ans= ''
-    # while ans != 'q':
-        # ans = chr(0xff & cv2.waitKey(1))
-        # frame = vision_module.get_current_frame()
+    while ans != 'q':
+        frame = vision_module.get_current_frame()
+        bbs = vision_module.cell_detection(frame)
+        cx, cy = bbs[0][0], bbs[0][1]
+        z = vision_module.get_z_at_pos(cx, cy)
+        print("z", z)
+        ans = chr(0xff & cv2.waitKey(1))
+        if ans == 'w':
+            robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,0,0.01,0,0,0])))
+
     bbs = []
     while len(bbs) == 0:
         frame = vision_module.get_current_frame()
         bbs = vision_module.cell_detection(frame)
     cv2.waitKey(0)
-    cx, cy = bbs[0][0], bbs[0][1]
-
-    z = vision_module.get_z_at_pos(cx, cy)
+    for bb in bbs:
+        cx, cy = bbs[0][0], bbs[0][1]
+        z = vision_module.get_z_at_pos(cx, cy)
+        if z > 0:
+            break
+    print(cx, cy, z)
     base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
     base_T_cam = base_T_TCP * vision_module.camera.extrinsic
     P = vision.frame_pos_to_3dpos(frame_pos=(cx, cy), camera=vision_module.camera, Z=z)
