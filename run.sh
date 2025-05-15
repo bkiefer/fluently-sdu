@@ -1,3 +1,4 @@
+#!/bin/bash
 dir=`dirname $(realpath "$0")`
 if test -f "logback.xml"; then
     lb="-Dlogback.configurationFile=logback.xml"

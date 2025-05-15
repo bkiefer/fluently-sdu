@@ -97,15 +97,11 @@ public class BaseCommunicationHub implements CommunicationHub {
   public void init(File configDir, Map<String, Object> configs)
           throws IOException, WrongFormatException, MqttException {
     // check that we got the right config
-    String checkConfig = (String) configs.get("agentBase");
-    if (checkConfig.equals("de.dfki.vondabase.BaseAgent")) {
-      _agent = new DialogAgent();
-      String language = (String)configs.get("language");
-      _agent.init(configDir, configs, language);
-      initMqtt((Map<String, Object>)configs.get("mqtt"), language);
-    } else {
-      throw new IllegalArgumentException("unknown config " + checkConfig);
-    }
+    _agent = new DialogAgent();
+    String language = (String)configs.get("language");
+    _agent.init(configDir, configs, language);
+    initMqtt((Map<String, Object>)configs.get("mqtt"), language);
+
     registerBehaviourListener(new Listener<Behaviour>() {
 
       @Override

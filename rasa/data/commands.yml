@@ -20,6 +20,8 @@ nlu:
     - yep
     - yeah
     - fine
+    - ok done
+    - ok got it
 
 - intent: 'Disconfirm'
   examples: |
@@ -165,3 +167,37 @@ nlu:
     - skip video
     - skip this part
     - skip the tutorial
+
+- intent: Instruct_Step_Cover
+  examples: |
+    - To [remove the cover](action), you need [big suction cup](tool) mounted
+    - To [remove cover](action), you need the [big cup](tool)
+    - For [cover removal](action), the [big cup](tool) must be mounted
+
+- intent: Instruct_Step_Clamps
+  examples: |
+    - I need to hold back the clamps
+    - I need to hold back the clamps first
+    - At first, i need to hold back the clamps
+    - I first open the clamps
+
+- intent: Instruct_Step_RemoveCover
+  examples: |
+    - Then, you grip the cover and remove it
+    - now grip the cover and remove it
+    - grip the cover and put it aside
+    - grip cover and remove it
+    - grip the cover and put it away
+
+- intent: Instruct_Step_RemoveCells
+  examples: |
+    - Now remove the cells
+    - Proceed with removing the cells
+    - Remove all the cells now
+    - Then remove each of the cells
+
+- intent: Instruct_Done
+  examples: |
+    - That's it
+    - Then you are done
+    - That is all
