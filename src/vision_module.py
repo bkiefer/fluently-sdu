@@ -22,7 +22,7 @@ class VisionModule():
         try:
             self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                     enabled_strams={
-                                                    'color': [1280, 720],
+                                                    'color': [1920, 1080],
                                                     'depth': [640, 480],
                                                     # 'infrared': [640, 480]
                                                     })
@@ -93,7 +93,7 @@ class VisionModule():
         result = self.cells_yolo_model(frame) 
         if len(result[0].boxes) == 0:
             return None
-        output = {'bbs': []}
+        output = {'bbs': [], 'zs': []}
         models = []
         for box in result[0].boxes:
             model = self.cells_yolo_model.names[int(box.cls)]
@@ -103,6 +103,7 @@ class VisionModule():
             centre = (x, y)
             z = self.get_z_at_pos(*centre)
             output['bbs'].append((x, y, w))
+            output['zs'].append(z)
             cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
             cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
             cv2.putText(drawing_frame, f"{model}",      np.array(centre)+(-20, -30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
