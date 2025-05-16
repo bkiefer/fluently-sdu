@@ -50,7 +50,7 @@ class VisionModule():
             frame = self.camera.get_color_frame()
         except AttributeError:
             print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/i4.0_frames/square01.png")
+            frame = cv2.imread("data/cells_detection/frame6.png")
             #format = "pil"
             #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             #frame = PIL.Image.fromarray(frame)
@@ -101,14 +101,14 @@ class VisionModule():
             confidence = (box.conf)
             x, y, w, h = map(int, box.xywh[0].cpu().numpy())
             centre = (x, y)
-            z = self.get_z_at_pos(*centre)
+            #z = self.get_z_at_pos(*centre) # UNCOMMENT
             output['bbs'].append((x, y, w))
             cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
             cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
             cv2.putText(drawing_frame, f"{model}",      np.array(centre)+(-20, -30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
             cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-20, -10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
             cv2.putText(drawing_frame, f"r: {w//2}",    np.array(centre)+(-20,  10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"z: {z:0.3f}",  np.array(centre)+(-20,  30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            #cv2.putText(drawing_frame, f"z: {z:0.3f}",  np.array(centre)+(-20,  30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1) # UNCOMMENT
         # set(models) gives us a list witht he unique values in the models list, then for each we count how many times it 
         # appears in the list, that's the most voted model
         output['model'] = (max(set(models), key=models.count)) 
@@ -164,9 +164,9 @@ class VisionModule():
                 cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
             cv2.imshow("Detection", drawing_frame)
             # cv2.waitKey(0)
-        else:
+        #else:
             #print("No circles found")
-            pass
+        #    pass
         return cells_positions
 
     def assess_cells_qualities(self, frame:np.ndarray, bbs_positions: list[ndarray]) -> list[float]:

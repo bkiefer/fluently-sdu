@@ -255,7 +255,6 @@ class MemGui(tk.Tk):
         
         self.frames = []
         self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
-        # for screen in (HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, ManualDetectScreen, AutoAssessScreen, ManualAssessScreen, PickingUpScreen):
         for i, screen in enumerate([HomeScreen, AutoClassScreen, ManualClassScreen, AutoDetectScreen, AutoAssessScreen, 
                                     AutoSortScreen, ManualSortScreen, StartScreen, PlacePackScreen,
                                     CheckGripperScreen, ChangeGripperScreen, FastenCoverScreen, RemovalStrategy,
@@ -291,9 +290,9 @@ class MemGui(tk.Tk):
 
     def update_proposed_models(self, proposed_models):
         self.proposed_models = proposed_models
-        self.frames[1].label.configure(text=f"Cells are: {self.proposed_models[0]['model']}")
+        self.frames[1].label.configure(text=f"Cells are: {self.proposed_models[0]}")
         for propose in self.proposed_models[1:]: # we skip the first one as it was already denied by the user
-            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose['model']}: {propose['prob']*100}%", command=lambda model = propose['model']: self.frames[2].chose_model(model))
+            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[2].chose_model(model))
             btn.pack()
 
     def update_proposed_packs(self, proposed_packs):
@@ -353,7 +352,6 @@ class MemGui(tk.Tk):
             bbs_position (list[ndarray]): postions of bounding boxes for each cell
             qualities (list[float]): qualities of each cell
         """
-        # frames[0].focus_set()
         self.proposed_qualities = qualities
         self.quals_editor = _QualitiesEditor(frame.canvas, bbs_position=self.chosen_locations, qualities=qualities, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q, editable=editable)
 
@@ -603,9 +601,6 @@ class ManualClassScreen(tk.Frame):
             
     def chose_model(self, model: str):
         self.controller.chosen_model = model
-        # self.controller.show_frame(self.idx + 1)
-        #self.controller.bbs_editor.delete_mode = True
-        #self.controller.bbs_editor.draw_boxes()
 
 class AutoDetectScreen(HomeScreen):
     def __init__(self, parent, controller, idx):

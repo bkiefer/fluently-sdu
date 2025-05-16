@@ -26,6 +26,7 @@ class RdfStore:
         self.session = None
         self.battery_pack = None
         self.battery_cells = []
+        self.sorting_process = None
         
 
     def get_user(self, first_name: str, last_name: str):
@@ -85,11 +86,23 @@ class RdfStore:
         self.sorting_process.toTime = round(now*1000)
     
     def get_cell_model_instance(self, model: str):
-        query = 'select ?inst where ?inst <rdf:type> <cim:BatteryCell> ?_' \
-            ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
-        insts = RdfProxy.selectQuery(query)
-        return None if not insts else insts[0]
+        query = 'select ?cell where ?cell <rdf:type> <cim:BatteryCell> ?_' \
+            ' & ?cell <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(model)
+        cells = RdfProxy.selectQuery(query)
+        return None if not cells else cells[0]
 
+    def get_known_cells(self): 
+        query = 'select distinct ?str where ?pack <soho:hasLabel> ?str ?_ ' \
+                ' & ?pack <rdf:type> <cim:BatteryCell> ?_'
+        models = RdfProxy.selectQuery(query)
+        return models
+
+    def get_known_packs(self): # change this
+        query = 'select distinct ?str where ?pack <soho:hasLabel> ?str ?_ ' \
+                ' & ?pack <rdf:type> <cim:BatteryPack> ?_'
+        models = RdfProxy.selectQuery(query)
+        return models
+    
     def get_dimensions_from_cell_type(self, model: str):
         """
         Records the cell model name following the classification step. 
@@ -192,16 +205,10 @@ class RdfStore:
         return self.__session_part("BatteryClassification")
     
     def get_pack_model_instance(self, pack_name: str):
-        query = 'select ?inst where ?inst <rdf:type> <cim:BatteryPack> ?_' \
-            ' & ?inst <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
+        query = 'select ?pack where ?pack <rdf:type> <cim:BatteryPack> ?_' \
+            ' & ?pack <soma:hasNameString> "{}"^^<xsd:string> ?_'.format(pack_name)
         insts = RdfProxy.selectQuery(query)
         return None if not insts else insts[0]
-    
-    def get_pack_models_in_ontology(self):
-        query = 'select distinct ?str where ?inst <soho:hasLabel> ?str ?_ ' \
-                ' & ?inst <rdf:type> <cim:BatteryPack> ?_'
-        models = RdfProxy.selectQuery(query)
-        return models
 
     def record_pack_type(self, pack_name: str):
         model_str = self.get_pack_model_instance(pack_name) # verify that cell model is in the ontology 

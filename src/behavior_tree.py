@@ -33,7 +33,10 @@ class BehaviourTree(pt.trees.BehaviourTree):
         #self.pack_state.update_cell(0, 1, pose=(sm.SE3([-0.295, -0.255, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         #self.pack_state.update_cell(0, 0, pose=(sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
-        self.robot.move_to_cart_pos(self.over_pack_T*sm.SE3([0,0,0.13]))
+        try:
+            self.robot.move_to_cart_pos(self.over_pack_T*sm.SE3([0,0,0.13]))
+        except:
+            pass
         #self.robot.move_to_cart_pos(self.over_pack_T)
 
         # Leaf nodes
@@ -88,7 +91,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.main_sequence = pt.composites.Sequence(name="main_sequence",memory=True)
         self.main_sequence.add_children([self.begin_session,
                                          self.pack_placed,
-                                         self.class_pack_selector,
+                                         self.class_pack_selector, # UNCOMMENT
                                          self.cover_selector,
                                          self.class_cell_selector,
                                          self.detect,
