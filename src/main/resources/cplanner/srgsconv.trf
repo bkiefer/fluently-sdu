@@ -1,4 +1,4 @@
-<da>#da -> # ^ :#da, # ! <da>.
+<da>#da -> # ^ :#da ^ top, # ! <da>.
 
 <prop>#prop -> # ^ (#prop), # ! <prop>.
 
@@ -6,4 +6,4 @@
 
 <neg> ^ <what>#w: -> # ^ <what>concatenate("-", #w), # ! <neg>.
 
-nom1: ^ !<prop> ^ ! top -> # ^ top.
+(nom1:|raw:) ^ !<prop> ^ ! top -> # ^ top.

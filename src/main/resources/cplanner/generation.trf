@@ -34,5 +34,5 @@ raw:Instruct {
 # ! <hs>,
 # ! <vs>.
 
-raw:Confirm -> # = :canned ^ <string>"ok, doing".
-raw:Disconfirm -> # = :canned ^ <string>"ok, not doing".
+raw:Confirm -> # = :canned ^ <string>"okay, doing".
+raw:Disconfirm -> # = :canned ^ <string>"okay, not doing".

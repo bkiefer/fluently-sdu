@@ -17,7 +17,7 @@
 <intent_ranking> -> # ! <intent_ranking>.
 
 // treat the intent_frame_theme and pull confidence up
-<intent> #int: -> # ^ #int:, # ! <intent>.
+<intent> #int: -> # ^ #int: ^ top, # ! <intent>.
 
 // split intent label
 <name>#label: -> # ^ <split> split(#label, "_"):, # ! <name>.

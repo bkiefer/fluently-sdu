@@ -56,8 +56,6 @@ public class BaseCommunicationHub implements CommunicationHub {
   private MqttHandler client;
   private JsonMarshaller mapper;
 
-  private MqttRasaNlu mqttRasa;
-
   private boolean receiveAsr(byte[] b) {
     Optional<AsrResult> cmd;
     (cmd = mapper.unmarshal(b, AsrResult.class)).ifPresent(this::sendEvent);
@@ -65,17 +63,6 @@ public class BaseCommunicationHub implements CommunicationHub {
       sendEvent(cmd.get());
     }
     return ! cmd.isEmpty();
-  }
-
-  private boolean receiveNlu(byte[] b) {
-    try {
-      String jsonResult = new String(b, StandardCharsets.UTF_8);
-      JSONObject obj = new JSONObject(jsonResult);
-      mqttRasa.convertNlu(obj);
-    } catch (Exception ex) {
-      return false;
-    }
-    return true;
   }
 
   private void initMqtt(Map<String, Object> configs, String language)

@@ -23,7 +23,7 @@ Adapt the config.yml to your needs (let `model_path` point to the directory wher
 
 Start the recognizer:
 
-    python mqtt_micro_vadasr.py config.yml
+    ./run_asr.sh
 
 Currently, the recognizer uses the default pulseaudio input device, you should even be able to switch it when the recognizer is running. If you want something more sophisticated, you may have to modify the gstreamer pipeline (the defaults are in gstmicpipeline.py) to your needs, you don't have to modify the code, you can specify it as `pipeline` key in the config.
 

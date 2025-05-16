@@ -8,11 +8,14 @@ This module handles the natural language interaction part of the Fluently Scanni
 
 Tested on Ubuntu 22.04
 
-You need python3 and the mosquitto package installed.
+On Ubuntu:
+python3, mosquitto, openjdk-11-jdk (at least), docker, nvidia-container-toolkit (for use of GPU, optional)
 
 ## rasa NLU
 
-Go to the `rasa` folder and follow the readme to train a model based on the training data in the `data` folder.
+Go to the `rasa` folder and follow the readme to train a model based on the training data in the `data` folder:
+
+`./rasadock train` to train, `./rasadock` to run the container for inference
 
 ## vosk ASR
 
@@ -24,7 +27,6 @@ Go to the tts folder. The Readme there contains instructions for the installatio
 
 In the top level directory, call
 
-    ./compile
     mvn install
 
 Now the agent that ties everything together is ready to go:

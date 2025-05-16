@@ -1,2 +1,7 @@
+#!/bin/bash
 mvn clean
-vondac "$@" -c config.yml
+if test -x vondac; then
+    ./vondac "$@" -c config.yml
+else
+    vondac "$@" -c config.yml
+fi

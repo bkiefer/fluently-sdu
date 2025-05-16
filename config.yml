@@ -28,14 +28,14 @@ nameToURI:
 # ########## RUN CONFIGURATION SETTINGS ##########
 
 NLG:
-  en_EN:
+  en_US:
     class: de.dfki.mlt.rudimant.agent.nlp.LanguageGenerator
     mapperProject: src/main/resources/cplanner/allrules-mapper
     generationProject: src/main/resources/cplanner/allrules
     #translateNumbers: true  # translates numbers to text internally, if, e.g., the TTS
                              # can not do it by itself
 NLU:
-  en_EN:
+  en_US:
     class: de.dfki.mlt.rudimant.agent.nlp.CombinedInterpreter
     instances:
     - class: de.dfki.mlt.rudimant.agent.nlp.SrgsParser
@@ -62,6 +62,6 @@ customCompileCommands:
 defaultCompileCommand: compile
 
 # Evaluation of language services (parsing)
-language: en_EN
+language: en_US
 corpora:
   - rasa/data/commands.yml

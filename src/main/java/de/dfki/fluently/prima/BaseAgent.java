@@ -1,7 +1,10 @@
 package de.dfki.fluently.prima;
 
-import static de.dfki.mlt.rudimant.common.Configs.*;
-import static de.dfki.fluently.prima.Constants.*;
+import static de.dfki.fluently.prima.Constants.ROBOT_CLASS;
+import static de.dfki.fluently.prima.Constants.ROBOT_URI;
+import static de.dfki.fluently.prima.Constants.USER_CLASS;
+import static de.dfki.fluently.prima.Constants.USER_URI;
+import static de.dfki.mlt.rudimant.common.Configs.CFG_ONTOLOGY_FILE;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +15,7 @@ import java.util.Random;
 import de.dfki.fluently.prima.utils.ExtendedBehaviour;
 import de.dfki.lt.hfc.WrongFormatException;
 import de.dfki.lt.hfc.db.HfcDbHandler;
+import de.dfki.lt.hfc.db.rdfProxy.DbClient;
 import de.dfki.lt.hfc.db.rdfProxy.Rdf;
 import de.dfki.lt.hfc.db.rdfProxy.RdfProxy;
 import de.dfki.mlt.rudimant.agent.Agent;
@@ -27,7 +31,7 @@ public abstract class BaseAgent extends Agent {
   public Rdf robot;
   public Rdf user;
 
-  private HfcDbHandler handler = null;
+  private DbClient handler = null;
 
   private RdfProxy startClient(File configDir, Map<String, Object> configs)
           throws IOException, WrongFormatException {
@@ -35,10 +39,9 @@ public abstract class BaseAgent extends Agent {
     if (ontoFileName == null) {
       throw new IOException("Ontology file is missing.");
     }
-    handler = new HfcDbHandler(ontoFileName);
-    //handler = h;
+    handler = new HfcDbHandler(new File(configDir, ontoFileName).getPath());
+
     RdfProxy proxy = new RdfProxy(handler);
-    handler.registerStreamingClient(proxy);
     return proxy;
   }
 
@@ -67,7 +70,7 @@ public abstract class BaseAgent extends Agent {
 
   @Override
   public void shutdown() {
-    handler.shutdown();
+    if (handler != null) ((HfcDbHandler)handler).shutdownNoExit();
     //if (server != null) server.shutdown();
     super.shutdown();
   }

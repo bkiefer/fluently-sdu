@@ -1,6 +1,6 @@
 monitor_mic: true
 monitor_asr: true
-language: en-us
+language: en_US
 model_path: './vosk-model-en-us-0.22'
 
 vad:
