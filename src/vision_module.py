@@ -95,7 +95,7 @@ class VisionModule():
             return None
         output = {'bbs': [], 'zs': []}
         models = []
-        for box in result[0].boxes:
+        for i, box in enumerate(result[0].boxes):
             model = self.cells_yolo_model.names[int(box.cls)]
             models.append(model)
             confidence = (box.conf)
@@ -106,6 +106,7 @@ class VisionModule():
             output['zs'].append(z)
             cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
             cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
+            cv2.putText(drawing_frame, f"id: {i}",      np.array(centre)+(-20, -50), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
             cv2.putText(drawing_frame, f"{model}",      np.array(centre)+(-20, -30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
             cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-20, -10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
             cv2.putText(drawing_frame, f"r: {w//2}",    np.array(centre)+(-20,  10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
@@ -183,20 +184,22 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_pos_to_pose(self, frame_pos:ndarray, camera, cell_height, base_T_TCP) -> sm.SE3:
+    def frame_pos_to_pose(self, frame_pos:ndarray, camera, Z, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
             frame_pos (ndarray): position in the frame
 
         Returns:
-            sm.SE3: 4x4 pose in world frame
+            sm.SE3(sm.SE3): 4x4 pose in world frame
         """
+        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=Z)
+        print(P)
         base_T_cam = base_T_TCP * camera.extrinsic
-        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=base_T_cam.t[2]-cell_height)
-        tmp = (base_T_TCP * camera.extrinsic) * sm.SE3(P)
-        screw_T_b = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
-        return screw_T_b
+        print(base_T_cam)
+        tmp = base_T_cam * sm.SE3(P)
+        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+        return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
         """verify if a cell hs been picked up
@@ -245,56 +248,34 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    R = sm.UnitQuaternion(s=0.7058517498982678, v=[0.006697022630599267, -0.0007521624314972674, 0.7083275310935719]).SO3()
-    t = np.array([0.04627923466437427, -0.03278714750773679, 0.01545089678599013])
+    R = sm.SO3([[-0.003768884463184431, -0.99998018701109737,    0.0050419336721138118], 
+                [0.99993744239807658,   -0.0038217260702308998, -0.01051216914997084], 
+                [0.01053122976183922,    0.0050019991098505349,  0.99993203429263555]])
+    t = np.array([0.05193987652344801, -0.03235963828608199, 0.02119829324133516])
     E = sm.SE3.Rt(R, t)
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
     # over_pack_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
     over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.2546947866558294, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
     over_ws_rotvec = [[-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]]
     robot_module.robot.moveL(over_pack_rotvec)
-    vision_module = VisionModule(camera_Ext=E)
-    robot_module.robot.teachMode()
-    time.sleep(2)
+    vision_module = VisionModule(camera_Ext=E) 
+    time.sleep(1)
     # i = 0
     ans= ''
-    while ans != 'q':
-        frame = vision_module.get_current_frame()
-        ans = chr(0xff & cv2.waitKey(1))
-        bbs = vision_module.classify_cell(frame, frame)
-        print(bbs)
-        cv2.imshow("frame", frame)
-        cv2.waitKey(0)
-        break
-    #     bbs = vision_module.cell_detection(frame)
-    #     cx, cy = bbs[0][0], bbs[0][1]
-    #     z = vision_module.get_z_at_pos(cx, cy)
-    #     print("z", z)
-        # break
-    #     if ans == 'w':
-    #         robot_module.robot.moveL(np.add(robot_module.robot.getActualTCPPose(), np.array([0,0,0.01,0,0,0])))
-
-    # bbs = []
-    # while len(bbs) == 0:
-    #     frame = vision_module.get_current_frame()
-    #     bbs = vision_module.cell_detection(frame)
-    # cv2.waitKey(0)
-    # for bb in bbs:
-    #     cx, cy = bbs[0][0], bbs[0][1]
-    #     z = vision_module.get_z_at_pos(cx, cy)
-    #     if z > 0:
-    #         break
-    # print(cx, cy, z)
-    # base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-    # base_T_cam = base_T_TCP * vision_module.camera.extrinsic
-    # P = vision.frame_pos_to_3dpos(frame_pos=(cx, cy), camera=vision_module.camera, Z=z)
-    # print(P)
-    # tmp = (base_T_TCP * vision_module.camera.extrinsic) * sm.SE3(P)
-    # screw_T_b = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
-    # TCP_T_tool = sm.SE3([0, 0, -0.04])
-    # print(screw_T_b)
-    # print(screw_T_b*TCP_T_tool)
-    # print(TCP_T_tool*screw_T_b)
-    # input(">>>")
-    # robot_module.move_to_cart_pos(screw_T_b*TCP_T_tool)
-    # # robot_module.robot.endTeachMode()
+    frame = vision_module.get_current_frame()
+    results = vision_module.classify_cell(frame, frame)
+    bbs = results['bbs']
+    zs = results['zs']
+    # while ans != 'q':
+        # ans = chr(0xff & cv2.waitKey(1))
+    cv2.imshow("frame", frame)
+    for i, (bb, z) in enumerate(zip(bbs, zs)):
+        base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
+        cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=base_T_TCP.t[2]-z, base_T_TCP=base_T_TCP)
+        target_t = np.add(cell_T.t, (0, 0, 0.01))
+        print(i, ":")
+        print(cell_T.t)
+        print(target_t)
+        cv2.waitKey(0)  
+        robot_module.move_to_cart_pos(sm.SE3.Rt(sm.SO3(base_T_TCP.R), target_t))
+        # input(">>>")
