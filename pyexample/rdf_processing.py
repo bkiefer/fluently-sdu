@@ -29,7 +29,9 @@ def main(args=None):
     i = 1
     j = 1
     for a, b in user_session_pairs:
+        k = 1
         user_name = f'{a.hasName} {a.hasSurname}'
+        print(user_name)
         session_id = i
 
         # --- Get start/end time for session --- #
@@ -68,7 +70,13 @@ def main(args=None):
                 # intro_end = RdfProxy.selectQuery('select ?t where {} <dul:hasConstituent> ?checkdim ?t & ?checkdim <rdf:type> <cim:CheckedDimensions> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
                 # 
                  intro_end = RdfProxy.selectQuery('select ?t where ?inst <dul:hasPart> ?_ ?t & {} <dul:hasConstituent> ?inst ?_ & ?inst <dul:hasParticipant> <cim:Introduction> ?_ '
-                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))[0]
+                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))
+                
+                 if intro_end:
+                    intro_end = intro_end[0]
+                 else:
+                    intro_end = str(int(intro_start)+10000)
+                 
             # --- Resolution slides --- #
 
             resolution_offers = RdfProxy.selectQuery('select ?off ?accept where {} <dul:hasConstituent> ?off ?_ '
@@ -86,11 +94,13 @@ def main(args=None):
                                                '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
                  
                  reso_end = RdfProxy.selectQuery('select ?t where ?inst <dul:hasPart> ?_ ?t & {} <dul:hasConstituent> ?inst ?_ & ?inst <dul:hasParticipant> <cim:Resolution> ?_ '
-                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))[0]
+                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))
+                
+                 if reso_end:
+                    reso_end = reso_end[0]
+                 else:
+                    reso_end = str(int(reso_start)+10000)
 
-                 
-                 #reso_end = RdfProxy.selectQuery('select ?t where {} <dul:hasConstituent> ?yn ?t & ?yn <rdf:type> <cim:YNQuestionResolution> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
-    
             # --- Manual poses slides --- #
 
             manual_offers = RdfProxy.selectQuery('select ?off ?accept where {} <dul:hasConstituent> ?off ?_ '
@@ -107,10 +117,14 @@ def main(args=None):
                                                '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
                  
                  manual_end = RdfProxy.selectQuery('select ?t where ?inst <dul:hasPart> ?_ ?t & {} <dul:hasConstituent> ?inst ?_ & ?inst <dul:hasParticipant> <cim:Manual> ?_ '
-                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))[0]
+                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))
                  
                  #manual_end = RdfProxy.selectQuery('select ?t where {} <dul:hasConstituent> ?yn ?t & ?yn <rdf:type> <cim:YNQuestionAddPose> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
-            
+                 if manual_end:
+                    manual_end = manual_end[0]
+                 else:
+                    manual_end = str(int(manual_start)+10000)
+
             # --- Quality slides --- #
             
             quality_offers = RdfProxy.selectQuery('select ?off ?accept where {} <dul:hasConstituent> ?off ?_ '
@@ -126,9 +140,13 @@ def main(args=None):
                                                '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
                  
                  quality_end = RdfProxy.selectQuery('select ?t where ?inst <dul:hasPart> ?_ ?t & {} <dul:hasConstituent> ?inst ?_ & ?inst <dul:hasParticipant> <cim:Quality> ?_ '
-                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))[0]
+                                               '& ?inst <rdf:type> <cim:Instruction> ?_ aggregate ?res = LMax ?t'.format(session_rdf))
                  
-
+                 if quality_end:
+                    quality_end = quality_end[0]
+                 else:
+                    quality_end = str(int(quality_start)+10000)
+                 
                  
                  #quality_end = RdfProxy.selectQuery('select ?t where {} <dul:hasConstituent> ?next ?t & ?next <rdf:type> <cim:RequestNext> ?_ '
                   #                                  '& ?next <dul:hasConstituent> ?inst ?_ & ?inst <dul:hasParticipant> <cim:Quality> ?_ aggregate ?res = LMin ?t'.format(session_rdf))[0]
@@ -140,30 +158,52 @@ def main(args=None):
             
             # --- Scan start/end --- #
             scan_time = RdfProxy.selectQuery('select distinct ?start ?end ?s ?t where {} <cim:fromTime> ?start ?s '    
-                                '& {} <cim:toTime> ?end ?t'.format(scan_rdf,scan_rdf))[0] # inside list
-            scan_start = scan_time[0]
-            scan_end = scan_time[1]
+                                '& {} <cim:toTime> ?end ?t'.format(scan_rdf,scan_rdf)) # inside list
+            if not scan_time:
+                 continue
+            else:
+                scan_time = scan_time[0]
+                scan_start = scan_time[0]
+                scan_end = scan_time[1]
 
-            # --- Scan quality --- #
-            scan_quality = RdfProxy.selectQuery('select ?qual where {} <cim:scanQuality> ?qual ?t'.format(scan_rdf))[0] # inside list
-            scan_quality = "%.4f"%float(scan_quality)
+                # --- Scan quality --- #
+                scan_quality = RdfProxy.selectQuery('select ?qual where {} <cim:scanQuality> ?qual ?t'.format(scan_rdf))[0] # inside list
+                scan_quality = "%.4f"%float(scan_quality)
 
-            # --- Scan decision --- #
-            scan_decision = RdfProxy.selectQuery('select ?decision where {} <cim:wasSuccessful> ?decision ?t'.format(scan_rdf))[0] # inside list
+                # --- Scan decision --- #
+                scan_decision = RdfProxy.selectQuery('select ?decision where {} <cim:wasSuccessful> ?decision ?t'.format(scan_rdf))[0] # inside list
 
-            # --- Request back --- #
-            no_of_back_requests = len(RdfProxy.selectQuery('select ?req where {} <dul:hasConstituent> ?req ?_ '
-                                                        '& ?req <rdf:type> <cim:RequestBack> ?_ & ?req <dul:hasConstituent> ?_ ?_ '.format(session_rdf))) #replace one ?_ with specific type of instruction if needed
-            
-            with open(filename, 'a', newline="") as csvfile:
-                    csvwriter = csv.writer(csvfile)
-                    # NOTE: accepting instructions and back requests are for the whole session, not the particular scan
-                    csvwriter.writerow([user_name, session_id, session_start, session_end, intro_accept, intro_start, intro_end, reso_accept, reso_start, reso_end, manual_accept, manual_start, manual_end, quality_accept, quality_start, quality_end, scan_id, scan_hres, scan_vres, scan_start, scan_end, change_resolution, added_poses, no_of_back_requests, scan_quality, scan_decision])
+                # --- Request back --- #
+                no_of_back_requests = len(RdfProxy.selectQuery('select ?req where {} <dul:hasConstituent> ?req ?_ '
+                                                            '& ?req <rdf:type> <cim:RequestBack> ?_ & ?req <dul:hasConstituent> ?_ ?_ '.format(session_rdf))) #replace one ?_ with specific type of instruction if needed
+                
+                with open(filename, 'a', newline="") as csvfile:
+                        csvwriter = csv.writer(csvfile)
+                        # NOTE: accepting instructions and back requests are for the whole session, not the particular scan
+                        csvwriter.writerow([user_name, session_id, session_start, session_end, intro_accept, intro_start, intro_end, reso_accept, reso_start, reso_end, manual_accept, manual_start, manual_end, quality_accept, quality_start, quality_end, scan_id, scan_hres, scan_vres, scan_start, scan_end, change_resolution, added_poses, no_of_back_requests, scan_quality, scan_decision])
             j += 1
         i += 1
 
     csvData = pd.read_csv(filename)
-    csvData.sort_values(csvData.columns[7],axis=0,inplace=True)
+    csvData.sort_values(csvData.columns[19],axis=0,inplace=True)
+    csvData['scan_id'] = [i for i in range(1,len(csvData['scan_id'])+1)]
+    session_ids = [1]
+    for i in range(len(csvData['session_id'])-1):
+        if csvData['session_id'].iloc[i] == csvData['session_id'].iloc[i+1]:
+            session_ids.append(session_ids[-1])
+        else:
+            session_ids.append(session_ids[-1]+1)
+    csvData['session_id'] = session_ids
+    
+    num_sessions = [1]
+    for i in range(len(csvData['user_name'])-1):
+        if csvData['session_id'].iloc[i] == csvData['session_id'].iloc[i+1]:
+            num_sessions.append(num_sessions[-1])
+        elif csvData['user_name'].iloc[i] == csvData['user_name'].iloc[i+1]:
+            num_sessions.append(num_sessions[-1]+1)
+        else:
+            num_sessions.append(1) 
+    csvData = csvData.assign(num_sessions=num_sessions)
     with open(filename, 'w') as csvfile:
         csvData.to_csv(filename)
 
