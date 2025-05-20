@@ -195,10 +195,11 @@ class VisionModule():
         """
         P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=Z)
         print(P)
-        base_T_cam = base_T_TCP * camera.extrinsic
+        hom_P = np.hstack((P, 1))
+        base_T_cam = base_T_TCP * camera.extrinsic.inv()
         print(base_T_cam)
-        tmp = base_T_cam * sm.SE3(P)
-        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+        tmp = hom_P * base_T_cam
+        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp[:3]) # keep the current orientation of the tcp
         return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     cv2.imshow("frame", frame)
     for i, (bb, z) in enumerate(zip(bbs, zs)):
         base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-        cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=base_T_TCP.t[2]-z, base_T_TCP=base_T_TCP)
+        cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=z, base_T_TCP=base_T_TCP)
         target_t = np.add(cell_T.t, (0, 0, 0.01))
         print(i, ":")
         print(cell_T.t)
