@@ -101,7 +101,7 @@ class VisionModule():
             confidence = (box.conf)
             x, y, w, h = map(int, box.xywh[0].cpu().numpy())
             centre = (x, y)
-            #z = self.get_z_at_pos(*centre) # UNCOMMENT
+            z = self.get_z_at_pos(*centre)
             output['bbs'].append((x, y, w))
             output['zs'].append(z)
             cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
@@ -115,7 +115,6 @@ class VisionModule():
         # appears in the list, that's the most voted model
         output['model'] = (max(set(models), key=models.count)) 
         return output
-
 
     def cell_detection(self, frame: np.ndarray) -> list[ndarray]:
         """detect cells positions based on image
@@ -194,12 +193,16 @@ class VisionModule():
             sm.SE3(sm.SE3): 4x4 pose in world frame
         """
         P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=Z)
-        print(P)
+        # print(f"P: {P}")
+        # P[2] = base_T_TCP.t[2] - Z
+        print("P", P)
         hom_P = np.hstack((P, 1))
         base_T_cam = base_T_TCP * camera.extrinsic.inv()
-        print(base_T_cam)
-        tmp = hom_P * base_T_cam
-        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp[:3]) # keep the current orientation of the tcp
+        print(f"base_T_cam:\n{base_T_cam}")
+        T = sm.SE3(P) * base_T_cam
+        # print(f"P_base: {tmp[:3]}")
+        print(f"P_base: {T.t}")
+        # T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
@@ -249,16 +252,24 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    R = sm.SO3([[-0.003768884463184431, -0.99998018701109737,    0.0050419336721138118], 
-                [0.99993744239807658,   -0.0038217260702308998, -0.01051216914997084], 
-                [0.01053122976183922,    0.0050019991098505349,  0.99993203429263555]])
-    t = np.array([0.05193987652344801, -0.03235963828608199, 0.02119829324133516])
+    # R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
+    #             [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
+    #             [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
+    R = sm.SO3([[0, -1, 0], 
+                [1,  0, 0], 
+                [0,  0, 1]])
+    t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
     E = sm.SE3.Rt(R, t)
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
-    # over_pack_rotvec = [-0.25459073314393055, -0.3016784540487311, 0.2547053979663029, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
-    over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.2546947866558294, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
-    over_ws_rotvec = [[-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]]
+    over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.35, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
+    # over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.2546947866558294, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
+    over_ws_rotvec = [-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
+    c_rotvec = [-0.3594  , -0.3182 , 0.2757,  -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
+    # actual position prima cella [-0.3462095849382022, -0.4109468521145269, 0.16346816550725796,
     robot_module.robot.moveL(over_pack_rotvec)
+    # input(">>>")
+    # robot_module.robot.moveL(c_rotvec)
+
     vision_module = VisionModule(camera_Ext=E) 
     time.sleep(1)
     # i = 0
@@ -272,11 +283,12 @@ if __name__ == "__main__":
     cv2.imshow("frame", frame)
     for i, (bb, z) in enumerate(zip(bbs, zs)):
         base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
+        # print(i, ":")
+        # print(z)
         cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=z, base_T_TCP=base_T_TCP)
         target_t = np.add(cell_T.t, (0, 0, 0.01))
-        print(i, ":")
-        print(cell_T.t)
-        print(target_t)
-        cv2.waitKey(0)  
-        robot_module.move_to_cart_pos(sm.SE3.Rt(sm.SO3(base_T_TCP.R), target_t))
-        # input(">>>")
+        cv2.waitKey(0)
+        robot_module.move_to_cart_pos(cell_T)
+    # cv2.waitKey(0)  
+
+ 
