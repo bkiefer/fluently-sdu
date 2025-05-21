@@ -17,9 +17,17 @@ class BehaviourTree(pt.trees.BehaviourTree):
         R = sm.UnitQuaternion(s=0.7058517498982678, v=[0.006697022630599267, -0.0007521624314972674, 0.7083275310935719]).SO3()     
         t = np.array([0.04627923466437427, -0.03278714750773679, 0.01545089678599013])
 
-        self.over_pack_T = sm.SE3([-0.23, -0.31, 0.33]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
-        self.discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
-        self.keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
+            [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
+            [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
+        t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
+
+        #self.over_pack_T = sm.SE3([-0.23, -0.31, 0.33]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
+        self.over_pack_T = [-0.3090592371772158, -0.35307448825989896, 0.4, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
+        #self.discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        #self.keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        self.discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
+        self.keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
         self.camera_Ext = sm.SE3.Rt(R, t)
         self.bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
         self.pack_height = 0.090
@@ -33,11 +41,11 @@ class BehaviourTree(pt.trees.BehaviourTree):
         #self.pack_state.update_cell(0, 1, pose=(sm.SE3([-0.295, -0.255, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         #self.pack_state.update_cell(0, 0, pose=(sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")))
         self.gui = MemGui(camera_frame=self.vision.get_current_frame(format='pil'), cell_m_q=cell_m_q, cell_h_q=cell_h_q)
-        try:
-            self.robot.move_to_cart_pos(self.over_pack_T*sm.SE3([0,0,0.13]))
-        except:
-            pass
-        #self.robot.move_to_cart_pos(self.over_pack_T)
+        #try:
+        #    self.robot.move_to_cart_pos(self.over_pack_T*sm.SE3([0,0,0.13]))
+        #except:
+        #    pass
+        self.robot.robot.moveL(self.over_pack_T)
 
         # Leaf nodes
         self.begin_session = BeginSession(name="begin_session", rdf=self.rdf, gui=self.gui, vision=self.vision, frame_id = 7)        

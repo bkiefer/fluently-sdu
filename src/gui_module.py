@@ -7,6 +7,75 @@ from tkinter import ttk
 import cv2
 import PIL
 import numpy as np
+import paho.mqtt.client as mqtt
+import json
+
+class FluentlyMQTTClient:
+    def __init__(self, client_id: str, broker: str = "localhost", port: int = 1883):
+        self.client = mqtt.Client(client_id=client_id)
+        self.broker = broker
+        self.port = port
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.message_callback = None
+        self.connect()
+        self.start()
+        self.subscribe("nlu/intent")
+        self.intent = []
+        self.state = 1
+        self.command_given = False
+
+    def on_connect(self, client, userdata, flags, rc):
+        print(f"Connected with result code {rc}")
+
+    def on_message(self, client, userdata, msg):
+        message = msg.payload.decode()
+        topic = msg.topic
+        print(f"Received message on topic '{topic}': {message}")
+        self.intent.append(message)
+        if self.message_callback:
+            self.message_callback(topic, message)
+
+    def connect(self):
+        self.client.connect(self.broker, self.port, keepalive=60)
+
+    def start(self):
+        self.client.loop_start()
+
+    def stop(self):
+        self.client.loop_stop()
+        self.client.disconnect()
+
+    def subscribe(self, topic: str):
+        self.client.subscribe(topic)
+        print(f"Subscribed to topic '{topic}'")
+
+    def publish(self, message_: str):
+        topic = "tts/behaviour"
+        message ={  "id": "fluently",
+            "text": message_,
+            "motion": "",
+            "delay": 0}
+        try:
+            json_message = json.dumps(message)
+            self.client.publish(topic, json_message)
+            print(message_)
+        except (TypeError, ValueError) as e:
+            print(f"Failed to serialize message to JSON: {e}")
+
+    def set_message_callback(self, callback):
+        self.message_callback = callback
+
+    def get_intent(self):
+        if len(self.intent) >=1:
+            ans = self.intent[-1]
+            self.intent = []
+            return ans
+        else:
+            return None
+        
+    def clear_intents(self):
+        self.intent.clear()
 
 class _BoundingBoxEditor:
     def __init__(self, canvas, bbs_position, frame):
@@ -27,7 +96,7 @@ class _BoundingBoxEditor:
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
     def spawn_box(self):
-        x_min, y_min, x_max, y_max = 100, 100, 150, 150 
+        x_min, y_min, x_max, y_max = 500, 500, 1000, 1000 
         self.bbs_position.append([x_min, y_min, x_max, y_max])
 
         center_x = (x_min + x_max) // 2
@@ -197,6 +266,7 @@ class _QualitiesEditor:
 class MemGui(tk.Tk):
     def __init__(self, camera_frame: PIL.Image, cell_m_q, cell_h_q):
         super().__init__()
+        self.mqtt = FluentlyMQTTClient(client_id="fluentlyClient")
         self.title("MeM use case")
         # self.geometry("800x600+400+400") # 2nd and 3rd number will move the window spawn point (with multiple screen will start from most left screen)
         size = (int(camera_frame.width+20), int(camera_frame.height*1.4))
@@ -537,6 +607,7 @@ class AutoPackClassScreen(HomeScreen):
         btns_frame.pack()
         confirm_btn = tk.Button(btns_frame, text="✓", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
+
         deny_btn = tk.Button(btns_frame, text="✗", background='firebrick1', command=lambda: self.deny())
         deny_btn.pack(side='left')
 
@@ -586,7 +657,7 @@ class AutoClassScreen(HomeScreen):
         deny_btn.pack(side='left')
 
     def confirm(self):
-        self.controller.chosen_model = self.controller.proposed_models[0]['model']
+        self.controller.chosen_model = self.controller.proposed_models[0]
     
     def deny(self):
         self.controller.class_reject = True 
@@ -684,16 +755,6 @@ class ManualSortScreen(HomeScreen):
         btns_frame.pack()
         confirm_btn = tk.Button(btns_frame, text="Done", background='green2', command=lambda: self.confirm())
         confirm_btn.pack(side='left')
-        # self.after(1, self.change_label)
-    
-    # def change_label(self):
-    #     if self.controller.proposed_locations:
-    #         no_of_cells = len(self.controller.proposed_locations)
-
-    #         # NOTE: Here it is assumed that the list "outcomes" describes successfully sorted cells?
-    #         text=f"\nCells sorted: {sum(self.controller.outcomes)} out of {len(self.controller.chosen_locations)}\n"
-    #         self.number_label.configure(text=text)
-    #     self.number_label.after(1, self.change_label)      
         
     def confirm(self):
         self.controller.done = True

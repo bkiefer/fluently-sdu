@@ -95,6 +95,7 @@ class RdfStore:
         query = 'select distinct ?str where ?pack <soho:hasLabel> ?str ?_ ' \
                 ' & ?pack <rdf:type> <cim:BatteryCell> ?_'
         models = RdfProxy.selectQuery(query)
+        print("Models: ",models)
         return models
 
     def get_known_packs(self): # change this

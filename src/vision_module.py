@@ -19,17 +19,17 @@ class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
         pass
         # camera initialization
-        try:
-            self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
-                                                    enabled_strams={
-                                                    'color': [1920, 1080],
-                                                    'depth': [640, 480],
-                                                    # 'infrared': [640, 480]
-                                                    })
-            print("Starting vision module")
-        except RuntimeError:
-            self.camera = None
-            print("The vision module could not be started, the module will run for debug purpose")
+        # try:
+        self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
+                                                enabled_strams={
+                                                'color': [1920, 1080],
+                                                'depth': [640, 480],
+                                                # 'infrared': [640, 480]
+                                                })
+            # print("Starting vision module")
+        # except RuntimeError:
+            # self.camera = None
+            # print("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
         self.set_background() #!
@@ -46,11 +46,11 @@ class VisionModule():
             np.ndarray: frame
         """
         time.sleep(wait_delay)
-        try :
-            frame = self.camera.get_color_frame()
-        except AttributeError:
-            print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/cells_detection/frame6.png")
+        # try :
+        frame = self.camera.get_color_frame()
+        # except AttributeError:
+            # print("Cannot access camera. For debuggin purpose it will access a file in store")
+            # frame = cv2.imread("data/cells_detection/frame6.png")
             #format = "pil"
             #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             #frame = PIL.Image.fromarray(frame)
@@ -104,11 +104,13 @@ class VisionModule():
             z = self.get_z_at_pos(*centre)
             output['bbs'].append((x, y, w))
             output['zs'].append(z)
-            cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
-            cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
-            cv2.putText(drawing_frame, f"id: {i}; {model}",      np.array(centre)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"r: {w//2}; z: {z:0.3f}",    np.array(centre)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            if drawing_frame:
+                cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
+                cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
+                cv2.putText(drawing_frame, f"id: {i}; {model}",      np.array(centre)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+                cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+                cv2.putText(drawing_frame, f"r: {w//2}; z: {z:0.3f}",    np.array(centre)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            
         # set(models) gives us a list with he unique values in the models list, then for each we count how many times it 
         # appears in the list, that's the most voted model
         output['model'] = (max(set(models), key=models.count)) 

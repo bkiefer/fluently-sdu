@@ -3,6 +3,7 @@ import time
 import random
 import spatialmath as sm
 from gubokit import utilities
+import statistics
 
 class GeneralBehavior(pt.behaviour.Behaviour):
     def __init__(self, name, rdf, gui, vision, frame_id=None, pack_state=None, robot=None, bin_rotvec=None, pack_height=None, 
@@ -86,6 +87,8 @@ class AutoPackClass(GeneralBehavior):
 
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+    
         if not self.result:
             # locate pack with vision module
             self.result = self.vision.locate_pack(self.frame)
@@ -130,7 +133,13 @@ class AutoPackClass(GeneralBehavior):
                 new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[15].confirm()
+            elif intent == "no":
+                self.gui.frames[15].deny()
+
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
     
 class HelpedPackClass(GeneralBehavior):
@@ -145,11 +154,14 @@ class HelpedPackClass(GeneralBehavior):
             model = self.gui.chosen_pack
             self.rdf.record_pack_type(pack_name=model)
             self.pack_state.model = model
-            frame = self.vision.get_current_frame(format="pil")
-            cells = self.vision.cell_detection(frame)
-            self.pack_state.cover_on = True if not cells else False
-            self.rdf.check_cover(cells_visible=False if not cells else True)
-            self.rdf.battery_classification() # should specify help from human
+            
+            self.gui.update_bbs([], self.gui.frames[17])
+            
+            #frame = self.vision.get_current_frame(format="pil")
+            #cells = self.vision.cell_detection(frame)
+            #self.pack_state.cover_on = True if not cells else False
+            #self.rdf.check_cover(cells_visible=False if not cells else True)
+            #self.rdf.battery_classification() # should specify help from human
             new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
         else:
@@ -163,8 +175,8 @@ class HelpedLocatePack(GeneralBehavior):
     """
     def update(self):
         super().update()
+        new_status = pt.common.Status.RUNNING
         if not self.gui.bbs_editor.box_items:
-            self.gui.update_bbs([], self.gui.frames[18])
             self.gui.bbs_editor.spawn_box()
 
         elif self.gui.chosen_pack_location:
@@ -177,8 +189,6 @@ class HelpedLocatePack(GeneralBehavior):
             new_status = pt.common.Status.SUCCESS
             # record in RDF
             print(self.name, new_status)
-        else:
-            new_status = pt.common.Status.RUNNING
         return new_status
 
 class CheckCoverOff(GeneralBehavior):
@@ -275,13 +285,11 @@ class RemoveCover(GeneralBehavior):
     """
     def update(self):
         super().update()
-        try:
-            self.robot.pick_and_place(self.pack_state.pose,utilities.rotvec_to_T(self.bin_rotvec))
-        except:
-            pass
-        # TODO: RDF: update
+
+        self.robot.pick_and_place(self.pack_state.pose,utilities.rotvec_to_T(self.bin_rotvec))
+        self.robot.robot.moveL(self.over_pack_T)
         self.rdf.robot_remove_cover()
-        new_status = pt.common.Status.SUCCESS # change to running?
+        new_status = pt.common.Status.SUCCESS
         print(self.name, new_status)
         return new_status
     
@@ -400,16 +408,34 @@ class AutoCellClass(GeneralBehavior):
 
     def update(self):
         super().update()
-        if not self.cell_class_dict:
-            try: 
-                self.robot.move_to_cart_pos(self.pack_state.pose*sm.SE3([-0.05, 0.03,-0.05]))
-            except:
-                pass
+        intent = self.gui.mqtt.get_intent()
+        if not self.cell_class_dict:                
+            self.robot.move_to_cart_pos(self.pack_state.pose*sm.SE3([-0.05, 0.03,-0.05]))
             self.cell_class_dict = self.vision.classify_cell(self.frame)
             model = str(self.cell_class_dict["model"])
             known_cells = self.rdf.get_known_cells()
             known_cells.insert(0, known_cells.pop(known_cells.index(model)))
             self.gui.update_proposed_models(known_cells) 
+
+            bbs = self.cell_class_dict['bbs']
+            print("bbs: ",bbs)
+            zs = self.cell_class_dict['zs']
+            print("zs: ",zs)
+            z = statistics.median(zs)
+
+            self.pack_state.update_dim(1,len(bbs)) 
+            k = 0
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    frame_position = [bbs[k][0], bbs[k][1]]
+                    print("frame position: ",frame_position)
+                    width = bbs[k][2]
+                    print("width: ",width)
+                    z = z
+                    self.pack_state.update_cell(i, j, frame_position=frame_position,
+                                                width = width,
+                                                z = z)
+                    k += 1
 
         if self.gui.class_reject:
             self.gui.class_reject = False
@@ -418,26 +444,22 @@ class AutoCellClass(GeneralBehavior):
 
         elif self.gui.chosen_model != "":
             model = self.gui.chosen_model
-            # update pack state
             self.pack_state.cell_model = model # add rest of variables
-            
-            #k = 0
-            #for i in range((self.pack_state.rows)):
-            #    for j in range(self.pack_state.cols):
-            #        self.pack_state.update_cell(i, j, model=model)
-            #        k += 1
-            #size = self.rdf.get_dimensions_from_cell_type(model)
-            #size = (0, 0)
-            # update cells information with model and size
-            #for row in range(self.pack_state.rows):
-            #    for col in range(self.pack_state.cols):
-            #        self.pack_state.update_cell(row, col, model=model, size=(size))
-
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    self.pack_state.update_cell(i, j, model=self.pack_state.cell_model)
             self.rdf.cell_classification() # should specify done by robot
             new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[1].confirm()
+            elif intent == "no":
+                self.gui.frames[1].deny()
+
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
+
         return new_status
 
 class HelpedCellClass(GeneralBehavior):
@@ -452,9 +474,10 @@ class HelpedCellClass(GeneralBehavior):
         if self.gui.chosen_model != "":
             model = self.gui.chosen_model
             print("chosen model: ", model)
-            
-            # update pack state
             self.pack_state.cell_model = model # add rest of variables
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    self.pack_state.update_cell(i, j, model=self.pack_state.cell_model)
             self.rdf.cell_classification() # should specify done by human
             new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
@@ -470,34 +493,68 @@ class Detect(GeneralBehavior):
     def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot):
         super().__init__(name, rdf, gui, vision, frame_id, pack_state, robot)
         self.proposed_bbs = []
-
+        self.z = 0
     def update(self):
         super().update()
         if not self.proposed_bbs:
             print("First update for behavior", self.name)  
-            # update cell locations in GUI
-            proposed_locations = self.vision.cell_detection(self.frame) # center, radius
-            for cx, cy, r in proposed_locations:
-                self.proposed_bbs.append((cx-r, cy-r, cx+r, cy+r))
-            self.gui.update_bbs(self.proposed_bbs, self.gui.frames[3])
-
-        if self.gui.chosen_locations: # if chosen_locations not empty
-            radius, height = self.rdf.get_dimensions_from_cell_type(self.pack_state.cell_model)
-            k = 0
-            # TODO: change dimensions into rows and columns rather than a single row
-            self.pack_state.update_dim(1,len(self.gui.chosen_locations)) 
             for i in range(self.pack_state.rows):
                 for j in range(self.pack_state.cols):
-                    frame_position = self.gui.chosen_locations[k]
-                    # get the center position
-                    frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
-                    self.pack_state.update_cell(i, j, model=self.pack_state.cell_model, 
+                    cx = self.pack_state.cells[i][j].frame_position[0]
+                    cy = self.pack_state.cells[i][j].frame_position[1]
+                    r = self.pack_state.cells[i][j].width/2
+                    self.z = self.pack_state.cells[i][j].z
+                    self.proposed_bbs.append((cx-r, cy-r, cx+r, cy+r))
+                self.gui.update_bbs(self.proposed_bbs, self.gui.frames[3])
+
+        if self.gui.chosen_locations: # if chosen_locations not empty
+            print(self.gui.chosen_locations)
+            bbs = []
+            
+            for i in self.gui.chosen_locations:
+                print("location: ",i)
+                width = i[3]-i[1]
+                cx = i[0]+(width/2)
+                cy = i[1]+(width/2)
+                bbs.append([cx,cy,width])
+            
+            #bbs = [[self.gui.chosen_locations[i][0], self.gui.chosen_locations[i][1]] for i in self.gui.chosen_locations]
+            #print("bbs: ",bbs)
+            #zs = [self.gui.chosen_locations[i][2] for i in self.gui.chosen_locations]
+            #print("zs: ",zs)
+
+            #self.pack_state.update_dim(1,len(bbs)) 
+            k = 0
+            for i in range(self.pack_state.rows):
+                for j in range(self.pack_state.cols):
+                    frame_position = [bbs[k][0], bbs[k][1]]
+                    print("frame position: ",frame_position)
+                    width = bbs[k][2]
+                    print("width: ",width)
+                    z = self.z
+                    self.pack_state.update_cell(i, j, model=self.pack_state.model, 
                                                 frame_position=frame_position,
-                                                radius = radius,
-                                                height = height)
+                                                width = width,
+                                                z = z)
                     k += 1
+
+            #radius, height = self.rdf.get_dimensions_from_cell_type(self.pack_state.cell_model)
+            #k = 0
+            ## TODO: change dimensions into rows and columns rather than a single row
+            #self.pack_state.update_dim(1,len(self.gui.chosen_locations)) 
+            #for i in range(self.pack_state.rows):
+            #    for j in range(self.pack_state.cols):
+            #        frame_position = self.gui.chosen_locations[k]
+            #        # get the center position
+            #        frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
+            #        self.pack_state.update_cell(i, j, model=self.pack_state.cell_model, 
+            #                                    frame_position=frame_position,
+            #                                    radius = radius,
+            #                                    height = height)
+            #        k += 1
             # we add all of the cells and their properties to the RDF store as part of the battery pack object
-            self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.pack_state.cell_model)
+            #self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.pack_state.cell_model)
+            
             new_status = pt.common.Status.SUCCESS
             self.rdf.object_detection()
             print(self.name, new_status)
@@ -596,43 +653,48 @@ class AutoSort(GeneralBehavior):
                     if cell.sorted:
                         continue
                     frame_position = cell.frame_position
-                    radius = cell.radius
-                    print("cell height: ", cell.height)
-                    print("cell type: ", cell.model)
-                    print("cell position: ", cell.frame_position)
+                    radius = cell.width/2
+                    z = cell.z
                     if cell.quality < self.cell_m_q:
                         place_pose = self.discard_T
                     else:
                         place_pose = self.keep_T
                     
-                    b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                    cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
-                    pick_pose = cell.pose
-                    self.robot.pick_and_place(pick_pose, place_pose)
-                    self.robot.move_to_cart_pos(self.over_pack_T)
+                    base_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                    cell_T = self.vision.frame_pos_to_pose(frame_pos=frame_position, camera=self.vision.camera, Z=z, base_T_TCP=base_T_TCP)
+                    self.robot.pick_and_place(cell_T, place_pose)
+
+
+                    #b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                    #cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
+                    #pick_pose = cell.pose
+                    #self.robot.pick_and_place(pick_pose, place_pose)
+                    #self.robot.move_to_cart_pos(self.over_pack_T)
+                    
                     sorted = self.vision.verify_pickup(frame_position, radius)
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
                     self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
+                    
                     # update RDF
                     self.rdf.robot_pick_place()
                     self.rdf.update_cell_sorted(i, j, sorted=sorted)
                     self.rdf.pick_place_outcome(outcome=sorted)
                     if sorted:
                         self.pack_state.update_cell(i, j, sorted=sorted)
-                    else:
-                        should_try_again = self.rdf.should_try_again()
-                        print("Should try again: ", should_try_again)
-                        if not should_try_again:
-                            new_status = pt.common.Status.FAILURE
-                            return new_status
-                        else:
-                            new_status = pt.common.Status.RUNNING
+                    #else:
+                    #    should_try_again = self.rdf.should_try_again()
+                    #    print("Should try again: ", should_try_again)
+                    #    if not should_try_again:
+                    #        new_status = pt.common.Status.FAILURE
+                    #        return new_status
+                    #    else:
+                    #        new_status = pt.common.Status.RUNNING
                             
             if new_status == pt.common.Status.SUCCESS:
                 self.rdf.end_sorting_process()
                 self.rdf.end_session()
             print(self.name, new_status)
-            
+
         return new_status
 
 class HelpedSort(GeneralBehavior):

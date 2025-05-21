@@ -4,8 +4,8 @@ import numpy as np
 class Cell():
     def __init__(self):
         self.model = "unknown"
-        self.radius = 0.0
-        self.height = 0.0
+        self.width = 0.0
+        self.z = 0.0
         self.quality = -1.0
         self.pose = sm.SE3()
         self.frame_position = [-1, -1]
@@ -34,7 +34,7 @@ class PackState():
                 row.append(Cell())
             self.cells.append(row)
 
-    def update_cell(self, i, j, model=None, radius=None, height=None, quality=None, pose=None, frame_position=None, sorted=None):
+    def update_cell(self, i, j, model=None, width=None, z=None, quality=None, pose=None, frame_position=None, sorted=None):
         """_summary_
 
         Args:
@@ -49,10 +49,10 @@ class PackState():
         """
         if model is not None:
             self.cells[i][j].model = model
-        if radius is not None:
-            self.cells[i][j].radius = radius
-        if height is not None:
-            self.cells[i][j].height = height
+        if width is not None:
+            self.cells[i][j].width = width
+        if z is not None:
+            self.cells[i][j].z = z
         if quality is not None:
             self.cells[i][j].quality =  quality
         if pose is not None:
