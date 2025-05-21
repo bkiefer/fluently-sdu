@@ -61,8 +61,13 @@ if __name__ == "__main__":
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.041, 'big': 0.08}, active_gripper='small', gripper_id=0)
     over_pack_T = sm.SE3([-0.28, -0.24, 0.18]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg")
     discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)
+    discard_T =    sm.SE3([0.17079587302315735, -0.4873784390448619, 0.30675627062804295]) * sm.SE3.Rx(np.pi)
     keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)
+    keep_T = sm.SE3([0.11790078219215322, -0.35906727516279763, 0.3022927460811224]) * sm.SE3.Rx(np.pi)
     cell_T_1 = (sm.SE3([-0.2949, -0.2554, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
     cell_T_2 = (sm.SE3([-0.281, -0.288, 0.110]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(156.796, "deg"))
     
-    print(robot_module.robot.getActualTCPPose())
+    robot_module.robot.teachMode()
+    while True:
+        input(">>>")
+        print(robot_module.robot.getActualTCPPose())
