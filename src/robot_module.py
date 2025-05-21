@@ -33,9 +33,7 @@ class RobotModule:
             place_T (sm.SE3): position and orientation for place
         """
         try:
-            print(pick_T)
             actual_pick_T = pick_T * sm.SE3([0, 0, self.tcp_length])
-            print(actual_pick_T)
             actual_place_T = place_T * sm.SE3([0, 0, self.tcp_length])
             self.robot.pick_and_place_contact(pick_pose=np.hstack((actual_pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_pick_T.R)))), 
                                     place_pose=np.hstack((actual_place_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_place_T.R)))))

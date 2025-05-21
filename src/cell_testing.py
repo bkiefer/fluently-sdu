@@ -19,12 +19,31 @@ E = sm.SE3.Rt(R, t)
 
 over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.4, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
 over_ws_rotvec = [-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
-discard_T =    sm.SE3([0.17079587302315735, -0.4873784390448619, 0.30675627062804295]) * sm.SE3.Rx(np.pi)
-keep_T = sm.SE3([0.11790078219215322, -0.35906727516279763, 0.3022927460811224]) * sm.SE3.Rx(np.pi)
+discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
+keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
+
 
 robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
 robot_module.robot.moveL(over_pack_rotvec)
 vision_module = VisionModule(camera_Ext=E) 
+
+# robot_module.move_to_cart_pos(discard_T)
+# while True:
+#     ans = input(">>>")
+#     if ans == 'w':
+#         discard_T *= sm.SE3([0.001, 0, 0])
+#     elif ans == 's':
+#         discard_T *= sm.SE3([-0.001, 0, 0])
+#     elif ans == 'a':
+#         discard_T *= sm.SE3([0, 0.001, 0])
+#     elif ans == 'd':
+#         discard_T *= sm.SE3([0, -0.001, 0])
+#     elif ans == 'q':
+#         discard_T *= sm.SE3([0, 0, 0.001])
+#     elif ans == 'e':
+#         discard_T *= sm.SE3([0, 0, -0.001])
+#     robot_module.move_to_cart_pos(discard_T)
+#     print(discard_T.t)
 
 # ans= ''
 # while ans != 'q':
