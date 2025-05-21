@@ -48,7 +48,7 @@ class RobotModule:
         try:
             self.robot.move_to_cart_pose(actual_T, speed)
         except AttributeError:
-            print("The robot cannot be accessed running for debug purpose")
+            print("Move to cart pos debug")
             time.sleep(1)
 
     def grab(self):

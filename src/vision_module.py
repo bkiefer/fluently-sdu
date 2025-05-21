@@ -106,11 +106,9 @@ class VisionModule():
             output['zs'].append(z)
             cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
             cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
-            cv2.putText(drawing_frame, f"id: {i}",      np.array(centre)+(-20, -50), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"{model}",      np.array(centre)+(-20, -30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-20, -10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"r: {w//2}",    np.array(centre)+(-20,  10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"z: {z:0.3f}",  np.array(centre)+(-20,  30), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"id: {i}; {model}",      np.array(centre)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"c: {centre}",  np.array(centre)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"r: {w//2}; z: {z:0.3f}",    np.array(centre)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
         # set(models) gives us a list with he unique values in the models list, then for each we count how many times it 
         # appears in the list, that's the most voted model
         output['model'] = (max(set(models), key=models.count)) 
@@ -193,16 +191,9 @@ class VisionModule():
             sm.SE3(sm.SE3): 4x4 pose in world frame
         """
         P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=Z)
-        # print(f"P: {P}")
-        # P[2] = base_T_TCP.t[2] - Z
-        print("P", P)
-        hom_P = np.hstack((P, 1))
-        base_T_cam = base_T_TCP * camera.extrinsic.inv()
-        print(f"base_T_cam:\n{base_T_cam}")
-        T = sm.SE3(P) * base_T_cam
-        # print(f"P_base: {tmp[:3]}")
-        print(f"P_base: {T.t}")
-        # T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+        base_T_cam = base_T_TCP * camera.extrinsic
+        tmp = base_T_cam * sm.SE3(P)
+        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
@@ -252,43 +243,37 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    # R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
-    #             [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
-    #             [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
-    R = sm.SO3([[0, -1, 0], 
-                [1,  0, 0], 
-                [0,  0, 1]])
+    R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
+                [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
+                [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
+    # R = sm.SO3([[0, -1, 0], 
+    #             [1,  0, 0], 
+    #             [0,  0, 1]])
     t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
     E = sm.SE3.Rt(R, t)
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
-    over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.35, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
+    over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.4, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
     # over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.2546947866558294, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
     over_ws_rotvec = [-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
     c_rotvec = [-0.3594  , -0.3182 , 0.2757,  -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
-    # actual position prima cella [-0.3462095849382022, -0.4109468521145269, 0.16346816550725796,
     robot_module.robot.moveL(over_pack_rotvec)
-    # input(">>>")
-    # robot_module.robot.moveL(c_rotvec)
-
     vision_module = VisionModule(camera_Ext=E) 
+    # ans= ''
+    # while ans != 'q':
+        # frame = vision_module.get_current_frame()
+        # ans = chr(0xff & cv2.waitKey(1))
+        # cv2.imshow("frame", frame)
     time.sleep(1)
-    # i = 0
-    ans= ''
     frame = vision_module.get_current_frame()
     results = vision_module.classify_cell(frame, frame)
     bbs = results['bbs']
     zs = results['zs']
-    # while ans != 'q':
-        # ans = chr(0xff & cv2.waitKey(1))
-    cv2.imshow("frame", frame)
+    # cv2.imshow("frame", frame)
+    
+    # we need the position of the TCP WHEN THE PHOTO GET TAKEN
+    base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
     for i, (bb, z) in enumerate(zip(bbs, zs)):
-        base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-        # print(i, ":")
-        # print(z)
         cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=z, base_T_TCP=base_T_TCP)
-        target_t = np.add(cell_T.t, (0, 0, 0.01))
-        cv2.waitKey(0)
-        robot_module.move_to_cart_pos(cell_T)
-    # cv2.waitKey(0)  
-
- 
+        robot_module.robot.grab_object_contact(cell_T)
+        # robot_module.move_to_cart_pos(sm.SE3.Rt(sm.SO3(base_T_TCP.R), target_T.t))
+        # cv2.waitKey(0) 
