@@ -37,11 +37,8 @@ results = vision_module.classify_cell(frame, frame)
 bbs = results['bbs']
 zs = results['zs']
 
-# cv2.imshow("frame", frame)
-# we need the position of the TCP WHEN THE PHOTO GET TAKEN
-base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
 target_Ts = []
-for i in len(bbs):
+for _ in range(len(bbs)):
     if np.random.rand() < 0.5:
         target_Ts.append(keep_T)
         print("keep_T")
@@ -49,8 +46,10 @@ for i in len(bbs):
         target_Ts.append(discard_T)
         print("discard_T")
 
+cv2.imshow("frame", frame)
+# we need the position of the TCP WHEN THE PHOTO GET TAKEN
+base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
 for i, (bb, z, target_T) in enumerate(zip(bbs, zs, target_Ts)):
+    cv2.waitKey(0)
     cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=z, base_T_TCP=base_T_TCP)
-    robot_module.pick_and_place(cell_T, keep_T)
-    # robot_module.move_to_cart_pos(sm.SE3.Rt(sm.SO3(base_T_TCP.R), target_T.t))
-    # cv2.waitKey(0) 
+    robot_module.pick_and_place(cell_T, target_T)

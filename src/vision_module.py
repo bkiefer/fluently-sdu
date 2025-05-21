@@ -45,7 +45,7 @@ class VisionModule():
         Returns:
             np.ndarray: frame
         """
-        #time.sleep(wait_delay)
+        time.sleep(wait_delay)
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
