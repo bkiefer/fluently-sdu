@@ -207,6 +207,7 @@ class VisionModule():
         Returns:
             bool: if or not the cell was picked up
         """
+        print("position: ",position)
         cp_current_frame = copy.deepcopy(self.get_current_frame())
         cp_start_frame = copy.deepcopy(self.background)
 
@@ -233,6 +234,9 @@ class VisionModule():
         pickedup = (votes/voting > 0.5)
         # print(f"The cell was pickedup: {pickedup}")
         result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+        print("result: ",result_bgr)
+        print("picked up: ",pickedup)
+        print("center", cx, cy)
         if not pickedup:
             cv2.circle(result_bgr, (cx, cy), 3, (0, 0, 255), 3)
         else:

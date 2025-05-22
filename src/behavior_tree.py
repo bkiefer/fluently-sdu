@@ -26,10 +26,11 @@ class BehaviourTree(pt.trees.BehaviourTree):
         self.over_pack_T = [-0.3090592371772158, -0.35307448825989896, 0.4, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
         #self.discard_T = sm.SE3([-0.247, -0.575, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
         #self.keep_T =    sm.SE3([-0.106, -0.518, 0.15]) * sm.SE3.Rx(np.pi)    # needs to be defined from the real setup
+        self.bin_rotvec = [-0.39878910698996745, -0.20375952618420032, 0.11842847831586963, -0.6197274089501397, 3.0571453835948117, 0.0028484658071650936]
         self.discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
         self.keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
         self.camera_Ext = sm.SE3.Rt(R, t)
-        self.bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
+        #self.bin_rotvec = [-0.03655, -0.5088, 0.20, -0.5923478428527734, 3.063484429352879, 0.003118486651508924]
         self.pack_height = 0.090
 
         self.blackboard = pt.blackboard.Client(name="Blackboard_client")   
@@ -109,7 +110,7 @@ class BehaviourTree(pt.trees.BehaviourTree):
         tree = self.main_sequence
 
         super(BehaviourTree, self).__init__(tree)
-        # self.viewer = BtViewer(self)
+        #self.viewer = BtViewer(self)
 
         #self.gui.after(1000, self.tick_tree_in_gui)
         #self.gui.mainloop()

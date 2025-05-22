@@ -48,6 +48,8 @@ class BeginSession(GeneralBehavior):
     """
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         if self.gui.first_name != None:
             # register name and start session
             self.rdf.get_user(first_name = self.gui.first_name, last_name = self.gui.last_name)
@@ -55,7 +57,10 @@ class BeginSession(GeneralBehavior):
             new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[7].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
     
 class PackPlaced(GeneralBehavior):
@@ -64,6 +69,8 @@ class PackPlaced(GeneralBehavior):
     """
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         # register battery placed from human confirmation
         if self.gui.confirm:
             self.gui.confirm = False
@@ -71,7 +78,10 @@ class PackPlaced(GeneralBehavior):
             new_status = pt.common.Status.SUCCESS
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[8].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
     
 class AutoPackClass(GeneralBehavior):
@@ -95,7 +105,6 @@ class AutoPackClass(GeneralBehavior):
             known_models = self.rdf.get_known_packs()
             if not self.result:
                 self.proposed_pack = "unknown"
-                self.gui.update_proposed_packs([self.proposed_pack]+known_models)
             else:
                 self.proposed_pack = self.result["shape"]
                 if self.proposed_pack in known_models:
@@ -113,6 +122,8 @@ class AutoPackClass(GeneralBehavior):
 
         elif self.gui.chosen_pack != "":
             if self.proposed_pack == "unknown":
+                known_models = self.rdf.get_known_packs()
+                self.gui.update_proposed_packs([self.proposed_pack]+known_models)
                 new_status = pt.common.Status.FAILURE
             else:
                 # record in rdf and update pack state
@@ -122,12 +133,12 @@ class AutoPackClass(GeneralBehavior):
                 self.pack_state.size = self.result["size"]
                 self.pack_state.cover_on = self.result["cover_on"] # use vision function cell_detection()?
                 self.pack_state.location = self.result["location"]
-                try:   
-                    b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                    pack_T_b = self.vision.frame_pos_to_pose(self.pack_state.location, self.vision.camera, self.pack_height, b_T_TCP)
-                    self.pack_state.pose = pack_T_b
-                except:
-                    pass
+         
+                # locate pack for cover removal
+                b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                pack_T_b = self.vision.frame_pos_to_pose(self.pack_state.location, self.vision.camera, self.pack_height, b_T_TCP)
+                self.pack_state.pose = pack_T_b
+
                 # TODO: RDF: record if classification was successful
                 # TODO: RDF: update and upload disassembly plan
                 new_status = pt.common.Status.SUCCESS
@@ -175,6 +186,8 @@ class HelpedLocatePack(GeneralBehavior):
     """
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         new_status = pt.common.Status.RUNNING
         if not self.gui.bbs_editor.box_items:
             self.gui.bbs_editor.spawn_box()
@@ -189,6 +202,13 @@ class HelpedLocatePack(GeneralBehavior):
             new_status = pt.common.Status.SUCCESS
             # record in RDF
             print(self.name, new_status)
+        
+        else:
+            if intent == "yes":
+                self.gui.frames[17].confirm()
+            new_status = pt.common.Status.RUNNING
+        
+        self.gui.mqtt.clear_intents()
         return new_status
 
 class CheckCoverOff(GeneralBehavior):
@@ -199,12 +219,7 @@ class CheckCoverOff(GeneralBehavior):
     """
     def update(self):
         super().update()
-        #cells = self.vision.cell_detection(self.frame) # Needs to be changed
-        #if len(cells) > 3: # Needs to be changed
-        #        self.pack_state.cover_on = False
-        #        self.rdf.check_cover(cells_visible=True)
-        #        new_status = pt.common.Status.SUCCESS
-        #else:
+        # TODO: create a GUI screen and wait for human input
         new_status = pt.common.Status.FAILURE
         return new_status
     
@@ -234,7 +249,6 @@ class CheckHumanRemovesCover(GeneralBehavior):
             # TODO: RDF update
         else:
             new_status = pt.common.Status.RUNNING
-        
         return new_status
 
 class CheckColabRemoveCover(GeneralBehavior):
@@ -269,13 +283,18 @@ class ColabAwaitHuman(GeneralBehavior):
     """
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         if self.gui.confirm:
             self.gui.confirm = False
             # TODO: RDF: update
             new_status = pt.common.Status.SUCCESS
             print(self.name, self.status)
         else:
+            if intent == "yes":
+                self.gui.frames[13].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
     
 class RemoveCover(GeneralBehavior):
@@ -285,7 +304,6 @@ class RemoveCover(GeneralBehavior):
     """
     def update(self):
         super().update()
-
         self.robot.pick_and_place(self.pack_state.pose,utilities.rotvec_to_T(self.bin_rotvec))
         self.robot.robot.moveL(self.over_pack_T)
         self.rdf.robot_remove_cover()
@@ -301,6 +319,8 @@ class AwaitToolChange(GeneralBehavior):
     """
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         if self.gui.confirm:
             self.gui.confirm = False
             self.rdf.switch_tool()
@@ -315,7 +335,10 @@ class AwaitToolChange(GeneralBehavior):
                 pass
             print(self.name, self.status)
         else:
+            if intent == "yes":
+                self.gui.frames[10].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
 
 class BigGripper(GeneralBehavior):
@@ -487,7 +510,7 @@ class HelpedCellClass(GeneralBehavior):
 
 class Detect(GeneralBehavior):
     """
-    The vision module detects the individual battery cells.
+    The GUI displays the detected cells.
     SUCCESS when the detection is accepted. Pack state is updated.
     """
     def __init__(self, name, rdf, gui, vision, frame_id, pack_state, robot):
@@ -496,6 +519,8 @@ class Detect(GeneralBehavior):
         self.z = 0
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         if not self.proposed_bbs:
             print("First update for behavior", self.name)  
             for i in range(self.pack_state.rows):
@@ -517,13 +542,7 @@ class Detect(GeneralBehavior):
                 cx = i[0]+(width/2)
                 cy = i[1]+(width/2)
                 bbs.append([cx,cy,width])
-            
-            #bbs = [[self.gui.chosen_locations[i][0], self.gui.chosen_locations[i][1]] for i in self.gui.chosen_locations]
-            #print("bbs: ",bbs)
-            #zs = [self.gui.chosen_locations[i][2] for i in self.gui.chosen_locations]
-            #print("zs: ",zs)
 
-            #self.pack_state.update_dim(1,len(bbs)) 
             k = 0
             for i in range(self.pack_state.rows):
                 for j in range(self.pack_state.cols):
@@ -538,28 +557,14 @@ class Detect(GeneralBehavior):
                                                 z = z)
                     k += 1
 
-            #radius, height = self.rdf.get_dimensions_from_cell_type(self.pack_state.cell_model)
-            #k = 0
-            ## TODO: change dimensions into rows and columns rather than a single row
-            #self.pack_state.update_dim(1,len(self.gui.chosen_locations)) 
-            #for i in range(self.pack_state.rows):
-            #    for j in range(self.pack_state.cols):
-            #        frame_position = self.gui.chosen_locations[k]
-            #        # get the center position
-            #        frame_position = [(frame_position[0]+frame_position[2])//2, (frame_position[1]+frame_position[3])//2]
-            #        self.pack_state.update_cell(i, j, model=self.pack_state.cell_model, 
-            #                                    frame_position=frame_position,
-            #                                    radius = radius,
-            #                                    height = height)
-            #        k += 1
-            # we add all of the cells and their properties to the RDF store as part of the battery pack object
-            #self.rdf.update_number_of_cells(rows=self.pack_state.rows, cols=self.pack_state.cols, model=self.pack_state.cell_model)
-            
             new_status = pt.common.Status.SUCCESS
             self.rdf.object_detection()
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[3].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
 
 class Assess(GeneralBehavior):
@@ -574,12 +579,11 @@ class Assess(GeneralBehavior):
 
     def update(self):
         super().update()
+        intent = self.gui.mqtt.get_intent()
+
         if not self.bbs_positions:
             print("First update for behavior", self.name)
-            # current_frame = self.vision.get_current_frame(format="pil") # keep old frame ???
             self.bbs_positions = self.gui.chosen_locations
-            # get proposed qualities from vision module and update GUI
-            #qualities = self.vision.assess_cells_qualities(frame=self.gui.camera_frame, bbs_positions=bbs_positions)
             qualities = []
             for i in range (len(self.bbs_positions)):
                 qualities.append(random.randint(90,100)/100)
@@ -587,9 +591,7 @@ class Assess(GeneralBehavior):
             self.gui.proposed_qualities = qualities
         
         if len(self.gui.chosen_qualities) != 0:
-            # change to known dimensions
             i = 0
-            # update cell information with the qualities
             for row in range(self.pack_state.rows):
                 for col in range(self.pack_state.cols):
                     quality = self.gui.chosen_qualities[i]
@@ -600,7 +602,10 @@ class Assess(GeneralBehavior):
             self.rdf.quality_assessment()
             print(self.name, new_status)
         else:
+            if intent == "yes":
+                self.gui.frames[4].confirm()
             new_status = pt.common.Status.RUNNING
+        self.gui.mqtt.clear_intents()
         return new_status
 
 class CheckCellsOK(GeneralBehavior):
@@ -646,8 +651,9 @@ class AutoSort(GeneralBehavior):
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[5])
             self.gui.write_qualities(self.gui.chosen_qualities, self.gui.frames[6])
         else:
-            # get the pose of each cell + quality and perform pick and place
+            # get the position of each cell and perform pick and place
             new_status = pt.common.Status.SUCCESS
+            base_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
             for i, row in enumerate(self.pack_state.cells):
                 for j, cell in enumerate(row):
                     if cell.sorted:
@@ -660,27 +666,21 @@ class AutoSort(GeneralBehavior):
                     else:
                         place_pose = self.keep_T
                     
-                    base_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
+                    # pick and place
                     cell_T = self.vision.frame_pos_to_pose(frame_pos=frame_position, camera=self.vision.camera, Z=z, base_T_TCP=base_T_TCP)
                     self.robot.pick_and_place(cell_T, place_pose)
-
-
-                    #b_T_TCP = utilities.rotvec_to_T(self.robot.robot.getActualTCPPose())
-                    #cell.pose = self.vision.frame_pos_to_pose(frame_position, self.vision.camera, cell.height, b_T_TCP)
-                    #pick_pose = cell.pose
-                    #self.robot.pick_and_place(pick_pose, place_pose)
-                    #self.robot.move_to_cart_pos(self.over_pack_T)
                     
-                    sorted = self.vision.verify_pickup(frame_position, radius)
-                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
-                    self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
+                    # verify pickup
+                    #sorted = self.vision.verify_pickup(frame_position, radius)
+                    #self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[5])
+                    #self.gui.write_outcome_picked_cell([frame_position[0], frame_position[1]], sorted, self.gui.frames[6])
                     
                     # update RDF
                     self.rdf.robot_pick_place()
-                    self.rdf.update_cell_sorted(i, j, sorted=sorted)
-                    self.rdf.pick_place_outcome(outcome=sorted)
-                    if sorted:
-                        self.pack_state.update_cell(i, j, sorted=sorted)
+                    #self.rdf.update_cell_sorted(i, j, sorted=sorted)
+                    #self.rdf.pick_place_outcome(outcome=sorted)
+                    #if sorted:
+                    #    self.pack_state.update_cell(i, j, sorted=sorted)
                     #else:
                     #    should_try_again = self.rdf.should_try_again()
                     #    print("Should try again: ", should_try_again)
