@@ -1,15 +1,40 @@
 # Purpose
 
-This module handles the natural language interaction part of the Fluently Scanning use case.
+This module handles the natural language interaction part of the Fluently Scanning and MEM use case.
 
 # Installation
+
+Clone fluently-sdu like this:
+
+    git clone https://github.com/bkiefer/fluently-sdu.git
+    cd fluently-sdu
+    git submodule update --init --recursive
+    git submodule update --recursive --remote
 
 ## Prerequisites
 
 Tested on Ubuntu 22.04
 
-On Ubuntu:
-python3, mosquitto, openjdk-11-jdk (at least), docker, nvidia-container-toolkit (for use of GPU, optional)
+Packages to install on Ubuntu:
+python3 (installed by default), mosquitto, openjdk-11-jdk (at least)
+
+Install docker: https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04
+
+Install nvidia-container-toolkit, for use of GPU (optional): https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+
+Remember to follow the ‘Configuring docker’ steps!
+
+
+Install Vonda: https://github.com/bkiefer/vonda , check possibly additional prerequisites in the `ReadMe.md` after cloning the repository!
+
+    git clone https://github.com/bkiefer/vonda.git
+    cd vonda
+    mvn install
+
+Link vondac symbolically to the home folder of fluently-sdu
+
+    cd ../fluently-sdu
+    ln -s ../vonda/bin/vondac
 
 ## rasa NLU
 
