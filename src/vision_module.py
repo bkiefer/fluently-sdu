@@ -27,7 +27,7 @@ class VisionModule():
                                                 # 'infrared': [640, 480]
                                                 })
             # print("Starting vision module")
-        # except RuntimeError:
+            # except RuntimeError:
             # self.camera = None
             # print("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
