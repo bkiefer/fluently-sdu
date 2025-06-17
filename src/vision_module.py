@@ -79,7 +79,7 @@ class VisionModule():
         # print(f"label: {label}; confidence: {confidence}; xywh: {xywh}")
         return {'shape': label, 'size': (int(xywh[2]), int(xywh[3])), 'cover_on': True, 'location': (int(xywh[0]), int(xywh[1]))}
 
-    def classify_cell(self, frame: ndarray, drawing_frame:ndarray=None) -> dict[tuple[str, float]]:
+    def identify_cells(self, frame: ndarray, drawing_frame:ndarray=None) -> dict[tuple[str, float]]:
         """
         classify the cell model from one or multiple frames
 
@@ -117,6 +117,7 @@ class VisionModule():
         return output
 
     def cell_detection(self, frame: np.ndarray) -> list[ndarray]:
+        # DEPRECATED NOT USE, USE IDENTIFY CELLS INSTEAD
         """detect cells positions based on image
 
         Args:
@@ -271,7 +272,7 @@ if __name__ == "__main__":
         # cv2.imshow("frame", frame)
     time.sleep(1)
     frame = vision_module.get_current_frame()
-    results = vision_module.classify_cell(frame, frame)
+    results = vision_module.identify_cells(frame, frame)
     bbs = results['bbs']
     zs = results['zs']
     # cv2.imshow("frame", frame)

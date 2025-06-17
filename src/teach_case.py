@@ -3,7 +3,7 @@ import time
 from robot_module import RobotModule
 from battery_pack_module import PackState
 from rdf_store import RdfStore
-# from vision_module import VisionModule
+from vision_module import VisionModule
 from behaviors import *
 from viewer import BtViewer
 import spatialmath as sm
@@ -275,7 +275,7 @@ class _QualitiesEditor:
         self.edit_entry.place_forget()
 
 class MemGui(tk.Tk):
-    def __init__(self, camera_frame: PIL.Image, cell_m_q, cell_h_q):
+    def __init__(self, camera_frame: PIL.Image):
         super().__init__()
         self.title("MeM use case")
         self.states = []
@@ -283,11 +283,21 @@ class MemGui(tk.Tk):
         self.camera_frame = camera_frame
         self.active_frame = 0
         
-        # self.vision = VisionModule(camera_Ext=self.camera_Ext)
-        # self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
-        # self.pack_state = PackState()
+        self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
+        self.robot_module = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
+        self.pack_state = PackState()
 
-        self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
+        # TODO: specify a correct one
+        self.cover_place_pose = sm.SE3([0.068, -0.387, 0.306]) * sm.SE3.Rx(np.pi)
+        self.cell_m_q, self.cell_h_q = 0.6, 0.8
+        self.discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
+        self.keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
+        R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
+            [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
+            [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
+        t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
+        self.camera_Ext = sm.SE3.Rt(R, t)
+
         self.proposed_models = []
         self.proposed_packs = None
         self.chosen_pack = ""
@@ -307,15 +317,15 @@ class MemGui(tk.Tk):
         self.removal_strategy = ""
 
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)  # Buttons frame = 1
-        self.grid_columnconfigure(1, weight=3)  # Content frame = 3
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=3)
         
         self.btns_container = tk.Frame(self,  bg='yellow')
         self.btns_container.grid(row=0, column=0, sticky='nsew')
         self.btns_container.grid_columnconfigure(0, weight=1)
         
         self.a =0
-        for i, fnc in enumerate([self.debug, self.debug1, self.debug2]):
+        for i, fnc in enumerate([self.locate_pack, self.remove_pack_cover, self.identify_cells, self.assess_cells_qualities, self.pickup_cells]):
             btn = tk.Button(self.btns_container, text=fnc.__name__, command=fnc)
             btn.grid(row=i, column=0, sticky='nsew')
         
@@ -323,31 +333,44 @@ class MemGui(tk.Tk):
         self.frame = HomeScreen(self, self)
         self.frame.grid(row=0, column=1, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
-        # self.frame.pack(side='right', padx=(5, 10), fill='both', expand=True)
-        
-        # self.bind("<Configure>", self.on_resize)
 
         self.reset_gui()
 
-    def on_resize(self, event):
-        total_width = self.winfo_width()
-        desired_width = total_width // 4
-        self.btns_container.config(width=desired_width)
-        # self.frame.config(width=3*desired_width)
-
-    # TODO: add all the functs
-    # for this: generate all the btns to do everything, they should not have variables passed,
-    # because they have to be passed when we create the btns and we dont have them ready yet, 
-    # but if we give the empty object we can fill it properly with precedent functions
-    def debug(self):
-        print("debug1")
-
-    def debug1(self):
-        self.a =1
-        print("txt")
+    def locate_pack(self):
+        # TODO: check prerequisites
+        result = self.vision_module.locate_pack(self.camera_frame)
+        print(result)
+        # TODO: fill pack object with info
+        # and draw on canvas
     
-    def debug2(self):
-        print(self.a+2)
+    def remove_pack_cover(self):
+        # TODO: check prerequisites
+        self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
+
+    def identify_cells(self):
+        # TODO: check prerequisites
+        result = self.vision_module.identify_cells(self.camera_frame)
+        print(result)
+        # TODO: fill pack object with info
+        # and draw on canvas
+
+    def assess_cells_qualities(self):
+        # TODO: check prerequisites
+        bbs = []
+        for cell in self.pack_state.cells:
+            bbs.append(cell.frame_position)
+        result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
+        print(result)
+        # TODO: fill pack object with info
+        # and draw on canvas
+    
+    def pickup_cells(self):
+        # TODO: check prerequisites
+        for cell in self.pack_state.cells:
+            if cell.quality < self.cell_h_q:
+                self.robot_module.pick_and_place(cell.pose, self.discard_T)
+            else:
+                self.robot_module.pick_and_place(cell.pose, self.keep_T)
 
     def update_proposed_models(self, proposed_models):
         self.proposed_models = proposed_models
@@ -447,6 +470,7 @@ class MemGui(tk.Tk):
         self.show_frame()
 
     def after_update(self):
+        self.camera_frame = self.vision_module.get_current_frame()
         self.frame.draw_image(self.camera_frame)
         self.after(1, self.after_update)
 

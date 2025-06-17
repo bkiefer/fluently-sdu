@@ -52,7 +52,7 @@ vision_module = VisionModule(camera_Ext=E)
     # cv2.imshow("frame", frame)
 
 frame = vision_module.get_current_frame(wait_delay=1)
-results = vision_module.classify_cell(frame, frame)
+results = vision_module.identify_cells(frame, frame)
 bbs = results['bbs']
 zs = results['zs']
 
