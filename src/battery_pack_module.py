@@ -1,5 +1,6 @@
 import spatialmath as sm
 import numpy as np
+from gubokit import utilities
 
 class Cell():
     def __init__(self):
@@ -22,7 +23,8 @@ class PackState():
         self.size = None
         self.location = None
         self.pose = None
-        self.update_dim(rows=rows, cols=cols)
+        self.cells = []
+        # self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):
         self.cells = []
@@ -72,23 +74,28 @@ class PackState():
             self.cells[hole[0], hole[1]] = None
 
     def __repr__(self):
-        printable = f"\nPrinting battery pack state of model: {self.model}\n■■| "
-        lenght_cell_str = len(str(self.cells[0][0]))
-        h_line = "■■"
-        for j, _ in enumerate(self.cells[0]):
-            header = f"{str(j):^{lenght_cell_str}}" + " | "
-            tmp = "-" * len(header)
-            h_line += "|" + tmp[1:]
-            printable += header
-        printable += "\n"
-        printable += (h_line + "|")
-        printable += "\n"
-
-        for i, row in enumerate(self.cells):           
-            printable += str(i) + " | "
-            for j, cell in enumerate(row):
-                printable += (str(cell) + " | ")
+        printable = f"\nBattery pack state\n"
+        printable += "\t"*4 + f"model: {self.model}\n"
+        printable += "\t"*4 + f"pos: {self.location}\n"
+        printable += "\t"*4 + f"pose: {utilities.T_to_rotvec(self.pose)}\n"
+        printable += "\t"*4 + f"cover_on: {self.cover_on}\n"
+        if len(self.cells) != 0:
+            lenght_cell_str = len(str(self.cells[0][0]))
+            h_line = "■■"
+            for j, _ in enumerate(self.cells[0]):
+                header = f"{str(j):^{lenght_cell_str}}" + " | "
+                tmp = "-" * len(header)
+                h_line += "|" + tmp[1:]
+                printable += header
             printable += "\n"
+            printable += (h_line + "|")
+            printable += "\n"
+
+            for i, row in enumerate(self.cells):           
+                printable += str(i) + " | "
+                for j, cell in enumerate(row):
+                    printable += (str(cell) + " | ")
+                printable += "\n"
         return printable
 
 if __name__ == "__main__":

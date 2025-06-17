@@ -17,16 +17,15 @@ import os
 
 class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
-        pass
         # camera initialization
         # try:
+        print("Starting vision module")
         self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                 enabled_strams={
                                                 'color': [1920, 1080],
                                                 'depth': [640, 480],
                                                 # 'infrared': [640, 480]
                                                 })
-            # print("Starting vision module")
             # except RuntimeError:
             # self.camera = None
             # print("The vision module could not be started, the module will run for debug purpose")
@@ -104,7 +103,7 @@ class VisionModule():
             z = self.get_z_at_pos(*centre)
             output['bbs'].append((x, y, w))
             output['zs'].append(z)
-            if drawing_frame:
+            if drawing_frame is not None:
                 cv2.circle(drawing_frame, centre, 1, (0, 100, 100), 3)
                 cv2.circle(drawing_frame, centre, w//2, (255, 0, 255), 3)
                 cv2.putText(drawing_frame, f"id: {i}; {model}",      np.array(centre)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
@@ -184,7 +183,7 @@ class VisionModule():
         cells_qualities = np.random.rand(len(bbs_positions))
         return cells_qualities
 
-    def frame_pos_to_pose(self, frame_pos:ndarray, camera, Z, base_T_TCP) -> sm.SE3:
+    def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -193,8 +192,9 @@ class VisionModule():
         Returns:
             sm.SE3(sm.SE3): 4x4 pose in world frame
         """
-        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=camera, Z=Z)
-        base_T_cam = base_T_TCP * camera.extrinsic
+        Z = self.get_z_at_pos(*frame_pos)
+        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=self.camera, Z=Z)
+        base_T_cam = base_T_TCP * self.camera.extrinsic
         tmp = base_T_cam * sm.SE3(P)
         T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         return T
@@ -265,11 +265,11 @@ if __name__ == "__main__":
     c_rotvec = [-0.3594  , -0.3182 , 0.2757,  -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
     robot_module.robot.moveL(over_pack_rotvec)
     vision_module = VisionModule(camera_Ext=E) 
-    # ans= ''
-    # while ans != 'q':
-        # frame = vision_module.get_current_frame()
-        # ans = chr(0xff & cv2.waitKey(1))
-        # cv2.imshow("frame", frame)
+    ans= ''
+    while ans != 'q':
+        frame = vision_module.get_current_frame()
+        ans = chr(0xff & cv2.waitKey(1))
+        cv2.imshow("frame", frame)
     time.sleep(1)
     frame = vision_module.get_current_frame()
     results = vision_module.identify_cells(frame, frame)

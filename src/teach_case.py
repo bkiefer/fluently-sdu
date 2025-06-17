@@ -275,16 +275,12 @@ class _QualitiesEditor:
         self.edit_entry.place_forget()
 
 class MemGui(tk.Tk):
-    def __init__(self, camera_frame: PIL.Image):
+    def __init__(self):
         super().__init__()
         self.title("MeM use case")
-        self.states = []
         
-        self.camera_frame = camera_frame
-        self.active_frame = 0
-        
-        # TODO: specify a correct one
-        self.cover_place_pose = sm.SE3([0.068, -0.387, 0.306]) * sm.SE3.Rx(np.pi)
+        """ ========== WORKSPACE SETUP ========== """
+        self.cover_place_pose = sm.SE3([-0.401, -0.157, 0.050]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi)
         self.cell_m_q, self.cell_h_q = 0.6, 0.8
         self.discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
         self.keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
@@ -293,11 +289,17 @@ class MemGui(tk.Tk):
             [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
         t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
         self.camera_Ext = sm.SE3.Rt(R, t)
+        home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, 4.8751301765441895]
 
-        # self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
-        # self.robot_module = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
-        # self.pack_state = PackState()
+        """ ========== MODULE SETUP ========== """
+        self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
+        self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
+        self.pack_state = PackState()
+        self.robot_module.move_to_home()
+        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info')
+        self.logger.toggle_offon()
 
+        """ ========== RESET GUI ========== """
         self.proposed_models = []
         self.proposed_packs = None
         self.chosen_pack = ""
@@ -316,6 +318,7 @@ class MemGui(tk.Tk):
         self.gripper = ""
         self.removal_strategy = ""
 
+        """ ========== LAYOUT GUI ========== """
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=2)
@@ -333,31 +336,38 @@ class MemGui(tk.Tk):
         self.frame.grid(row=0, column=1, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
 
-        self.reset_gui()
-
     def locate_pack(self):
-        # TODO: check prerequisites
-        print("locate_pack")
-        # result = self.vision_module.locate_pack(self.camera_frame)
-        # TODO: fill pack object with info
-        # and draw on canvas
+        self.logger.info("locate_pack")
+        result = self.vision_module.locate_pack(self.camera_frame)
+        self.pack_state.model = result['shape']
+        self.pack_state.size = result['size']
+        self.pack_state.cover_on = result['cover_on']
+        self.pack_state.location = result['location']
+        self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
+        self.logger.info(self.pack_state)
+        # TODO
+        # - ask for confirmation
+        # - and draw on canvas
     
     def remove_pack_cover(self):
-        # TODO: check prerequisites
-        print("remove_pack_cover")
-        # self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
+        self.logger.info("remove_pack_cover")
+        if self.pack_state.pose is not None:
+            self.logger.info("requisites ok")
+            self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
+            self.robot_module.move_to_home()
 
     def identify_cells(self):
         # TODO: check prerequisites
-        print("identify_cells")
-        # result = self.vision_module.identify_cells(self.camera_frame)
-        # print(result)
+        self.logger.info("identify_cells")
+        result = self.vision_module.identify_cells(self.camera_frame)
+        print(result)
+        
         # TODO: fill pack object with info
         # and draw on canvas
 
     def assess_cells_qualities(self):
         # TODO: check prerequisites
-        print("assess_cells_qualities")
+        self.logger.info("assess_cells_qualities")
         # bbs = []
         # for cell in self.pack_state.cells:
         #     bbs.append(cell.frame_position)
@@ -376,43 +386,13 @@ class MemGui(tk.Tk):
                 # self.robot_module.pick_and_place(cell.pose, self.keep_T)
 
     def update_proposed_models(self, proposed_models):
-        self.proposed_models = proposed_models
-        self.frames[1].label.configure(text=f"Cells are: {self.proposed_models[0]}")
-        for propose in self.proposed_models[1:]: # we skip the first one as it was already denied by the user
-            btn = tk.Button(self.frames[2].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[2].chose_model(model))
-            btn.pack()
+        # TODO: recode
+        pass
 
     def update_proposed_packs(self, proposed_packs):
-        self.proposed_packs = proposed_packs
-        self.frames[15].label.configure(text=f"Pack is: {self.proposed_packs[0]}")
-        for propose in self.proposed_packs[1:]: # we skip the first one as it was already denied by the user
-            btn = tk.Button(self.frames[16].btns_frame, text=f"{propose}", command=lambda model = propose: self.frames[16].chosen_pack(model))
-            btn.pack()
-
-    def write_cell_state(self, x, y, cell: dict['model': str, 'bb': list[int], 'quality': float, 'pickedup': bool]):
-        self.x_min = tk.Entry(self.btns_container, width=4, justify="center")
-        self.x_min.insert(0, str(cell['bb'][0]))
-        self.x_min.place(x=x, y=y)
-        self.y_max = tk.Entry(self.btns_container, width=4, justify="center")
-        self.y_max.insert(0, str(cell['bb'][2]))
-        self.y_max.place(x=x+75, y=y)
-        self.y_min = tk.Entry(self.btns_container, width=4, justify="center")
-        self.y_min.insert(0, str(cell['bb'][1]))
-        self.y_min.place(x=x, y=y+35)
-        self.y_max = tk.Entry(self.btns_container, width=4, justify="center")
-        self.y_max.insert(0, str(cell['bb'][3]))
-        self.y_max.place(x=x+75, y=y+35)
+        # TODO: recode
+        pass
     
-    def show_frame(self):
-        """update the state of the gui the current state will be hidden and the new one will be visible
-
-        Args:
-            state_id (int): id of new state
-        """
-        self.frame.tkraise()
-        # self.expand_btn.place(x=self.camera_frame.width-50, y=self.camera_frame.height*1.2-50)
-        self.frame.draw_image(self.camera_frame)
-
     def ask_for_help(self,  query: str):
         """ask human for help for something
 
@@ -452,28 +432,8 @@ class MemGui(tk.Tk):
             frame.canvas.create_text(centre[0], centre[1], text="✗", font=("Arial", 35), fill='firebrick1')
         frame.canvas.update()
 
-    def update_image(self, new_frame: ndarray):
-        self.camera_frame = new_frame
-
-    def reset_gui(self):
-        self.proposed_models = []
-        self.chosen_model = ""
-        self.chosen_pack = ""
-        self.proposed_packs = None
-        self.proposed_locations = []
-        self.chosen_locations = []
-        self.proposed_qualities = []
-        self.chosen_qualities = []
-        self.outcomes = []
-        self.confirm = False
-        self.class_reject = False # !!!
-        self.done = False
-        self.frame.canvas.delete("all")
-        self.frame.draw_image(self.camera_frame)
-        self.show_frame()
-
     def after_update(self):
-        # self.camera_frame = self.vision_module.get_current_frame()
+        self.camera_frame = self.vision_module.get_current_frame(format='pil')
         self.frame.draw_image(self.camera_frame)
         self.after(1, self.after_update)
 
@@ -483,7 +443,6 @@ class HomeScreen(tk.Frame):
         self.controller = controller
         self.canvas = tk.Canvas(self)
         self.canvas.pack(fill='both', expand=True)
-        self.draw_image(self.controller.camera_frame)
     
     def draw_image(self, img):
         scale = min(self.canvas.winfo_width() / img.size[0], self.canvas.winfo_height() / img.size[1])
@@ -501,6 +460,6 @@ if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")
     camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
     camera_frame = PIL.Image.fromarray(camera_frame)
-    app = MemGui(camera_frame=camera_frame)
+    app = MemGui()
     app.after(1, app.after_update)
     app.mainloop()
