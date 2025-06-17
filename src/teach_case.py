@@ -283,10 +283,6 @@ class MemGui(tk.Tk):
         self.camera_frame = camera_frame
         self.active_frame = 0
         
-        self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
-        self.robot_module = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
-        self.pack_state = PackState()
-
         # TODO: specify a correct one
         self.cover_place_pose = sm.SE3([0.068, -0.387, 0.306]) * sm.SE3.Rx(np.pi)
         self.cell_m_q, self.cell_h_q = 0.6, 0.8
@@ -297,6 +293,10 @@ class MemGui(tk.Tk):
             [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
         t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
         self.camera_Ext = sm.SE3.Rt(R, t)
+
+        # self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
+        # self.robot_module = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
+        # self.pack_state = PackState()
 
         self.proposed_models = []
         self.proposed_packs = None
@@ -318,13 +318,12 @@ class MemGui(tk.Tk):
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=3)
+        self.grid_columnconfigure(1, weight=2)
         
-        self.btns_container = tk.Frame(self,  bg='yellow')
-        self.btns_container.grid(row=0, column=0, sticky='nsew')
+        self.btns_container = tk.Frame(self,  bg='antique white')
+        self.btns_container.grid(row=0, column=0, sticky='nsew', padx=(5, 0))
         self.btns_container.grid_columnconfigure(0, weight=1)
         
-        self.a =0
         for i, fnc in enumerate([self.locate_pack, self.remove_pack_cover, self.identify_cells, self.assess_cells_qualities, self.pickup_cells]):
             btn = tk.Button(self.btns_container, text=fnc.__name__, command=fnc)
             btn.grid(row=i, column=0, sticky='nsew')
@@ -338,39 +337,43 @@ class MemGui(tk.Tk):
 
     def locate_pack(self):
         # TODO: check prerequisites
-        result = self.vision_module.locate_pack(self.camera_frame)
-        print(result)
+        print("locate_pack")
+        # result = self.vision_module.locate_pack(self.camera_frame)
         # TODO: fill pack object with info
         # and draw on canvas
     
     def remove_pack_cover(self):
         # TODO: check prerequisites
-        self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
+        print("remove_pack_cover")
+        # self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
 
     def identify_cells(self):
         # TODO: check prerequisites
-        result = self.vision_module.identify_cells(self.camera_frame)
-        print(result)
+        print("identify_cells")
+        # result = self.vision_module.identify_cells(self.camera_frame)
+        # print(result)
         # TODO: fill pack object with info
         # and draw on canvas
 
     def assess_cells_qualities(self):
         # TODO: check prerequisites
-        bbs = []
-        for cell in self.pack_state.cells:
-            bbs.append(cell.frame_position)
-        result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
-        print(result)
+        print("assess_cells_qualities")
+        # bbs = []
+        # for cell in self.pack_state.cells:
+        #     bbs.append(cell.frame_position)
+        # result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
+        # print(result)
         # TODO: fill pack object with info
         # and draw on canvas
     
     def pickup_cells(self):
         # TODO: check prerequisites
-        for cell in self.pack_state.cells:
-            if cell.quality < self.cell_h_q:
-                self.robot_module.pick_and_place(cell.pose, self.discard_T)
-            else:
-                self.robot_module.pick_and_place(cell.pose, self.keep_T)
+        print("pickup_cells")
+        # for cell in self.pack_state.cells:
+        #     if cell.quality < self.cell_h_q:
+        #         self.robot_module.pick_and_place(cell.pose, self.discard_T)
+        #     else:
+                # self.robot_module.pick_and_place(cell.pose, self.keep_T)
 
     def update_proposed_models(self, proposed_models):
         self.proposed_models = proposed_models
@@ -470,29 +473,34 @@ class MemGui(tk.Tk):
         self.show_frame()
 
     def after_update(self):
-        self.camera_frame = self.vision_module.get_current_frame()
+        # self.camera_frame = self.vision_module.get_current_frame()
         self.frame.draw_image(self.camera_frame)
         self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg='orange')
+        super().__init__(parent)
         self.controller = controller
-        self.canvas = tk.Canvas(self, bg='red')
+        self.canvas = tk.Canvas(self)
         self.canvas.pack(fill='both', expand=True)
         self.draw_image(self.controller.camera_frame)
     
     def draw_image(self, img):
-        resized_img = img.resize((self.canvas.winfo_width(), self.canvas.winfo_height()))
+        scale = min(self.canvas.winfo_width() / img.size[0], self.canvas.winfo_height() / img.size[1])
+        if scale > .01:
+            new_size = (int(scale * img.size[0]), int(scale * img.size[1]))
+            resized_img = img.resize(new_size)
+        else:
+            resized_img = img
         self.tk_image = PIL.ImageTk.PhotoImage(resized_img)
         self.canvas.delete('image')
-        self.canvas.create_image(0, 0, anchor="nw", image=self.tk_image, tags='image')
+        self.canvas.create_image(self.canvas.winfo_width()//2, self.canvas.winfo_height()//2, anchor=tk.CENTER, image=self.tk_image, tags='image')
         self.canvas.lower('image')
 
 if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")
     camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
     camera_frame = PIL.Image.fromarray(camera_frame)
-    app = MemGui(camera_frame=camera_frame, cell_h_q=0.8, cell_m_q=0.6)
+    app = MemGui(camera_frame=camera_frame)
     app.after(1, app.after_update)
     app.mainloop()
