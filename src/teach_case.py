@@ -277,17 +277,16 @@ class _QualitiesEditor:
 class MemGui(tk.Tk):
     def __init__(self, camera_frame: PIL.Image, cell_m_q, cell_h_q):
         super().__init__()
-        # self.mqtt = FluentlyMQTTClient(client_id="fluentlyClient")
         self.title("MeM use case")
-        # self.geometry("800x600+400+400") # 2nd and 3rd number will move the window spawn point (with multiple screen will start from most left screen)
-        # size = (int(camera_frame.width+20), int(camera_frame.height*1.4))
-        # self.geometry(f"{size[0]}x{size[1]}")
-        # self.resizable(False, False)
         self.states = []
         
         self.camera_frame = camera_frame
         self.active_frame = 0
         
+        # self.vision = VisionModule(camera_Ext=self.camera_Ext)
+        # self.robot = RobotModule(ip="192.168.1.100", home_position=[0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
+        # self.pack_state = PackState()
+
         self.cell_m_q, self.cell_h_q = cell_m_q, cell_h_q
         self.proposed_models = []
         self.proposed_packs = None
@@ -306,9 +305,6 @@ class MemGui(tk.Tk):
         self.confirm = False
         self.gripper = ""
         self.removal_strategy = ""
-        
-        # self.picture_container = tk.Frame(self, width=size[0]//2, height=size[1])
-        # self.picture_container.pack(side='right', padx=(5, 10))
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)  # Buttons frame = 1
@@ -316,20 +312,14 @@ class MemGui(tk.Tk):
         
         self.btns_container = tk.Frame(self,  bg='yellow')
         self.btns_container.grid(row=0, column=0, sticky='nsew')
-        # self.btns_container.grid_rowconfigure(0, weight=1)
         self.btns_container.grid_columnconfigure(0, weight=1)
-        # self.btns_container.pack(side='left', padx=(10, 5),  fill='both', expand=True)
         
-        for btn in []
-        debug_btn = tk.Button(self.btns_container, text="debug", command=lambda: self.debug())
-        debug_btn.grid(row=0, column=0, sticky='nsew')        
-        debug1_btn = tk.Button(self.btns_container, text="debug", command=lambda: self.debug())
-        debug1_btn.grid(row=1, column=0, sticky='nsew')        
-        debug2_btn = tk.Button(self.btns_container, text="debug", command=lambda: self.debug())
-        debug2_btn.grid(row=2, column=0, sticky='nsew')        
+        self.a =0
+        for i, fnc in enumerate([self.debug, self.debug1, self.debug2]):
+            btn = tk.Button(self.btns_container, text=fnc.__name__, command=fnc)
+            btn.grid(row=i, column=0, sticky='nsew')
         
         self.frames = []
-        self.expand_btn = tk.Button(self, text='▶', command=lambda: self.expand_collapse())
         self.frame = HomeScreen(self, self)
         self.frame.grid(row=0, column=1, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
@@ -345,16 +335,19 @@ class MemGui(tk.Tk):
         self.btns_container.config(width=desired_width)
         # self.frame.config(width=3*desired_width)
 
+    # TODO: add all the functs
+    # for this: generate all the btns to do everything, they should not have variables passed,
+    # because they have to be passed when we create the btns and we dont have them ready yet, 
+    # but if we give the empty object we can fill it properly with precedent functions
     def debug(self):
-        pass
+        print("debug1")
 
-    def expand_collapse(self):
-        if self.expand_btn['text'] == "▶": # the menu is already open close it
-            self.geometry(f"{int(self.winfo_width()+200)}x{self.winfo_height()}")
-            self.expand_btn.config(text="◀")
-        else:
-            self.geometry(f"{int(self.winfo_width()-200)}x{self.winfo_height()}")
-            self.expand_btn.config(text="▶")
+    def debug1(self):
+        self.a =1
+        print("txt")
+    
+    def debug2(self):
+        print(self.a+2)
 
     def update_proposed_models(self, proposed_models):
         self.proposed_models = proposed_models
@@ -461,13 +454,11 @@ class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg='orange')
         self.controller = controller
-        canvas_width, canvas_height = self.controller.camera_frame.width, self.controller.camera_frame.height
         self.canvas = tk.Canvas(self, bg='red')
         self.canvas.pack(fill='both', expand=True)
         self.draw_image(self.controller.camera_frame)
     
     def draw_image(self, img):
-        print(self.canvas.winfo_width(), self.canvas.winfo_height())
         resized_img = img.resize((self.canvas.winfo_width(), self.canvas.winfo_height()))
         self.tk_image = PIL.ImageTk.PhotoImage(resized_img)
         self.canvas.delete('image')
