@@ -68,7 +68,8 @@ class VisionModule():
         return z
 
     def locate_pack(self, frame: ndarray):
-        result = self.packs_yolo_model(frame) 
+        # result = self.packs_yolo_model(frame)
+        result = self.packs_yolo_model.predict(frame, verbose=False)
         if len(result[0].boxes) == 0:
             return None
         label = self.packs_yolo_model.names[int(result[0].boxes[0].cls)]
@@ -89,7 +90,7 @@ class VisionModule():
             list[tuple[str, float]]: list of model with associated probability
         """
         #cells_probs = [{'model': "AA", 'prob': 0.51}, {'model': "C", 'prob': 0.49},  {'model': "XXX", 'prob': 0.23}, {'model': "XYZ", 'prob': 0.12}]
-        result = self.cells_yolo_model(frame) 
+        result = self.cells_yolo_model.predict(frame, verbose=False) 
         if len(result[0].boxes) == 0:
             return None
         output = {'bbs': [], 'zs': []}

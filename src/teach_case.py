@@ -280,16 +280,16 @@ class MemGui(tk.Tk):
         self.title("MeM use case")
         
         """ ========== WORKSPACE SETUP ========== """
-        self.cover_place_pose = sm.SE3([-0.401, -0.157, 0.050]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi)
         self.cell_m_q, self.cell_h_q = 0.6, 0.8
-        self.discard_T = sm.SE3([0.168, -0.487, 0.306]) * sm.SE3.Rx(np.pi)
-        self.keep_T =    sm.SE3([0.110, -0.348, 0.302]) * sm.SE3.Rx(np.pi)
+        self.cover_place_pose = sm.SE3([-0.45, -0.12, 0.050]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
+        self.discard_T = sm.SE3([0.155, -0.495, 0.306]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
+        self.keep_T = sm.SE3([0.083, -0.308, 0.306]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
         R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
             [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
             [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
         t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
         self.camera_Ext = sm.SE3.Rt(R, t)
-        home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, 4.8751301765441895]
+        home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
 
         """ ========== MODULE SETUP ========== """
         self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
@@ -297,7 +297,7 @@ class MemGui(tk.Tk):
         self.pack_state = PackState()
         self.robot_module.move_to_home()
         self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info')
-        self.logger.toggle_offon()
+        # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
         self.proposed_models = []
@@ -337,53 +337,86 @@ class MemGui(tk.Tk):
         self.frame.grid_rowconfigure(0, weight=1)
 
     def locate_pack(self):
-        self.logger.info("locate_pack")
+        self.logger.info("START: locate_pack")
         result = self.vision_module.locate_pack(self.camera_frame)
-        self.pack_state.model = result['shape']
-        self.pack_state.size = result['size']
-        self.pack_state.cover_on = result['cover_on']
-        self.pack_state.location = result['location']
-        self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
-        self.logger.info(self.pack_state)
+        if result is not None:
+            self.pack_state.model = result['shape']
+            self.pack_state.size = result['size']
+            self.pack_state.cover_on = result['cover_on']
+            self.pack_state.location = result['location']
+            self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
+            self.logger.debug(self.pack_state)
+            self.logger.info("pack located")
+        else:
+            self.pack_state.cover_on = False
+            self.logger.info("The cover seems to be already off")
+        self.logger.info("END: locate_pack")
         # TODO
         # - ask for confirmation
         # - and draw on canvas
     
     def remove_pack_cover(self):
-        self.logger.info("remove_pack_cover")
+        self.logger.info("START: remove_pack_cover")
         if self.pack_state.pose is not None:
             self.logger.info("requisites ok")
             self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
             self.robot_module.move_to_home()
+            if self.vision_module.locate_pack(self.camera_frame) is None:
+                self.logger.info("cover removed!")
+                self.pack_state.cover_on = False
+            else:
+                self.logger.info("cover not removed correctly")
+        else:
+            self.logger.info("requisites not met")
+        self.logger.info("END: remove_pack_cover")
 
     def identify_cells(self):
-        # TODO: check prerequisites
-        self.logger.info("identify_cells")
-        result = self.vision_module.identify_cells(self.camera_frame)
-        print(result)
-        
-        # TODO: fill pack object with info
-        # and draw on canvas
+        self.logger.info("START: identify_cells")
+        if not self.pack_state.cover_on:
+            self.logger.info("requisites ok")
+            result = self.vision_module.identify_cells(self.camera_frame)
+            for bb, z in zip(result['bbs'], result['zs']):
+                x, y, w = bb
+                pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose())
+                self.pack_state.add_cell(result['model'], width=w, z=z, pose=pose, frame_position=(x, y))
+            self.logger.debug(self.pack_state)
+            self.logger.info(f"END: identified {len(self.pack_state.cells):02d} cells")
+        else:
+            self.logger.info("requisites not met")
+        self.logger.info("END: identify_cells")
+        # TODO: draw on canvas
+        # and ask confirmation
 
     def assess_cells_qualities(self):
-        # TODO: check prerequisites
-        self.logger.info("assess_cells_qualities")
-        # bbs = []
-        # for cell in self.pack_state.cells:
-        #     bbs.append(cell.frame_position)
-        # result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
-        # print(result)
-        # TODO: fill pack object with info
-        # and draw on canvas
+        self.logger.info("START: assess_cells_qualities")
+        if len(self.pack_state.cells) != 0:
+            self.logger.info("requisites ok")
+            bbs = []
+            for cell in self.pack_state.cells:
+                bbs.append(cell.frame_position)
+            result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
+            for qual, cell in zip(result, self.pack_state.cells):
+                cell.quality = qual
+            # print(self.pack_state)
+            self.logger.info(f"{sum(q > self.cell_h_q for q in result):02d} cells will be kept")
+        else:
+            self.logger.info("requisites not met")
+        # TODO: draw on canvas
+        # and ask confirmation
+        self.logger.info("END: assess_cells_qualities")
     
     def pickup_cells(self):
         # TODO: check prerequisites
-        print("pickup_cells")
-        # for cell in self.pack_state.cells:
-        #     if cell.quality < self.cell_h_q:
-        #         self.robot_module.pick_and_place(cell.pose, self.discard_T)
-        #     else:
-                # self.robot_module.pick_and_place(cell.pose, self.keep_T)
+        self.logger.info("START: pickup_cells")
+        for i, cell in enumerate(self.pack_state.cells):
+            if cell.quality < self.cell_h_q:
+                self.logger.info(f"END: cell {i} discarded")
+                self.robot_module.pick_and_place(cell.pose, self.discard_T)
+            else:
+                self.logger.info(f"END: cell {i} kept")
+                self.robot_module.pick_and_place(cell.pose, self.keep_T)
+        self.robot_module.move_to_home()
+        self.logger.info("END: pickup_cells")
 
     def update_proposed_models(self, proposed_models):
         # TODO: recode

@@ -3,17 +3,17 @@ import numpy as np
 from gubokit import utilities
 
 class Cell():
-    def __init__(self):
-        self.model = "unknown"
-        self.width = 0.0
-        self.z = 0.0
-        self.quality = -1.0
-        self.pose = sm.SE3()
-        self.frame_position = [-1, -1]
-        self.sorted = False
+    def __init__(self, model=None, width=None, z=None, quality=None, pose=None, frame_position=None, sorted=None):
+        self.model = "unknown" if model is None else model
+        self.width = 0.0 if width is None else width
+        self.z = 0.0 if z is None else z
+        self.quality = -1.0 if quality is None else quality
+        self.pose = sm.SE3() if pose is None else pose
+        self.frame_position = (-1, -1) if frame_position is None else frame_position
+        self.sorted = False if sorted is None else sorted
 
     def __repr__(self):
-        return f"mod: {self.model:^10} r: {self.radius:05.2f} h: {self.height:05.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
+        return f"mod: {self.model:^10} r: {self.width:06.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]; xyz:{self.pose.t}  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
@@ -35,6 +35,21 @@ class PackState():
             for _ in range(cols):
                 row.append(Cell())
             self.cells.append(row)
+
+    def add_cell(self, model: str=None, width: float=None, z: float=None, quality: float=None, pose: sm.SE3=None, frame_position: tuple[int, int]=None, sorted: bool=None):
+        """_summary_
+
+        Args:
+            i (_type_): _description_
+            j (_type_): _description_
+            model (_type_, optional): _description_. Defaults to None.
+            size (_type_, optional): _description_. Defaults to None.
+            quality (_type_, optional): _description_. Defaults to None.
+            pose (_type_, optional): _description_. Defaults to None.
+            frame_position (_type_, optional): _description_. Defaults to None.
+            sorted (_type_, optional): _description_. Defaults to None.
+        """
+        self.cells.append(Cell(model=model, width=width, z=z, quality=quality, pose=pose, frame_position=frame_position, sorted=sorted))
 
     def update_cell(self, i, j, model=None, width=None, z=None, quality=None, pose=None, frame_position=None, sorted=None):
         """_summary_
@@ -74,28 +89,16 @@ class PackState():
             self.cells[hole[0], hole[1]] = None
 
     def __repr__(self):
-        printable = f"\nBattery pack state\n"
-        printable += "\t"*4 + f"model: {self.model}\n"
-        printable += "\t"*4 + f"pos: {self.location}\n"
-        printable += "\t"*4 + f"pose: {utilities.T_to_rotvec(self.pose)}\n"
-        printable += "\t"*4 + f"cover_on: {self.cover_on}\n"
+        printable = "\n" + "="*50 + f" Battery pack state " + "="*50 + "\n"
+        printable += f"model: {self.model}\n"
+        printable += f"pos: {self.location}\n"
+        if self.pose is not None:
+            printable += f"pose: {utilities.T_to_rotvec(self.pose)}\n"
+        printable += f"cover_on: {self.cover_on}\n"
         if len(self.cells) != 0:
-            lenght_cell_str = len(str(self.cells[0][0]))
-            h_line = "■■"
-            for j, _ in enumerate(self.cells[0]):
-                header = f"{str(j):^{lenght_cell_str}}" + " | "
-                tmp = "-" * len(header)
-                h_line += "|" + tmp[1:]
-                printable += header
-            printable += "\n"
-            printable += (h_line + "|")
-            printable += "\n"
-
-            for i, row in enumerate(self.cells):           
-                printable += str(i) + " | "
-                for j, cell in enumerate(row):
-                    printable += (str(cell) + " | ")
-                printable += "\n"
+            printable += " ========== CELLS: ==========\n"
+            for i, cell in enumerate(self.cells):
+                printable +=  f"{i:02d} " + str(cell) + "\n"
         return printable
 
 if __name__ == "__main__":
