@@ -6,11 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import PIL
-from gubokit import vision
 import time
 import spatialmath as sm
-from gubokit import vision
 from ultralytics import YOLO
+from gubokit import vision
 from gubokit import utilities
 from robot_module import RobotModule
 import os
@@ -26,7 +25,7 @@ class VisionModule():
                                                 'depth': [640, 480],
                                                 # 'infrared': [640, 480]
                                                 })
-        except RuntimeError:
+        except:
             self.camera = None
             print("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")

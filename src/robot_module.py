@@ -10,6 +10,7 @@ class RobotModule:
     def __init__(self, ip: str, home_position: ndarray, tcp_length_dict, gripper_id=0, active_gripper="small"):
         try:
             print("Starting robot module")
+            raise RuntimeError
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.active_gripper = active_gripper

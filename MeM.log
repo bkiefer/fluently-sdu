@@ -1,6 +1,6 @@
-2025-06-25 11:40:52,885 - INFO - NEW RUN
-2025-06-25 11:40:55,303 - INFO - START: locate_pack
-2025-06-25 11:40:57,365 - DEBUG - 
+2025-06-25 17:21:29,325 - INFO - NEW RUN
+2025-06-25 17:21:31,169 - INFO - START: locate_pack
+2025-06-25 17:21:32,826 - DEBUG - 
 ================================================== Battery pack state ==================================================
 model: Square
 pos: (691, 374)
@@ -8,16 +8,10 @@ size: (401, 401)
 pose: [        inf         inf         inf           0           0           0]
 cover_on: True
 
-2025-06-25 11:40:57,367 - INFO - pack located
-2025-06-25 11:40:57,379 - INFO - END: locate_pack
-2025-06-25 11:41:14,642 - INFO - START: locate_pack
-2025-06-25 11:41:15,702 - DEBUG - 
-================================================== Battery pack state ==================================================
-model: Square
-pos: (691, 374)
-size: (401, 401)
-pose: [        inf         inf         inf           0           0           0]
-cover_on: True
-
-2025-06-25 11:41:15,703 - INFO - pack located
-2025-06-25 11:41:15,708 - INFO - END: locate_pack
+2025-06-25 17:21:32,827 - INFO - pack located
+2025-06-25 17:21:32,834 - INFO - END: locate_pack
+2025-06-25 17:21:33,959 - INFO - pack_confirmed now True
+2025-06-25 17:21:45,045 - INFO - START: remove_pack_cover
+2025-06-25 17:21:45,045 - INFO - requisites ok
+2025-06-25 17:21:47,058 - INFO - cover not removed correctly
+2025-06-25 17:21:47,058 - INFO - END: remove_pack_cover
