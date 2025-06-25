@@ -89,9 +89,8 @@ class FluentlyMQTTClient:
         self.intent.clear()
 
 class _BoundingBoxEditor:
-    def __init__(self, canvas, bbs_position, frame):
+    def __init__(self, canvas, frame):
         self.canvas = canvas
-        self.bbs_position = bbs_position
         self.selected_box = None
         self.dragging = None  # "move" or "resize"
         self.start_x = 0
@@ -100,55 +99,58 @@ class _BoundingBoxEditor:
         self.frame = frame
 
         self.box_items = []  # Store drawn objects
-        self.draw_boxes()
+        self.bbs_position = []
+
         self.canvas.bind("<ButtonPress-1>", self.on_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
-
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
-    def spawn_box(self):
-        x_min, y_min, x_max, y_max = 500, 500, 1000, 1000 
-        self.bbs_position.append([x_min, y_min, x_max, y_max])
+    def set_label(self, label):
+        self.label = label
 
+    def add_bb(self, bb):
+        self.bbs_position.append(bb)
+
+    def add_bbs(self, bbs):
+        for bb in bbs:
+            self.add_bb(bb)
+    
+    def clear_bbs(self):
+        self.bbs_position = []
+        self.canvas.delete('bbs')
+        self.box_items.clear()
+
+    def _draw_box(self, x_min=500, y_min=500, x_max=1000, y_max=1000, scale=1, padx=0, pady=0):
+        x_min = x_min * scale + padx
+        x_max = x_max * scale + padx
+        y_min = y_min * scale + pady
+        y_max = y_max * scale + pady
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
-
+        print(scale)
         box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
         move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
         resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
-        text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
-        text_label = self.canvas.create_text(x_max-7, y_max, text=f"{len(self.box_items):02d}", font=("Arial", 5), tags='bbs')
+        if self.label is None:
+            text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
+            text_label = self.canvas.create_text(x_max-7, y_max, text=f"{len(self.box_items):02d}", font=("Arial", 5), tags='bbs')
+        else:
+            text_bg = self.canvas.create_rectangle(x_max-100, y_max-12, x_max, y_max+12, fill="white", outline="white", tags='bbs')
+            text_label = self.canvas.create_text(x_max-45, y_max, text=self.label, font=("Arial", 10), tags='bbs')
+
+        # if delete_mode:
         delete_btn = self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs')
         delete_label = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
-
         self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
-        if hasattr(self.frame, "number_label"):
-            self.frame.number_label.configure(text=f"\nNumber of cells: {len(self.bbs_position)}\n")
+        
+        self.canvas.lift("bbs")
 
-    def draw_boxes(self):
+    def draw_boxes(self, scale=1, padx=0, pady=0):
         """Draws bounding boxes with resize/move handles"""
         self.canvas.delete('bbs')
         self.box_items.clear()
-        for i, bb in enumerate(self.bbs_position):
-            x_min, y_min, x_max, y_max = bb
-
-            center_x = (x_min + x_max) // 2
-            center_y = (y_min + y_max) // 2
-
-            box = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
-            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
-            resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
-            text_bg = self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
-            text_label = self.canvas.create_text(x_max-7, y_max, text=f"{i:02d}", font=("Arial", 5), tags='bbs')
-
-            # if delete_mode:
-            delete_btn = self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs')
-            delete_label = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
-            self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
-            
-            self.canvas.lift("bbs")
-            # else:
-            #     self.box_items.append([box, move_handle, resize_handle, text_bg, text_label, None, None])
+        for bb in self.bbs_position:
+            self._draw_box(*bb, scale=scale, padx=padx, pady=pady)
         
         if hasattr(self.frame, "number_label"):
             self.frame.number_label.configure(text=f"\nNumber of cells: {len(self.bbs_position)}\n")
@@ -300,23 +302,27 @@ class MemGui(tk.Tk):
         # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
-        self.proposed_models = []
-        self.proposed_packs = None
-        self.chosen_pack = ""
-        self.chosen_model = ""
-        self.proposed_locations = []
-        self.chosen_locations = []
-        self.chosen_pack_location = None
-        self.proposed_qualities = []
-        self.chosen_qualities = []
-        self.outcomes = []
-        self.class_reject = False # !!!
-        self.done = False
-        self.first_name = None
-        self.last_name = None
-        self.confirm = False
-        self.gripper = ""
-        self.removal_strategy = ""
+        # self.chosen_pack = ""
+        # self.chosen_model = ""
+        # self.proposed_models = []
+        # self.proposed_packs = None
+        # self.proposed_locations = []
+        # self.chosen_locations = []
+        # self.chosen_pack_location = None
+        # self.proposed_qualities = []
+        # self.chosen_qualities = []
+        # self.outcomes = []
+        # self.class_reject = False # !!!
+        # self.done = False
+        # self.first_name = None
+        # self.last_name = None
+        # self.confirm = False
+        # self.gripper = ""
+        # self.removal_strategy = ""
+        self.pack_confirmed = False
+        self.cells_confirmed = False
+        self.qual_confirmed = False
+        
 
         """ ========== LAYOUT GUI ========== """
         self.grid_rowconfigure(0, weight=1)
@@ -331,10 +337,13 @@ class MemGui(tk.Tk):
             btn = tk.Button(self.btns_container, text=fnc.__name__, command=fnc)
             btn.grid(row=i, column=0, sticky='nsew')
         
-        self.frames = []
         self.frame = HomeScreen(self, self)
         self.frame.grid(row=0, column=1, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
+       
+        self.pack_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame)
+        self.cells_bb_drawer = None
+        self.quals_bb_writer = None
 
     def locate_pack(self):
         self.logger.info("START: locate_pack")
@@ -343,17 +352,24 @@ class MemGui(tk.Tk):
             self.pack_state.model = result['shape']
             self.pack_state.size = result['size']
             self.pack_state.cover_on = result['cover_on']
-            self.pack_state.location = result['location']
+            self.pack_state.frame_location = result['location']
             self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
             self.logger.debug(self.pack_state)
             self.logger.info("pack located")
+            print(self.pack_state)
+            x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0], self.pack_state.frame_location[1] - self.pack_state.size[1]
+            x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0], self.pack_state.frame_location[1] + self.pack_state.size[1]
+            self.pack_bb_drawer.clear_bbs()
+            self.pack_bb_drawer.set_label(self.pack_state.model)
+            self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
+            self.pack_bb_drawer.draw_boxes()
         else:
             self.pack_state.cover_on = False
             self.logger.info("The cover seems to be already off")
-        self.logger.info("END: locate_pack")
         # TODO
-        # - ask for confirmation
         # - and draw on canvas
+        # - ask for confirmation
+        self.logger.info("END: locate_pack")
     
     def remove_pack_cover(self):
         self.logger.info("START: remove_pack_cover")
@@ -467,7 +483,9 @@ class MemGui(tk.Tk):
 
     def after_update(self):
         self.camera_frame = self.vision_module.get_current_frame(format='pil')
-        self.frame.draw_image(self.camera_frame)
+        scale, padx, pady = self.frame.draw_image(self.camera_frame)
+        if self.pack_bb_drawer is not None:
+            self.pack_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
         self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):
@@ -479,15 +497,19 @@ class HomeScreen(tk.Frame):
     
     def draw_image(self, img):
         scale = min(self.canvas.winfo_width() / img.size[0], self.canvas.winfo_height() / img.size[1])
+        padx, pady = 0, 0
         if scale > .01:
             new_size = (int(scale * img.size[0]), int(scale * img.size[1]))
             resized_img = img.resize(new_size)
+            padx = (self.canvas.winfo_width() - new_size[0]) // 2
+            pady = (self.canvas.winfo_height() - new_size[1]) // 2
         else:
             resized_img = img
         self.tk_image = PIL.ImageTk.PhotoImage(resized_img)
         self.canvas.delete('image')
         self.canvas.create_image(self.canvas.winfo_width()//2, self.canvas.winfo_height()//2, anchor=tk.CENTER, image=self.tk_image, tags='image')
         self.canvas.lower('image')
+        return scale, padx, pady
 
 if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")

@@ -1,60 +1,23 @@
-2025-06-24 16:38:43,658 - INFO - NEW RUN
-2025-06-24 16:38:47,864 - INFO - START: locate_pack
-2025-06-24 16:38:48,994 - DEBUG - 
+2025-06-25 11:40:52,885 - INFO - NEW RUN
+2025-06-25 11:40:55,303 - INFO - START: locate_pack
+2025-06-25 11:40:57,365 - DEBUG - 
 ================================================== Battery pack state ==================================================
 model: Square
-pos: (988, 526)
-pose: [   -0.34384    -0.39743    0.088595    -0.60949      3.0604   0.0046358]
+pos: (691, 374)
+size: (401, 401)
+pose: [        inf         inf         inf           0           0           0]
 cover_on: True
 
-2025-06-24 16:38:48,994 - INFO - pack located
-2025-06-24 16:38:48,994 - INFO - END: locate_pack
-2025-06-24 16:38:51,501 - INFO - START: remove_pack_cover
-2025-06-24 16:38:51,501 - INFO - requisites ok
-2025-06-24 16:39:05,727 - INFO - cover not removed correctly
-2025-06-24 16:39:05,727 - INFO - END: remove_pack_cover
-2025-06-24 16:39:08,364 - INFO - START: identify_cells
-2025-06-24 16:39:08,364 - INFO - requisites not met
-2025-06-24 16:39:08,364 - INFO - END: identify_cells
-2025-06-24 16:39:14,479 - INFO - START: assess_cells_qualities
-2025-06-24 16:39:14,480 - INFO - requisites not met
-2025-06-24 16:39:14,480 - INFO - END: assess_cells_qualities
-2025-06-24 16:39:25,734 - INFO - START: locate_pack
-2025-06-24 16:39:25,769 - INFO - The cover seems to be already off
-2025-06-24 16:39:25,769 - INFO - END: locate_pack
-2025-06-24 16:39:28,288 - INFO - START: identify_cells
-2025-06-24 16:39:28,288 - INFO - requisites ok
-2025-06-24 16:39:29,052 - DEBUG - 
+2025-06-25 11:40:57,367 - INFO - pack located
+2025-06-25 11:40:57,379 - INFO - END: locate_pack
+2025-06-25 11:41:14,642 - INFO - START: locate_pack
+2025-06-25 11:41:15,702 - DEBUG - 
 ================================================== Battery pack state ==================================================
 model: Square
-pos: (988, 526)
-pose: [   -0.34384    -0.39743    0.088595    -0.60949      3.0604   0.0046358]
-cover_on: False
- ========== CELLS: ==========
-00 mod:   18650    r: 084.00 f_pos: [1139, 455]; xyz:[   -0.37129    -0.37186    0.067938]  ok: F q: -1.00
-01 mod:   18650    r: 083.00 f_pos: [1137, 675]; xyz:[   -0.32567    -0.35366    0.068756]  ok: F q: -1.00
-02 mod:   18650    r: 086.00 f_pos: [921, 455]; xyz:[   -0.35276    -0.41681    0.070506]  ok: F q: -1.00
-03 mod:   18650    r: 082.00 f_pos: [1027, 568]; xyz:[   -0.34433    -0.40245     0.37767]  ok: F q: -1.00
-04 mod:   18650    r: 082.00 f_pos: [1027, 672]; xyz:[   -0.31698    -0.37664    0.069022]  ok: F q: -1.00
-05 mod:   18650    r: 083.00 f_pos: [1029, 455]; xyz:[   -0.34432    -0.40247     0.37769]  ok: F q: -1.00
-06 mod:   18650    r: 083.00 f_pos: [920, 676]; xyz:[   -0.30733    -0.39844    0.071325]  ok: F q: -1.00
-07 mod:   18650    r: 082.00 f_pos: [1139, 566]; xyz:[    -0.3443    -0.40247     0.37768]  ok: F q: -1.00
-08 mod:   18650    r: 083.00 f_pos: [920, 565]; xyz:[   -0.33014    -0.40778    0.070951]  ok: F q: -1.00
-09 mod:   18650    r: 093.00 f_pos: [775, 930]; xyz:[   -0.21136    -0.40813   -0.022794]  ok: F q: -1.00
-10 mod:   18650    r: 062.00 f_pos: [753, 589]; xyz:[   -0.34432    -0.40247     0.37769]  ok: F q: -1.00
+pos: (691, 374)
+size: (401, 401)
+pose: [        inf         inf         inf           0           0           0]
+cover_on: True
 
-2025-06-24 16:39:29,053 - INFO - END: identified 11 cells
-2025-06-24 16:39:29,053 - INFO - END: identify_cells
-2025-06-24 16:39:31,984 - INFO - START: pickup_cells
-2025-06-24 16:39:31,984 - INFO - END: cell 0 discarded
-2025-06-24 16:39:47,651 - INFO - END: cell 1 discarded
-2025-06-24 16:40:07,095 - INFO - END: cell 2 discarded
-2025-06-24 16:40:26,763 - INFO - END: cell 3 discarded
-2025-06-24 16:40:48,671 - INFO - END: cell 4 discarded
-2025-06-24 16:41:07,836 - INFO - END: cell 5 discarded
-2025-06-24 16:41:29,745 - INFO - END: cell 6 discarded
-2025-06-24 16:41:48,684 - INFO - END: cell 7 discarded
-2025-06-24 16:42:10,592 - INFO - END: cell 8 discarded
-2025-06-24 16:42:29,896 - INFO - END: cell 9 discarded
-2025-06-24 16:42:48,202 - INFO - END: cell 10 discarded
-2025-06-24 16:43:11,910 - INFO - END: pickup_cells
+2025-06-25 11:41:15,703 - INFO - pack located
+2025-06-25 11:41:15,708 - INFO - END: locate_pack

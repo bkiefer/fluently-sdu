@@ -18,20 +18,20 @@ import os
 class VisionModule():
     def __init__(self, camera_Ext: sm.SE3):
         # camera initialization
-        # try:
-        print("Starting vision module")
-        self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
+        try:
+            print("Starting vision module")
+            self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                 enabled_strams={
                                                 'color': [1920, 1080],
                                                 'depth': [640, 480],
                                                 # 'infrared': [640, 480]
                                                 })
-            # except RuntimeError:
-            # self.camera = None
-            # print("The vision module could not be started, the module will run for debug purpose")
+        except RuntimeError:
+            self.camera = None
+            print("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
-        self.set_background() #!
+        self.set_background()
         
     def set_background(self):
         new_bg = self.get_current_frame()
@@ -45,15 +45,11 @@ class VisionModule():
             np.ndarray: frame
         """
         time.sleep(wait_delay)
-        # try :
-        frame = self.camera.get_color_frame()
-        # except AttributeError:
+        try :
+            frame = self.camera.get_color_frame()
+        except AttributeError:
             # print("Cannot access camera. For debuggin purpose it will access a file in store")
-            # frame = cv2.imread("data/cells_detection/frame6.png")
-            #format = "pil"
-            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-            #frame = PIL.Image.fromarray(frame)
-            #frame = None
+            frame = cv2.imread("data/camera_frame.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -193,11 +189,15 @@ class VisionModule():
         Returns:
             sm.SE3(sm.SE3): 4x4 pose in world frame
         """
-        Z = self.get_z_at_pos(*frame_pos)
-        P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=self.camera, Z=Z)
-        base_T_cam = base_T_TCP * self.camera.extrinsic
-        tmp = base_T_cam * sm.SE3(P)
-        T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+        try:
+            Z = self.get_z_at_pos(*frame_pos)
+            P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=self.camera, Z=Z)
+            base_T_cam = base_T_TCP * self.camera.extrinsic
+            tmp = base_T_cam * sm.SE3(P)
+            T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
+        except AttributeError:
+            print("Frame pos to pose debug")
+            T = sm.SE3([float('inf'), float('inf'), float('inf')])
         return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:

@@ -21,7 +21,7 @@ class PackState():
         self.cell_model = "unknown"
         self.cover_on = True
         self.size = None
-        self.location = None
+        self.frame_location = None
         self.pose = None
         self.cells = []
         # self.update_dim(rows=rows, cols=cols)
@@ -91,7 +91,8 @@ class PackState():
     def __repr__(self):
         printable = "\n" + "="*50 + f" Battery pack state " + "="*50 + "\n"
         printable += f"model: {self.model}\n"
-        printable += f"pos: {self.location}\n"
+        printable += f"pos: {self.frame_location}\n"
+        printable += f"size: {self.size}\n"
         if self.pose is not None:
             printable += f"pose: {utilities.T_to_rotvec(self.pose)}\n"
         printable += f"cover_on: {self.cover_on}\n"

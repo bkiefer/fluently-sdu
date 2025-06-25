@@ -9,13 +9,13 @@ from gubokit import utilities
 class RobotModule:
     def __init__(self, ip: str, home_position: ndarray, tcp_length_dict, gripper_id=0, active_gripper="small"):
         try:
+            print("Starting robot module")
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.active_gripper = active_gripper
             self.tcp_length_dict = tcp_length_dict
             self.tcp_length = self.tcp_length_dict[self.active_gripper]
             self.robot.add_gripper(gripper=self.gripper)
-            print("Starting robot module")
         except RuntimeError as e:
             self.robot = None
             print("The robot could not be started, the module will run for debug purpose")
@@ -38,7 +38,7 @@ class RobotModule:
             self.robot.pick_and_place_contact(pick_pose=np.hstack((actual_pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_pick_T.R)))), 
                                     place_pose=np.hstack((actual_place_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_place_T.R)))))
         except AttributeError:
-            print("The robot cannot be accessed running for debug purpose")
+            print("Pick and place debug")
             time.sleep(1)
     
     def move_to_cart_pos(self, T, speed=0.1):
@@ -50,7 +50,11 @@ class RobotModule:
             time.sleep(1)
 
     def move_to_home(self):
-        self.robot.moveJ(self.robot.home_pos)
+        try:
+            self.robot.moveJ(self.robot.home_pos)
+        except AttributeError:
+            print("Move to cart pos debug")
+            time.sleep(1)
 
     def grab(self):
         self.robot.close_gripper()
@@ -59,8 +63,12 @@ class RobotModule:
         self.robot.open_gripper()
 
     def get_TCP_pose(self):
-        pose = np.array(self.robot.getActualTCPPose())
-        return utilities.rotvec_to_T(pose)
+        try:
+            pose = np.array(self.robot.getActualTCPPose())
+            return utilities.rotvec_to_T(pose)
+        except AttributeError:
+            print("Move to cart pos debug")
+            time.sleep(1)
 
 if __name__ == "__main__":
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.041, 'big': 0.08}, active_gripper='small', gripper_id=0)
