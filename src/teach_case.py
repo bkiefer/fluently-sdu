@@ -172,7 +172,6 @@ class _BoundingBoxEditor:
         if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
             item = self.canvas.find_withtag(tk.CURRENT)[0]
             for i, [move_handle, resize_handle, delete_handle] in enumerate(self.boxes_items):
-                print(item, move_handle)
                 if item == move_handle:
                     self.selected_box = i
                     self.dragging = "move"
