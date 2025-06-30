@@ -89,7 +89,7 @@ class FluentlyMQTTClient:
         self.intent.clear()
 
 class _BoundingBoxEditor:
-    def __init__(self, canvas, frame):
+    def __init__(self, canvas, frame, tag=''):
         self.canvas = canvas
         self.selected_box = None
         self.dragging = None  # "move" or "resize"
@@ -98,6 +98,7 @@ class _BoundingBoxEditor:
         # self.delete_mode = False
         self.frame = frame
         self.label = None
+        self.tag = tag
 
         self.boxes_items = []  # Store drawn objects
         self.bbs_position = []
@@ -120,7 +121,7 @@ class _BoundingBoxEditor:
     
     def clear_bbs(self):
         self.bbs_position = []
-        self.canvas.delete('bbs')
+        self.canvas.delete('bbs' + self.tag)
         self.boxes_items.clear()
 
     def lock(self):
@@ -129,41 +130,33 @@ class _BoundingBoxEditor:
         self.canvas.unbind("<B1-Motion>")
         self.canvas.unbind("<ButtonRelease-1>")
 
-    def _draw_box(self, x_min=500, y_min=500, x_max=1000, y_max=1000, scale=1, padx=0, pady=0):
-        x_min = x_min * scale + padx
-        x_max = x_max * scale + padx
-        y_min = y_min * scale + pady
-        y_max = y_max * scale + pady
+    def _draw_box(self, label, x_min=500, y_min=500, x_max=1000, y_max=1000, scale=1, padx=0, pady=0):
+        x_min = ((x_min * scale) + padx)
+        x_max = ((x_max * scale) + padx)
+        y_min = ((y_min * scale) + pady)
+        y_max = ((y_max * scale) + pady)
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
-        box_items = []
-        self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
-        if self.label is None:
-            self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs') # label bg
-            self.canvas.create_text(x_max-7, y_max, text=f"{len(self.boxes_items):02d}", font=("Arial", 5), tags='bbs') # label txt
-        else:
-            self.canvas.create_rectangle(x_max-100, y_max-12, x_max, y_max+12, fill="white", outline="white", tags='bbs') # label bg
-            self.canvas.create_text(x_max-45, y_max, text=self.label, font=("Arial", 10), tags='bbs') # label txt
-        # if delete_mode:
-        if self.editable:
-            self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs') # delete_bg
-            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
-            resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs')
-            delete_handle = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs')
-            box_items.append(move_handle)
-            box_items.append(resize_handle)
-            box_items.append(delete_handle)
-        # self.boxes_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])
-        self.boxes_items.append(box_items)
+        self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs' + self.tag)
         
-        self.canvas.lift("bbs")
+        self.canvas.create_rectangle(x_max-len(label)*10, y_max-9, x_max, y_max+9, fill="white", outline="white", tags='bbs' + self.tag) # label bg
+        self.canvas.create_text(x_max-len(label)*5, y_max, text=label, font=("Arial", 10), tags='bbs' + self.tag) # label txt
+        if self.editable:
+            self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs' + self.tag) # delete_bg
+            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs' + self.tag)
+            resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs' + self.tag)
+            delete_handle = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs' + self.tag)
+            self.boxes_items.append([move_handle, resize_handle, delete_handle])
+        # self.boxes_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])        
+        self.canvas.lift("bbs" + self.tag)
 
     def draw_boxes(self, scale=1, padx=0, pady=0):
         """Draws bounding boxes with resize/move handles"""
-        self.canvas.delete('bbs')
+        self.canvas.delete('bbs' + self.tag)
         self.boxes_items.clear()
-        for bb in self.bbs_position:
-            self._draw_box(*bb, scale=scale, padx=padx, pady=pady)
+        for i, bb in enumerate(self.bbs_position):
+            label = self.label if self.label is not None else f"{i:02d}"
+            self._draw_box(label, *bb, scale=scale, padx=padx, pady=pady)
         
         if hasattr(self.frame, "number_label"):
             self.frame.number_label.configure(text=f"\nNumber of cells: {len(self.bbs_position)}\n")
@@ -219,10 +212,10 @@ class _BoundingBoxEditor:
         self.dragging = None
 
 class _QualitiesEditor:
-    def __init__(self, canvas, bbs_position, qualities, cell_m_q,  cell_h_q, editable=False):
+    def __init__(self, canvas, cell_m_q,  cell_h_q, editable=True):
         self.canvas = canvas
-        self.bbs_position = bbs_position
-        self.qualities = qualities
+        self.bbs_position = []
+        self.qualities = []
 
         self.m, self.h = cell_m_q, cell_h_q        
         
@@ -232,24 +225,30 @@ class _QualitiesEditor:
         self.edit_entry = tk.Entry(self.canvas, width=4, font=("Arial", 7), justify="center")
 
         self.boxes = []
-        self.write_qualities()
-        if editable:
-            self.canvas.bind("<ButtonPress-1>", self.on_click)
-            self.edit_entry.bind("<Return>", self.on_enter)
-            self.edit_entry.bind("<Escape>", self.on_esc)
+        # self.write_qualities()
+        self.editable = editable
+        
+        self.canvas.bind("<ButtonPress-1>", self.on_click)
+        self.edit_entry.bind("<Return>", self.on_enter)
+        self.edit_entry.bind("<Escape>", self.on_esc)
     
-    def write_qualities(self):
+    def add_quals(self, quals, bbs):
+        self.bbs_position = bbs
+        self.qualities = quals
+
+    def clear_quals(self):
+        self.bbs_position = []
+        self.qualities = []
+        self.canvas.delete('quals')
+        self.boxes.clear()
+
+    def write_qualities(self, scale=1, padx=0, pady=0):
+        self.canvas.delete('quals')
         for i, (bb, q) in enumerate(zip(self.bbs_position, self.qualities)):
-            x_min, y_min, x_max, y_max = bb
-            center_x = (x_min + x_max) // 2
-            center_y = (y_min + y_max) // 2
+            x_min = ((bb[0] * scale) + padx)
+            y_min = ((bb[1] * scale) + pady)
             color = 'green2' if q > self.h else 'yellow2' if q > self.m else 'firebrick1'
-            self.canvas.create_rectangle(bb[0]-30, bb[1]-25, bb[0]+25, bb[1]+5, fill="gray9", outline="gray9")
-            self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs')
-            self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs')
-            qual = self.canvas.create_text(bb[0], bb[1]-10, text=f"{int(q*100):02d}%", font=("Arial", 10), fill=color)
-            self.canvas.create_rectangle(x_max-15, y_max-5, x_max, y_max+5, fill="white", outline="white", tags='bbs')
-            self.canvas.create_text(x_max-7, y_max, text=f"{i:02d}", font=("Arial", 5), tags='bbs')
+            qual = self.canvas.create_text(x_min, y_min-10, text=f"{int(q*100):02d}%", font=("Arial", 10), fill=color, tag='quals')
             self.boxes.append(qual)
 
     def on_click(self, event):
@@ -315,27 +314,9 @@ class MemGui(tk.Tk):
         # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
-        # self.chosen_pack = ""
-        # self.chosen_model = ""
-        # self.proposed_models = []
-        # self.proposed_packs = None
-        # self.proposed_locations = []
-        # self.chosen_locations = []
-        # self.chosen_pack_location = None
-        # self.proposed_qualities = []
-        # self.chosen_qualities = []
-        # self.outcomes = []
-        # self.class_reject = False # !!!
-        # self.done = False
-        # self.first_name = None
-        # self.last_name = None
-        # self.confirm = False
-        # self.gripper = ""
-        # self.removal_strategy = ""
         self.state = {"pack_confirmed" : False, "cells_confirmed" : False, "qual_confirmed" : False}
         self.pack_models = ["Square", "Trapezoid"]
         self.cell_models = ["aaa", "bbb", "ccc"]
-        
 
         """ ========== LAYOUT GUI ========== """
         self.grid_rowconfigure(0, weight=1)
@@ -363,9 +344,9 @@ class MemGui(tk.Tk):
         self.yes_btn = tk.Button(self.btns_container, text="✔", font=("Arial", 12))
         self.tmp_btns = []
         
-        self.pack_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame)
-        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame)
-        self.quals_bb_writer = None
+        self.pack_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='pack')
+        self.cells_bb_drawer = None
+        self.quals_editor = None
 
     def add_pack_bb(self):
         self.logger.info("START: add pack bounding box")
@@ -374,6 +355,8 @@ class MemGui(tk.Tk):
         self.pack_bb_drawer.add_bb([500, 500, 1000, 1000])
         self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
         self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
+        for btn in self.tmp_btns:
+            btn.pack_forget()
         for propose in self.pack_models:
             btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
             btn.pack(fill="both", padx=(5, 5))
@@ -392,17 +375,20 @@ class MemGui(tk.Tk):
             self.logger.debug(self.pack_state)
             self.logger.info("pack located")
             
-            x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0], self.pack_state.frame_location[1] - self.pack_state.size[1]
-            x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0], self.pack_state.frame_location[1] + self.pack_state.size[1]
+            x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0]//2, self.pack_state.frame_location[1] - self.pack_state.size[1]//2
+            x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0]//2, self.pack_state.frame_location[1] + self.pack_state.size[1]//2
             self.pack_bb_drawer.editable = True
             self.pack_bb_drawer.clear_bbs()
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
+            # self.pack_bb_drawer.draw_boxes()
 
             self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
             self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
 
             # should come from database instead then hardcoded
+            for btn in self.tmp_btns:
+                btn.pack_forget()
             for propose in self.pack_models:
                 btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
@@ -410,6 +396,7 @@ class MemGui(tk.Tk):
 
         else:
             self.pack_state.cover_on = False
+            self.state['pack_confirmed'] = True
             self.logger.info("The cover seems to be already off")
         self.logger.info("END: locate_pack")
     
@@ -428,17 +415,33 @@ class MemGui(tk.Tk):
             self.logger.info("requisites not met")
         self.logger.info("END: remove_pack_cover")
 
+    def add_cell_bb(self):
+        self.logger.info("START: add cell bounding box")
+        self.cell_bb_drawer.editable = True
+        self.cell_bb_drawer.clear_bbs()
+        self.cell_bb_drawer.add_bb([500, 500, 1000, 1000])
+        self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
+        self.yes_btn.config(command=lambda: self.confirm("cell_confirmed"))
+        for btn in self.tmp_btns:
+            btn.pack_forget()
+        for propose in self.cell_models:
+            btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
+            btn.pack(fill="both", padx=(5, 5))
+            self.tmp_btns.append(btn)
+        self.logger.info("END: add cell bounding box")
+
     def identify_cells(self):
         self.logger.info("START: identify_cells")
         if not self.pack_state.cover_on:
             self.logger.info("requisites ok")
             result = self.vision_module.identify_cells(self.camera_frame)
             drawing_bbs = []
+            self.pack_state.cells = []
             for bb, z in zip(result['bbs'], result['zs']):
                 x, y, w = bb
                 pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose())
                 self.pack_state.add_cell(result['model'], width=w, z=z, pose=pose, frame_position=(x, y))
-                drawing_bbs.append([x-w, y-w, x+w, y+w])
+                drawing_bbs.append([x-w//2, y-w//2, x+w//2, y+w//2])
             
             self.cells_bb_drawer.editable = True
             self.cells_bb_drawer.clear_bbs()
@@ -448,6 +451,8 @@ class MemGui(tk.Tk):
             self.yes_btn.config(command=lambda: self.confirm("cells_confirmed"))
 
             # should come from database instead then hardcoded
+            for btn in self.tmp_btns:
+                btn.pack_forget()
             for propose in self.cell_models:
                 btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
@@ -457,24 +462,24 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         self.logger.info("END: identify_cells")
-        # TODO: draw on canvas
-        # and ask confirmation
 
     def assess_cells_qualities(self):
         self.logger.info("START: assess_cells_qualities")
-        if len(self.pack_state.cells) != 0:
+        if self.state['cells_confirmed']:
             self.logger.info("requisites ok")
             bbs = []
+            drawing_bbs = []
             for cell in self.pack_state.cells:
                 bbs.append(cell.frame_position)
-            result = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
-            for qual, cell in zip(result, self.pack_state.cells):
+                drawing_bbs.append([cell.frame_position[0] - cell.width//2, cell.frame_position[1] - cell.width//2, cell.frame_position[0] + cell.width//2, cell.frame_position[1] + cell.width//2])
+            qualities = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
+            self.quals_editor.add_quals(quals=qualities, bbs=drawing_bbs)
+            for qual, cell in zip(qualities, self.pack_state.cells):
                 cell.quality = qual
-            # print(self.pack_state)
-            self.logger.info(f"{sum(q > self.cell_h_q for q in result):02d} cells will be kept")
+            self.logger.info(f"{sum(q > self.cell_h_q for q in qualities):02d} cells will be kept")
         else:
             self.logger.info("requisites not met")
-        # TODO: draw on canvas
+        # TODO:
         # and ask confirmation
         self.logger.info("END: assess_cells_qualities")
     
@@ -519,15 +524,6 @@ class MemGui(tk.Tk):
         """
         pass
 
-    def update_bbs(self, bbs_position: list[ndarray], frame):
-        """draw bounding boxes on the battery on the frame showed for the user
-
-        Args:
-            bbs_position (list[ndarray]): postions of bounding boxes
-        """
-        self.proposed_locations = bbs_position
-        self.bbs_editor = _BoundingBoxEditor(frame.canvas, bbs_position, frame)
-
     def write_qualities(self, qualities: list[float], frame: tk.Frame, editable=False):
         """write the quality of each cell on the frame showed to the user
 
@@ -536,7 +532,7 @@ class MemGui(tk.Tk):
             qualities (list[float]): qualities of each cell
         """
         self.proposed_qualities = qualities
-        self.quals_editor = _QualitiesEditor(frame.canvas, bbs_position=self.chosen_locations, qualities=qualities, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q, editable=editable)
+        
 
     def write_outcome_picked_cell(self, centre: ndarray, outcome: bool, frame: tk.Frame):
         """mark on the image whether or not the battery cell was picked up
@@ -555,12 +551,17 @@ class MemGui(tk.Tk):
         scale, padx, pady = self.frame.draw_image(self.camera_frame)
         if self.state['pack_confirmed'] and self.pack_bb_drawer.editable:
             self.pack_bb_drawer.lock()
+            self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
         if self.pack_bb_drawer is not None:
             self.pack_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
         if self.state['cells_confirmed'] and self.cells_bb_drawer.editable:
             self.cells_bb_drawer.lock()
+            self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         if self.cells_bb_drawer is not None:
             self.cells_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
+        if self.quals_editor is not None:
+            self.quals_editor.write_qualities(scale=scale, padx=padx, pady=pady)
+
         self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):
