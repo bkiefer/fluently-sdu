@@ -97,6 +97,7 @@ class _BoundingBoxEditor:
         self.start_y = 0
         # self.delete_mode = False
         self.frame = frame
+        self.label = None
 
         self.boxes_items = []  # Store drawn objects
         self.bbs_position = []
@@ -345,7 +346,7 @@ class MemGui(tk.Tk):
         self.fncs_container.grid(row=0, column=0, sticky='nsew', padx=(5, 0), pady=(0, 5))
         self.fncs_container.grid_columnconfigure(0, weight=1)
         
-        for i, fnc in enumerate([self.locate_pack, self.remove_pack_cover, self.identify_cells, self.assess_cells_qualities, self.pickup_cells]):
+        for i, fnc in enumerate([self.add_pack_bb, self.locate_pack, self.remove_pack_cover, self.identify_cells, self.assess_cells_qualities, self.pickup_cells]):
             btn = tk.Button(self.fncs_container, text=fnc.__name__, command=fnc)
             self.fncs_container.rowconfigure(i, weight=1)
             btn.grid(row=i, column=0, sticky='nsew', padx=(5, 5))
@@ -362,8 +363,21 @@ class MemGui(tk.Tk):
         self.tmp_btns = []
         
         self.pack_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame)
-        self.cells_bb_drawer = None
+        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame)
         self.quals_bb_writer = None
+
+    def add_pack_bb(self):
+        self.logger.info("START: add pack bounding box")
+        self.pack_bb_drawer.editable = True
+        self.pack_bb_drawer.clear_bbs()
+        self.pack_bb_drawer.add_bb([500, 500, 1000, 1000])
+        self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
+        self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
+        for propose in self.pack_models:
+            btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
+            btn.pack(fill="both", padx=(5, 5))
+            self.tmp_btns.append(btn)
+        self.logger.info("END: add pack bounding box")
 
     def locate_pack(self):
         self.logger.info("START: locate_pack")
@@ -379,10 +393,10 @@ class MemGui(tk.Tk):
             
             x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0], self.pack_state.frame_location[1] - self.pack_state.size[1]
             x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0], self.pack_state.frame_location[1] + self.pack_state.size[1]
+            self.pack_bb_drawer.editable = True
             self.pack_bb_drawer.clear_bbs()
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
-            self.pack_bb_drawer.draw_boxes()
 
             self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
             self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
@@ -396,8 +410,6 @@ class MemGui(tk.Tk):
         else:
             self.pack_state.cover_on = False
             self.logger.info("The cover seems to be already off")
-        # TODO
-        # - ask for confirmation
         self.logger.info("END: locate_pack")
     
     def remove_pack_cover(self):
@@ -420,10 +432,25 @@ class MemGui(tk.Tk):
         if not self.pack_state.cover_on:
             self.logger.info("requisites ok")
             result = self.vision_module.identify_cells(self.camera_frame)
+            drawing_bbs = []
             for bb, z in zip(result['bbs'], result['zs']):
                 x, y, w = bb
                 pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose())
                 self.pack_state.add_cell(result['model'], width=w, z=z, pose=pose, frame_position=(x, y))
+                drawing_bbs.append([x-w, y-w, x+w, y+w])
+            
+            self.cells_bb_drawer.editable = True
+            self.cells_bb_drawer.clear_bbs()
+            self.cells_bb_drawer.add_bbs(drawing_bbs)
+
+            self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
+            self.yes_btn.config(command=lambda: self.confirm("cells_confirmed"))
+
+            # should come from database instead then hardcoded
+            for propose in self.pack_models:
+                btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
+                btn.pack(fill="both", padx=(5, 5))
+                self.tmp_btns.append(btn)
             self.logger.debug(self.pack_state)
             self.logger.info(f"END: identified {len(self.pack_state.cells):02d} cells")
         else:
@@ -451,7 +478,10 @@ class MemGui(tk.Tk):
         self.logger.info("END: assess_cells_qualities")
     
     def pickup_cells(self):
-        # TODO: check prerequisites
+        # TODO: 
+        # check prerequisites 
+        # verify pickup
+    
         self.logger.info("START: pickup_cells")
         for i, cell in enumerate(self.pack_state.cells):
             if cell.quality < self.cell_h_q:
@@ -472,23 +502,14 @@ class MemGui(tk.Tk):
 
     def choose_diff_pack_model(self, model: str):
         self.logger.info(f"Pack model chosen: {model}")
-        self.pack_state = model
+        self.pack_state.model = model
         self.pack_bb_drawer.set_label(model)
             
     def choose_diff_cell_model(self, model: str):
         self.logger.info(f"Cell model chosen: {model}")
-        self.pack_state = model
-        self.state['cells_confirmed'] = True
-        self.pack_bb_drawer.set_label(model)
+        for cell in self.pack_state.cells:
+            cell.model = model
 
-    def update_proposed_models(self, proposed_models):
-        # TODO: recode
-        pass
-
-    def update_proposed_packs(self, proposed_packs):
-        # TODO: recode
-        pass
-    
     def ask_for_help(self,  query: str):
         """ask human for help for something
 
@@ -535,6 +556,10 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.lock()
         if self.pack_bb_drawer is not None:
             self.pack_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
+        if self.state['cells_confirmed'] and self.cells_bb_drawer.editable:
+            self.cells_bb_drawer.lock()
+        if self.cells_bb_drawer is not None:
+            self.cells_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
         self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):

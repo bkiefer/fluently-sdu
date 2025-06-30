@@ -68,8 +68,7 @@ class RobotModule:
             pose = np.array(self.robot.getActualTCPPose())
             return utilities.rotvec_to_T(pose)
         except AttributeError:
-            print("Move to cart pos debug")
-            time.sleep(1)
+            print("Get tcp pose debug")
 
 if __name__ == "__main__":
     robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': 0.041, 'big': 0.08}, active_gripper='small', gripper_id=0)

@@ -48,7 +48,7 @@ class VisionModule():
             frame = self.camera.get_color_frame()
         except AttributeError:
             # print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/camera_frame.png")
+            frame = cv2.imread("data/camera_frame1.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -96,7 +96,11 @@ class VisionModule():
             confidence = (box.conf)
             x, y, w, h = map(int, box.xywh[0].cpu().numpy())
             centre = (x, y)
-            z = self.get_z_at_pos(*centre)
+            try:
+                z = self.get_z_at_pos(*centre)
+            except:
+                print("depth frame not accessible")
+                z = 0
             output['bbs'].append((x, y, w))
             output['zs'].append(z)
             if drawing_frame is not None:
