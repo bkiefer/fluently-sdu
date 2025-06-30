@@ -248,7 +248,7 @@ class _QualitiesEditor:
             x_min = ((bb[0] * scale) + padx)
             y_min = ((bb[1] * scale) + pady)
             color = 'green2' if q > self.h else 'yellow2' if q > self.m else 'firebrick1'
-            self.canvas.create_rectangle(x_min, y_min, x_min+5, y_min+5, fill="white", outline="white", tags='quals') # qual bg
+            self.canvas.create_rectangle(x_min-15, y_min-20, x_min+15, y_min, fill="lightgray", outline="white", tags='quals') # qual bg
             qual = self.canvas.create_text(x_min, y_min-10, text=f"{int(q*100):02d}%", font=("Arial", 10), fill=color, tag='quals')
             self.boxes.append(qual)
 
