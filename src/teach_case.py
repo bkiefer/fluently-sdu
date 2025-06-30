@@ -333,7 +333,8 @@ class MemGui(tk.Tk):
         # self.gripper = ""
         # self.removal_strategy = ""
         self.state = {"pack_confirmed" : False, "cells_confirmed" : False, "qual_confirmed" : False}
-        self.pack_models = ["aaa", "bbb", "ccc"]
+        self.pack_models = ["Square", "Trapezoid"]
+        self.cell_models = ["aaa", "bbb", "ccc"]
         
 
         """ ========== LAYOUT GUI ========== """
@@ -447,8 +448,8 @@ class MemGui(tk.Tk):
             self.yes_btn.config(command=lambda: self.confirm("cells_confirmed"))
 
             # should come from database instead then hardcoded
-            for propose in self.pack_models:
-                btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
+            for propose in self.cell_models:
+                btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
                 self.tmp_btns.append(btn)
             self.logger.debug(self.pack_state)
