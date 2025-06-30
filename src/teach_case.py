@@ -481,6 +481,7 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         # TODO:
+        # instead of writing a number maybe tick or cross
         # and ask confirmation
         self.logger.info("END: assess_cells_qualities")
     
