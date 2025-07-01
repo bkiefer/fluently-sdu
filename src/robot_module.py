@@ -12,7 +12,7 @@ class RobotModule:
         self.logger = utilities.CustomLogger("Robot", "MeMRobot.log", console_level=console_level, file_level=None)
         try:
             self.logger.info("Starting robot module")
-            raise RuntimeError
+            # raise RuntimeError
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.active_gripper = active_gripper
@@ -22,6 +22,7 @@ class RobotModule:
         except RuntimeError as e:
             self.robot = None
             self.logger.warning("The robot could not be started, the module will run for debug purpose")
+            self.logger.warning(e)
 
     def change_gripper(self, active_gripper):
         self.active_gripper = active_gripper
@@ -53,7 +54,7 @@ class RobotModule:
 
     def move_to_home(self):
         try:
-            self.robot.moveJ(self.robot.home_pos)
+            self.robot.move_to_home()
         except AttributeError:
             self.logger.debug("Move to cart pos debug")
             time.sleep(1)

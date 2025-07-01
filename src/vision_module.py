@@ -256,37 +256,4 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
-                [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
-                [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
-    # R = sm.SO3([[0, -1, 0], 
-    #             [1,  0, 0], 
-    #             [0,  0, 1]])
-    t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
-    E = sm.SE3.Rt(R, t)
-    robot_module = RobotModule("192.168.1.100", [0, 0, 0, 0, 0, 0], tcp_length_dict={'small': -0.041, 'big': -0.08}, active_gripper='big', gripper_id=0)
-    over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.4, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
-    # over_pack_rotvec = [-0.3090592371772158, -0.35307448825989896, 0.2546947866558294, -0.6206856204961252, 3.057875096728538, 0.00340990937801082]
-    over_ws_rotvec = [-0.2586273936588753, -0.3016785796195318, 0.18521682703909298, -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
-    c_rotvec = [-0.3594  , -0.3182 , 0.2757,  -0.5923558488917048, 3.063479683639857, 0.0030940693262241515]
-    robot_module.robot.moveL(over_pack_rotvec)
-    vision_module = VisionModule(camera_Ext=E) 
-    ans= ''
-    while ans != 'q':
-        frame = vision_module.get_current_frame()
-        ans = chr(0xff & cv2.waitKey(1))
-        cv2.imshow("frame", frame)
-    time.sleep(1)
-    frame = vision_module.get_current_frame()
-    results = vision_module.identify_cells(frame, frame)
-    bbs = results['bbs']
-    zs = results['zs']
-    # cv2.imshow("frame", frame)
-    
-    # we need the position of the TCP WHEN THE PHOTO GET TAKEN
-    base_T_TCP = utilities.rotvec_to_T(robot_module.robot.getActualTCPPose())
-    for i, (bb, z) in enumerate(zip(bbs, zs)):
-        cell_T = vision_module.frame_pos_to_pose(frame_pos=bb, camera=vision_module.camera, Z=z, base_T_TCP=base_T_TCP)
-        robot_module.robot.grab_object_contact(cell_T)
-        # robot_module.move_to_cart_pos(sm.SE3.Rt(sm.SO3(base_T_TCP.R), target_T.t))
-        # cv2.waitKey(0) 
+    pass
