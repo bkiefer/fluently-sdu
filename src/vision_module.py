@@ -15,10 +15,12 @@ from robot_module import RobotModule
 import os
 
 class VisionModule():
-    def __init__(self, camera_Ext: sm.SE3):
+    def __init__(self, camera_Ext: sm.SE3, verbose=False):
         # camera initialization
+        console_level = 'debug' if verbose else 'info'
+        self.logger = utilities.CustomLogger("Vision", "MeMVision.log", console_level=console_level, file_level=None)
         try:
-            print("Starting vision module")
+            self.logger.info("Starting vision module")
             self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                 enabled_strams={
                                                 'color': [1920, 1080],
@@ -27,19 +29,19 @@ class VisionModule():
                                                 })
         except:
             self.camera = None
-            print("The vision module could not be started, the module will run for debug purpose")
+            self.logger.warning("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
         self.set_background()
         
     def set_background(self):
+        self.logger.debug("Setting background")
         new_bg = self.get_current_frame()
         # cv2.imwrite("Background.jpg", new_bg)
         self.background = new_bg
 
     def get_current_frame(self, format="cv2", wait_delay=0) -> np.ndarray:
         """get the current frame from the camera
-
         Returns:
             np.ndarray: frame
         """

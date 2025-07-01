@@ -307,11 +307,11 @@ class MemGui(tk.Tk):
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
 
         """ ========== MODULE SETUP ========== """
+        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info')
         self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
         self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
         self.pack_state = PackState()
         self.robot_module.move_to_home()
-        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info')
         # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
@@ -338,7 +338,7 @@ class MemGui(tk.Tk):
         self.frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
     
-        self.btns_container = tk.Frame(self, bg='yellow')
+        self.btns_container = tk.Frame(self, bg='antique white')
         self.btns_container.grid(row=1, column=0, sticky='nsew', padx=(5, 0), pady=(5, 0))
         self.btns_container.grid_columnconfigure(0, weight=1)
 
