@@ -11,8 +11,7 @@ class RobotModule:
         console_level = 'debug' if verbose else 'info'
         self.logger = utilities.CustomLogger("Robot", "MeMRobot.log", console_level=console_level, file_level=None)
         try:
-            self.logger.info("Starting robot module")
-            # raise RuntimeError
+            raise RuntimeError
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.active_gripper = active_gripper
@@ -36,6 +35,7 @@ class RobotModule:
             place_T (sm.SE3): position and orientation for place
         """
         try:
+            self.logger.debug("Pick and place")
             actual_pick_T = pick_T * sm.SE3([0, 0, self.tcp_length])
             actual_place_T = place_T * sm.SE3([0, 0, self.tcp_length])
             self.robot.pick_and_place_contact(pick_pose=np.hstack((actual_pick_T.t, Rotation.as_rotvec(Rotation.from_matrix(actual_pick_T.R)))), 
@@ -47,6 +47,7 @@ class RobotModule:
     def move_to_cart_pos(self, T, speed=0.1):
         actual_T = T * sm.SE3([0, 0, self.tcp_length])
         try:
+            self.logger.debug("Move to cart pos")
             self.robot.move_to_cart_pose(actual_T, speed)
         except AttributeError:
             self.logger.debug("Move to cart pos debug")

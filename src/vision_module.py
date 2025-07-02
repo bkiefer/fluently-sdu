@@ -20,7 +20,6 @@ class VisionModule():
         console_level = 'debug' if verbose else 'info'
         self.logger = utilities.CustomLogger("Vision", "MeMVision.log", console_level=console_level, file_level=None)
         try:
-            self.logger.info("Starting vision module")
             self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                 enabled_strams={
                                                 'color': [1920, 1080],
@@ -49,8 +48,7 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
-            # print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/pics_18650/pic01.png")
+            frame = cv2.imread("data/camera_frame1.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -73,7 +71,6 @@ class VisionModule():
         confidence = (result[0].boxes[0].conf)
         xywh = result[0].boxes[0].xywh[0]
         # result[0].show()
-        # print(f"label: {label}; confidence: {confidence}; xywh: {xywh}")
         return {'shape': label, 'size': (int(xywh[2]), int(xywh[3])), 'cover_on': True, 'location': (int(xywh[0]), int(xywh[1]))}
 
     def identify_cells(self, frame: ndarray, drawing_frame:ndarray=None) -> dict[tuple[str, float]]:
@@ -101,7 +98,7 @@ class VisionModule():
             try:
                 z = self.get_z_at_pos(*centre)
             except:
-                print("depth frame not accessible")
+                self.logger.warning("depth frame not accessible")
                 z = 0
             output['bbs'].append((x, y, w))
             output['zs'].append(z)
@@ -117,61 +114,6 @@ class VisionModule():
         output['model'] = (max(set(models), key=models.count)) 
         return output
 
-    def cell_detection(self, frame: np.ndarray) -> list[ndarray]:
-        # DEPRECATED NOT USE, USE IDENTIFY CELLS INSTEAD
-        """detect cells positions based on image
-
-        Args:
-            frame (np.ndarray): frame for the detection
-
-        Returns:
-            list[ndarray]: positons list
-        """
-        cells_positions = []
-        cp_frame = copy.deepcopy(frame)
-        if isinstance(frame, PIL.Image.Image):
-            cp_frame = np.array(cp_frame)
-            if frame.mode == "RGB":
-                cv2.cvtColor(cp_frame, cv2.COLOR_RGB2BGR)
-        preprocessed = cv2.cvtColor(cp_frame, cv2.COLOR_BGR2GRAY)
-        # kernel_size = 5
-        # kernel = np.ones((kernel_size, kernel_size),np.float32) / (kernel_size*kernel_size)
-        # gauss = cv2.filter2D(frame, -1, kernel)
-        preprocessed = cv2.medianBlur(preprocessed, 5)
-        
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        preprocessed = clahe.apply(preprocessed)
-        
-        kernel = np.ones((5, 5), np.uint8) 
-        preprocessed = cv2.morphologyEx(preprocessed, cv2.MORPH_CLOSE, kernel) 
-        # img_erosion = cv2.erode(frame, kernel, iterations=1) 
-        # img_dilation = cv2.dilate(frame, kernel, iterations=1) 
-
-        # edges = cv2.Canny(preprocessed, 0, 300)
-        # vision.show_frames("Detection", [preprocessed])
-        # cv2.imshow("Preprocessed", preprocessed)
-
-        circles = cv2.HoughCircles(preprocessed, cv2.HOUGH_GRADIENT, 1, preprocessed.shape[0] / 8, param1=1, param2=80, minRadius=5, maxRadius=60)
-        if circles is not None:
-            # print(f"found: {len(circles[0])} circles")
-            circles = np.uint16(np.around(circles))
-            # print(circles)
-            cells_positions = circles[0][:, 0:3] # x, y, radius
-            drawing_frame = copy.deepcopy(cp_frame)
-            for i in circles[0, :]:
-                center = (i[0], i[1])
-                radius = i[2]
-                z = self.get_z_at_pos(*center)
-                cv2.putText(drawing_frame, f"c: {center}; r: {radius}; z: {z:0.3f}", np.array(center)+(-50-int(radius/2), - 50-int(radius/2)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (155, 255, 255), 1)
-                cv2.circle(drawing_frame, center, 1, (0, 100, 100), 3)
-                cv2.circle(drawing_frame, center, radius, (255, 0, 255), 3)
-            cv2.imshow("Detection", drawing_frame)
-            # cv2.waitKey(0)
-        #else:
-            #print("No circles found")
-        #    pass
-        return cells_positions
-
     def assess_cells_qualities(self, frame:np.ndarray, bbs_positions: list[ndarray]) -> list[float]:
         """assign to each cell a score based on quality
 
@@ -182,8 +124,8 @@ class VisionModule():
         Returns:
             list[float]: the scores evaluated by the system
         """
-        cells_qualities = np.random.rand(len(bbs_positions))
-        return cells_qualities
+        cells_keeps = np.random.choice([True, False], len(bbs_positions))
+        return cells_keeps
 
     def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
@@ -201,7 +143,7 @@ class VisionModule():
             tmp = base_T_cam * sm.SE3(P)
             T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         except AttributeError:
-            print("Frame pos to pose debug")
+            self.logger.debug("Frame pos to pose debug")
             T = sm.SE3([float('inf'), float('inf'), float('inf')])
         return T
 
@@ -214,21 +156,11 @@ class VisionModule():
         Returns:
             bool: if or not the cell was picked up
         """
-        print("position: ",position)
         cp_current_frame = copy.deepcopy(self.get_current_frame())
         cp_start_frame = copy.deepcopy(self.background)
-
-        #if isinstance(cp_start_frame, PIL.Image.Image):
-        #    cp_start_frame = np.array(cp_start_frame)
-        #if cp_start_frame.mode == "RGB":
-        #    cp_start_frame = cv2.cvtColor(np.array(cp_start_frame), cv2.COLOR_RGB2BGR)
-        #if cp_current_frame.mode == "RGB":
-        #    cp_current_frame = cv2.cvtColor(np.array(cp_current_frame), cv2.COLOR_RGB2BGR)
-
         cp_start_frame = cv2.cvtColor(cp_start_frame, cv2.COLOR_BGR2GRAY)
         current_frame = cv2.cvtColor(cp_current_frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(current_frame, cp_start_frame)
-        # cv2.imshow("Diff", diff)
         _, thresh = cv2.threshold(diff, 50, 255, cv2.THRESH_BINARY)
         result = cv2.dilate(thresh, np.ones((5, 5), np.uint8), iterations=2)
         cx, cy = position[0], position[1]
@@ -239,20 +171,8 @@ class VisionModule():
                 point = (np.array([cx, cy]) + (np.array([np.cos(deg), np.sin(deg)]) * r)).astype(int)
                 votes += result[point[1]][point[0]]/255 # access to opnecv mat x, y inverted if white=255, then we add a vote for a hit otherwise 0
         pickedup = (votes/voting > 0.5)
-        # print(f"The cell was pickedup: {pickedup}")
-        result_bgr = cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
-        print("result: ",result_bgr)
-        print("picked up: ",pickedup)
-        print("center", cx, cy)
-        if not pickedup:
-            cv2.circle(result_bgr, (cx, cy), 3, (0, 0, 255), 3)
-        else:
-            cv2.circle(result_bgr, (cx, cy), 3, (0, 255, 0), 3)
-        # cv2.imwrite(f"{position}.jpg", result_bgr)
-        # vision.show_frames("Verify pick up", [result_bgr])
-        # cv2.imshow("Background", self.background)
-        # cv2.imshow("Verify pick up", result_bgr)
-        # cv2.waitKey(0)
+        self.logger.warning("pickedup, generate a random value")
+        return np.random.choice([True, False])
         return pickedup
 
 if __name__ == "__main__":
@@ -271,8 +191,10 @@ if __name__ == "__main__":
     robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
     robot_module.move_to_home()
     
-    result = vision_module.locate_pack(vision_module.get_current_frame())
-    pose = vision_module.frame_pos_to_pose(result['location'], robot_module.get_TCP_pose())
-    for i in range(100):
-        robot_module.pick_and_place(pose, cover_place_pose)
-        robot_module.move_to_home()
+    foldername = "data/pics_18650"
+    for f in os.listdir(foldername):
+        print(f)
+        frame = cv2.imread(os.path.join(foldername, f))
+        vision_module.identify_cells(frame, drawing_frame=frame)
+        cv2.imshow("detection", frame)
+        cv2.waitKey(0)

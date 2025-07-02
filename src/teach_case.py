@@ -8,7 +8,7 @@ from behaviors import *
 from viewer import BtViewer
 import spatialmath as sm
 import numpy as np
-
+from fluently_MQTT_client import FluentlyMQTTClient
 import PIL.Image
 import PIL.ImageTk
 import sys
@@ -20,73 +20,6 @@ import PIL
 import numpy as np
 import paho.mqtt.client as mqtt
 import json
-
-class FluentlyMQTTClient:
-    def __init__(self, client_id: str, broker: str = "localhost", port: int = 1883):
-        self.client = mqtt.Client(client_id=client_id)
-        self.broker = broker
-        self.port = port
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.message_callback = None
-        self.connect()
-        self.start()
-        self.subscribe("nlu/intent")
-        self.intent = []
-        self.state = 1
-        self.command_given = False
-
-    def on_connect(self, client, userdata, flags, rc):
-        print(f"Connected with result code {rc}")
-
-    def on_message(self, client, userdata, msg):
-        message = msg.payload.decode()
-        topic = msg.topic
-        print(f"Received message on topic '{topic}': {message}")
-        self.intent.append(message)
-        if self.message_callback:
-            self.message_callback(topic, message)
-
-    def connect(self):
-        self.client.connect(self.broker, self.port, keepalive=60)
-
-    def start(self):
-        self.client.loop_start()
-
-    def stop(self):
-        self.client.loop_stop()
-        self.client.disconnect()
-
-    def subscribe(self, topic: str):
-        self.client.subscribe(topic)
-        print(f"Subscribed to topic '{topic}'")
-
-    def publish(self, message_: str):
-        topic = "tts/behaviour"
-        message ={  "id": "fluently",
-            "text": message_,
-            "motion": "",
-            "delay": 0}
-        try:
-            json_message = json.dumps(message)
-            self.client.publish(topic, json_message)
-            print(message_)
-        except (TypeError, ValueError) as e:
-            print(f"Failed to serialize message to JSON: {e}")
-
-    def set_message_callback(self, callback):
-        self.message_callback = callback
-
-    def get_intent(self):
-        if len(self.intent) >=1:
-            ans = self.intent[-1]
-            self.intent = []
-            return ans
-        else:
-            return None
-        
-    def clear_intents(self):
-        self.intent.clear()
 
 class _BoundingBoxEditor:
     def __init__(self, canvas, frame, tag=''):
@@ -138,7 +71,6 @@ class _BoundingBoxEditor:
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
         self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="black", width=2, tags='bbs' + self.tag)
-        
         self.canvas.create_rectangle(x_max-len(label)*10, y_max-9, x_max, y_max+9, fill="white", outline="white", tags='bbs' + self.tag) # label bg
         self.canvas.create_text(x_max-len(label)*5, y_max, text=label, font=("Arial", 10), tags='bbs' + self.tag) # label txt
         if self.editable:
@@ -215,7 +147,7 @@ class _QualitiesEditor:
     def __init__(self, canvas, cell_m_q,  cell_h_q, editable=True):
         self.canvas = canvas
         self.bbs_position = []
-        self.qualities = []
+        self.keep_bbs = []
 
         self.m, self.h = cell_m_q, cell_h_q        
         
@@ -225,70 +157,45 @@ class _QualitiesEditor:
         self.edit_entry = tk.Entry(self.canvas, width=4, font=("Arial", 7), justify="center")
 
         self.boxes = []
-        # self.write_qualities()
         self.editable = editable
         
         self.canvas.bind("<ButtonPress-1>", self.on_click)
-        self.edit_entry.bind("<Return>", self.on_enter)
-        self.edit_entry.bind("<Escape>", self.on_esc)
     
-    def add_quals(self, quals, bbs):
+    def lock(self):
+        self.editable = False
+        self.canvas.unbind("<ButtonPress-1>")
+
+    def add_quals(self, keep_bbs, bbs):
         self.bbs_position = bbs
-        self.qualities = quals
+        self.keep_bbs = keep_bbs
 
     def clear_quals(self):
         self.bbs_position = []
-        self.qualities = []
+        self.keep_bbs = []
         self.canvas.delete('quals')
         self.boxes.clear()
 
     def write_qualities(self, scale=1, padx=0, pady=0):
         self.canvas.delete('quals')
-        for i, (bb, q) in enumerate(zip(self.bbs_position, self.qualities)):
+        self.boxes.clear()
+        for i, (bb, keep) in enumerate(zip(self.bbs_position, self.keep_bbs)):
             x_min = ((bb[0] * scale) + padx)
             y_min = ((bb[1] * scale) + pady)
-            color = 'green2' if q > self.h else 'yellow2' if q > self.m else 'firebrick1'
-            self.canvas.create_rectangle(x_min-15, y_min-20, x_min+15, y_min, fill="lightgray", outline="white", tags='quals') # qual bg
-            qual = self.canvas.create_text(x_min, y_min-10, text=f"{int(q*100):02d}%", font=("Arial", 10), fill=color, tag='quals')
-            self.boxes.append(qual)
+            if self.editable:
+                self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="gray20", outline="white", tags='quals') # delete_bg
+            if keep:
+                txt_box = self.canvas.create_text(x_min, y_min, text="✔", font=("Arial", 10), fill="green2", tag='quals')
+            else:
+                txt_box = self.canvas.create_text(x_min, y_min, text="✘", font=("Arial", 10), fill="firebrick1", tag='quals')
+            self.boxes.append(txt_box)
 
     def on_click(self, event):
         if self.canvas.find_withtag(tk.CURRENT):  # If clicked on an item
             item = self.canvas.find_withtag(tk.CURRENT)[0]
             for i, label_id in enumerate(self.boxes):
                 if label_id == item:
-                    self.editing_qual_id = i
-                    self.editing_item_id = label_id
-                    self.old_quality = self.canvas.itemcget(label_id, "text")
-                    self.canvas.itemconfig(label_id, state="hidden")
-                    self.edit_entry.place(x = self.canvas.coords(label_id)[0]-25, y = self.canvas.coords(label_id)[1]-13)
-                    self.editing = True
-                    self.edit_entry.focus_set()
+                    self.keep_bbs[i] = not self.keep_bbs[i]
         
-    def on_enter(self, event):
-        try:
-            new_q = float(self.edit_entry.get()) / 100
-            if not 0 < new_q < 1: 
-                raise ValueError
-            self.qualities[self.editing_qual_id] = new_q
-            self.canvas.itemconfig(self.editing_item_id, text=f"{int(self.edit_entry.get()):02d}%")
-            self.canvas.itemconfig(self.editing_item_id, fill='green2' if new_q > self.h else 'yellow2' if new_q > self.m else 'firebrick1')
-            
-        except:
-            print("Inserted value not supported")
-        finally:
-            self.canvas.itemconfig(self.editing_item_id, state="normal")
-            self.canvas.winfo_toplevel().focus_set() # defocus entry
-            self.edit_entry.delete(0, tk.END)
-            self.edit_entry.place_forget()
-
-    
-    def on_esc(self, event):
-        self.canvas.itemconfig(self.editing_item_id, state="normal")
-        self.canvas.winfo_toplevel().focus_set() # defocus entry
-        self.edit_entry.delete(0, tk.END)
-        self.edit_entry.place_forget()
-
 class MemGui(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -307,15 +214,16 @@ class MemGui(tk.Tk):
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
 
         """ ========== MODULE SETUP ========== """
-        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info')
-        self.vision_module = VisionModule(camera_Ext=self.camera_Ext)
-        self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
+        verbose = False
+        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info' if not verbose else 'debug')
+        self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=verbose)
+        self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=verbose)
         self.pack_state = PackState()
         self.robot_module.move_to_home()
         # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
-        self.state = {"pack_confirmed" : False, "cells_confirmed" : False, "qual_confirmed" : False}
+        self.state = {"pack_confirmed" : True, "cells_confirmed" : False, "quals_confirmed" : False}
         self.pack_models = ["Square", "Trapezoid"]
         self.cell_models = ["aaa", "bbb", "ccc"]
 
@@ -349,13 +257,17 @@ class MemGui(tk.Tk):
         self.cells_bb_drawer = None
         self.quals_editor = None
 
+        # DEBUG
+        self.pack_state.cover_on = False
+        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+
     def add_pack_bb(self):
         self.logger.info("START: add pack bounding box")
         self.pack_bb_drawer.editable = True
         self.pack_bb_drawer.clear_bbs()
         self.pack_bb_drawer.add_bb([500, 500, 1000, 1000])
         self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
-        self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
+        self.yes_btn.config(command=self.confirm_pack)
         for btn in self.tmp_btns:
             btn.pack_forget()
         for propose in self.pack_models:
@@ -382,10 +294,9 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.clear_bbs()
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
-            # self.pack_bb_drawer.draw_boxes()
 
             self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
-            self.yes_btn.config(command=lambda: self.confirm("pack_confirmed"))
+            self.yes_btn.config(command=self.confirm_pack)
 
             # should come from database instead then hardcoded
             for btn in self.tmp_btns:
@@ -394,10 +305,10 @@ class MemGui(tk.Tk):
                 btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
                 self.tmp_btns.append(btn)
-
         else:
             self.pack_state.cover_on = False
             self.state['pack_confirmed'] = True
+            self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
             self.logger.info("The cover seems to be already off")
         self.logger.info("END: locate_pack")
     
@@ -422,7 +333,7 @@ class MemGui(tk.Tk):
         self.cell_bb_drawer.clear_bbs()
         self.cell_bb_drawer.add_bb([500, 500, 1000, 1000])
         self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
-        self.yes_btn.config(command=lambda: self.confirm("cell_confirmed"))
+        self.yes_btn.config(command=self.confirm_cells)
         for btn in self.tmp_btns:
             btn.pack_forget()
         for propose in self.cell_models:
@@ -443,13 +354,11 @@ class MemGui(tk.Tk):
                 pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose())
                 self.pack_state.add_cell(result['model'], width=w, z=z, pose=pose, frame_position=(x, y))
                 drawing_bbs.append([x-w//2, y-w//2, x+w//2, y+w//2])
-            
             self.cells_bb_drawer.editable = True
             self.cells_bb_drawer.clear_bbs()
             self.cells_bb_drawer.add_bbs(drawing_bbs)
-
             self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
-            self.yes_btn.config(command=lambda: self.confirm("cells_confirmed"))
+            self.yes_btn.config(command=self.confirm_cells)
 
             # should come from database instead then hardcoded
             for btn in self.tmp_btns:
@@ -474,39 +383,83 @@ class MemGui(tk.Tk):
                 bbs.append(cell.frame_position)
                 drawing_bbs.append([cell.frame_position[0] - cell.width//2, cell.frame_position[1] - cell.width//2, cell.frame_position[0] + cell.width//2, cell.frame_position[1] + cell.width//2])
             qualities = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
-            self.quals_editor.add_quals(quals=qualities, bbs=drawing_bbs)
+            self.quals_editor.add_quals(keep_bbs=qualities, bbs=drawing_bbs)
             for qual, cell in zip(qualities, self.pack_state.cells):
-                cell.quality = qual
+                cell.keep = qual > self.cell_h_q
             self.logger.info(f"{sum(q > self.cell_h_q for q in qualities):02d} cells will be kept")
+
+            self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
+            self.yes_btn.config(command=self.confirm_quals)
         else:
             self.logger.info("requisites not met")
-        # TODO:
-        # instead of writing a number maybe tick or cross
-        # and ask confirmation
         self.logger.info("END: assess_cells_qualities")
     
     def pickup_cells(self):
         # TODO: 
         # check prerequisites 
         # verify pickup
-    
         self.logger.info("START: pickup_cells")
-        for i, cell in enumerate(self.pack_state.cells):
-            if cell.quality < self.cell_h_q:
-                self.logger.info(f"END: cell {i} discarded")
-                self.robot_module.pick_and_place(cell.pose, self.discard_T)
-            else:
-                self.logger.info(f"END: cell {i} kept")
-                self.robot_module.pick_and_place(cell.pose, self.keep_T)
-        self.robot_module.move_to_home()
+        if self.state['quals_confirmed']:
+            for i, cell in enumerate(self.pack_state.cells):
+                if cell.keep:
+                    self.robot_module.pick_and_place(cell.pose, self.discard_T)
+                    self.logger.info(f"END: cell {i} discarded")
+                else:
+                    self.robot_module.pick_and_place(cell.pose, self.keep_T)
+                    self.logger.info(f"END: cell {i} kept")
+                cell.sorted = self.vision_module.verify_pickup(cell.frame_position, cell.width)
+                self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
+                self.frame.canvas.update() # to write the outcome real time
+            self.robot_module.move_to_home()
+        else:
+            self.logger.info("requisites not met")
         self.logger.info("END: pickup_cells")
 
-    def confirm(self, var: str):
-        self.logger.info(f"{var} now True")
-        self.state[var] = True
+    def confirm_pack(self):
+        self.logger.info(f"Pack bounding box confirmed")
+        self.state['pack_confirmed'] = True
         for btn in self.tmp_btns:
             btn.pack_forget()
         self.yes_btn.pack_forget()
+        self.pack_bb_drawer.lock()
+        x_min, y_min, x_max, y_max = self.pack_bb_drawer.bbs_position[0]
+        center_x = (x_min + x_max) // 2
+        center_y = (y_min + y_max) // 2
+        self.pack_state.frame_location = [center_x, center_y]
+        self.pack_state.size = (x_max - x_min, y_max - y_min)
+        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+
+    def confirm_cells(self):
+        self.logger.info(f"Cells bounding boxes confirmed")
+        self.state['cells_confirmed'] = True
+        for btn in self.tmp_btns:
+            btn.pack_forget()
+        self.yes_btn.pack_forget()
+        self.cells_bb_drawer.lock()
+        for i, bb in enumerate(self.cells_bb_drawer.bbs_position):
+            x_min, y_min, x_max, y_max = bb
+            center_x = (x_min + x_max) // 2
+            center_y = (y_min + y_max) // 2
+            self.pack_state.cells[i].frame_position = [center_x, center_y]
+            self.pack_state.cells[i].width = x_max - x_min
+            self.vision_module.set_background()
+        self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
+        
+    def confirm_quals(self):
+        self.logger.info(f"Cells qualities confirmed")
+        self.state['quals_confirmed'] = True
+        self.yes_btn.pack_forget()
+        self.quals_editor.lock()
+        for i, keep_cell in enumerate(self.quals_editor.keep_bbs):
+            self.pack_state.cells[i].keep = keep_cell
+            self.vision_module.set_background()
+        
+    # def confirm(self, var: str):
+    #     self.logger.info(f"{var} now True")
+    #     self.state[var] = True
+    #     for btn in self.tmp_btns:
+    #         btn.pack_forget()
+    #     self.yes_btn.pack_forget()
 
     def choose_diff_pack_model(self, model: str):
         self.logger.info(f"Pack model chosen: {model}")
@@ -526,44 +479,70 @@ class MemGui(tk.Tk):
         """
         pass
 
-    def write_qualities(self, qualities: list[float], frame: tk.Frame, editable=False):
-        """write the quality of each cell on the frame showed to the user
+    # def write_qualities(self, qualities: list[float], frame: tk.Frame, editable=False):
+    #     """write the quality of each cell on the frame showed to the user
 
-        Args:
-            bbs_position (list[ndarray]): postions of bounding boxes for each cell
-            qualities (list[float]): qualities of each cell
-        """
-        self.proposed_qualities = qualities
-        
+    #     Args:
+    #         bbs_position (list[ndarray]): postions of bounding boxes for each cell
+    #         qualities (list[float]): qualities of each cell
+    #     """
+    #     self.proposed_qualities = qualities    
 
-    def write_outcome_picked_cell(self, centre: ndarray, outcome: bool, frame: tk.Frame):
+    def write_outcome_picked_cells(self, scale=1, padx=0, pady=0):
         """mark on the image whether or not the battery cell was picked up
 
         Args:
             bbs_position (list[ndarray]): postions of bounding boxes
         """
-        if outcome:
-            frame.canvas.create_text(centre[0], centre[1], text="✓", font=("Arial", 35), fill='green2')
-        else:
-            frame.canvas.create_text(centre[0], centre[1], text="✗", font=("Arial", 35), fill='firebrick1')
-        frame.canvas.update()
+        self.frame.canvas.delete('outcome')
+        for cell in self.pack_state.cells:
+            if cell.sorted is None:
+                break
+            txt = "✗" if not cell.sorted else "✓"
+            color = "firebrick" if not cell.sorted else "green2"
+            x, y = cell.frame_position[0]*scale + padx, cell.frame_position[1]*scale + pady
+            self.frame.canvas.create_text(x, y, text=txt, font=("Arial", 35), fill=color, tags='outcome')
+
+    def show_frame_debug(self):
+        drawing_frame = self.vision_module.get_current_frame()
+        if self.pack_state.frame_location is not None:
+            xy_min = (self.pack_state.frame_location[0]-self.pack_state.size[0]//2, self.pack_state.frame_location[1]-self.pack_state.size[1]//2)
+            xy_max = (self.pack_state.frame_location[0]+self.pack_state.size[0]//2, self.pack_state.frame_location[1]+self.pack_state.size[1]//2)
+            cv2.rectangle(drawing_frame, xy_min, xy_max, color=(0, 0, 255))
+        for i, cell in enumerate(self.pack_state.cells):
+            cv2.circle(drawing_frame, cell.frame_position, 1, (0, 100, 100), 3)
+            cv2.circle(drawing_frame, cell.frame_position, cell.width//2, (255, 0, 255), 3)
+            cv2.putText(drawing_frame, f"id: {i}; {cell.model}",      np.array(cell.frame_position)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"c: {cell.frame_position}",  np.array(cell.frame_position)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"r: {cell.width//2}; z: {cell.z:0.3f}",    np.array(cell.frame_position)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+        cv2.imshow("frame", drawing_frame)
+        cv2.waitKey(1)
 
     def after_update(self):
         self.camera_frame = self.vision_module.get_current_frame(format='pil')
-        scale, padx, pady = self.frame.draw_image(self.camera_frame)
-        if self.state['pack_confirmed'] and self.pack_bb_drawer.editable:
-            self.pack_bb_drawer.lock()
-            self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+        self.scale, self.padx, self.pady = self.frame.draw_image(self.camera_frame)
+        # self.show_frame_debug()
+        
+        """TODO : remove"""
+        # if self.state['pack_confirmed'] and self.pack_bb_drawer.editable:
+            # self.pack_bb_drawer.lock()
+            # self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+            # x_min, y_min, x_max, y_max = self.pack_bb_drawer.bbs_position
+        #     center_x = (x_min + x_max) // 2
+        #     center_y = (y_min + y_max) // 2
+        #     self.pack_state.frame_location = [center_x, center_y]
         if self.pack_bb_drawer is not None:
-            self.pack_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
-        if self.state['cells_confirmed'] and self.cells_bb_drawer.editable:
-            self.cells_bb_drawer.lock()
-            self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
+            self.pack_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
+        """TODO : remove"""
+        # if self.state['cells_confirmed'] and self.cells_bb_drawer.editable:
+        #     self.cells_bb_drawer.lock()
+            # self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         if self.cells_bb_drawer is not None:
-            self.cells_bb_drawer.draw_boxes(scale=scale, padx=padx, pady=pady)
+            self.cells_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
         if self.quals_editor is not None:
-            self.quals_editor.write_qualities(scale=scale, padx=padx, pady=pady)
-
+            self.quals_editor.write_qualities(scale=self.scale, padx=self.padx, pady=self.pady)
+        if self.state['quals_confirmed']:
+            self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
         self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):

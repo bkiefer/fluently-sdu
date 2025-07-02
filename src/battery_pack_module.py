@@ -7,13 +7,13 @@ class Cell():
         self.model = "unknown" if model is None else model
         self.width = 0.0 if width is None else width
         self.z = 0.0 if z is None else z
-        self.quality = -1.0 if quality is None else quality
+        self.keep = None if quality is None else quality
         self.pose = sm.SE3() if pose is None else pose
         self.frame_position = (-1, -1) if frame_position is None else frame_position
-        self.sorted = False if sorted is None else sorted
+        self.sorted = None if sorted is None else sorted
 
     def __repr__(self):
-        return f"mod: {self.model:^10} r: {self.width:06.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]; xyz:{self.pose.t}  ok: {str(self.sorted)[0]} q: {self.quality:05.2f}"
+        return f"mod: {self.model:^10} r: {self.width:06.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]; xyz:{self.pose.t}  ok: {str(self.sorted)[0]} q: {str(self.keep)[0]}"
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
@@ -36,7 +36,7 @@ class PackState():
                 row.append(Cell())
             self.cells.append(row)
 
-    def add_cell(self, model: str=None, width: float=None, z: float=None, quality: float=None, pose: sm.SE3=None, frame_position: tuple[int, int]=None, sorted: bool=None):
+    def add_cell(self, model: str=None, width: float=None, z: float=None, quality: bool=None, pose: sm.SE3=None, frame_position: tuple[int, int]=None, sorted: bool=None):
         """_summary_
 
         Args:
