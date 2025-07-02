@@ -50,7 +50,7 @@ class VisionModule():
             frame = self.camera.get_color_frame()
         except AttributeError:
             # print("Cannot access camera. For debuggin purpose it will access a file in store")
-            frame = cv2.imread("data/camera_frame1.png")
+            frame = cv2.imread("data/pics_18650/pic01.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
