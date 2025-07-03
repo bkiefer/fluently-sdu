@@ -232,7 +232,7 @@ class MemGui(tk.Tk):
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=2)
+        self.grid_columnconfigure(1, weight=1)
         
         self.fncs_container = tk.Frame(self,  bg='antique white')
         self.fncs_container.grid(row=0, column=0, sticky='nsew', padx=(5, 0), pady=(0, 5))
@@ -247,7 +247,7 @@ class MemGui(tk.Tk):
         self.frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
         self.frame.grid_rowconfigure(0, weight=1)
     
-        self.btns_container = tk.Frame(self, bg='antique white')
+        self.btns_container = tk.Frame1920x1080(self, bg='antique white')
         self.btns_container.grid(row=1, column=0, sticky='nsew', padx=(5, 0), pady=(5, 0))
         self.btns_container.grid_columnconfigure(0, weight=1)
 
