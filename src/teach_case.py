@@ -20,6 +20,7 @@ import PIL
 import numpy as np
 import paho.mqtt.client as mqtt
 import json
+import argparse
 
 class _BoundingBoxEditor:
     def __init__(self, canvas, frame, tag=''):
@@ -196,10 +197,7 @@ class _QualitiesEditor:
         
 class MemGui(tk.Tk):
     def __init__(self):
-        super().__init__()
-        self.title("MeM use case")
-        self.geometry("1280x720")
-        
+        super().__init__()        
         """ ========== WORKSPACE SETUP ========== """
         self.cell_m_q, self.cell_h_q = 0.6, 0.8
         self.cover_place_pose = sm.SE3([-0.45, -0.12, 0.050]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
@@ -213,7 +211,10 @@ class MemGui(tk.Tk):
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
 
         """ ========== MODULE SETUP ========== """
-        self.verbose = True
+        parser = argparse.ArgumentParser(description="My script with options")
+        parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
+        args = parser.parse_args()
+        self.verbose = args.verbose
         self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info' if not self.verbose else 'debug')
         self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=self.verbose)
         self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=self.verbose)
@@ -238,6 +239,9 @@ class MemGui(tk.Tk):
         self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
 
     def layout_gui(self):
+        self.title("MeM use case")
+        self.geometry("1280x720")
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=5)
         self.grid_rowconfigure(2, weight=1)
@@ -523,7 +527,7 @@ class MemGui(tk.Tk):
             center_y = (y_min + y_max) // 2
             self.pack_state.cells[i].frame_position = [center_x, center_y]
             self.pack_state.cells[i].width = x_max - x_min
-            self.vision_module.set_background()
+        self.vision_module.set_background()
         self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         
     def confirm_quals(self):
