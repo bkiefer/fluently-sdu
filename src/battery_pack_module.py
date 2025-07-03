@@ -8,18 +8,35 @@ class Cell():
         self.width = 0.0 if width is None else width
         self.z = 0.0 if z is None else z
         self.keep = None if quality is None else quality
-        self.pose = sm.SE3() if pose is None else pose
-        self.frame_position = (-1, -1) if frame_position is None else frame_position
-        self.sorted = None if sorted is None else sorted
+        self.pose = None if pose is None else pose
+        self.frame_location = None if frame_position is None else frame_position
+        self.sorted = False if sorted is None else sorted
+        self.string_mode = ""
+    
+    def to_string_short(self):
+        cell_str = ""
+        cell_str += f"f_pos: {utilities.bool_to_str_fancy(not self.frame_location is None)}"
+        cell_str += f"XYZ: {utilities.bool_to_str_fancy(not self.pose is None)}"
+        cell_str += f"keep: {utilities.bool_to_str_fancy(self.keep)} "
+        cell_str += f"pick: {utilities.bool_to_str_fancy(self.sorted)}"
+        return cell_str
 
     def __repr__(self):
-        return f"mod: {self.model:^10} r: {self.width:06.2f} f_pos: [{self.frame_position[0]:03d}, {self.frame_position[1]:03d}]; xyz:{self.pose.t}  ok: {str(self.sorted)[0]} q: {str(self.keep)[0]}"
+        cell_str = ""
+        cell_str += f"f_pos: [{self.frame_location[0]:03d},{self.frame_location[1]:03d}] "
+        if self.pose is not None:
+            cell_str += f"XYZ:[{self.pose.t[0]:02.0f},{self.pose.t[1]:02.0f},{self.pose.t[2]:02.0f}]"
+        else:
+            cell_str += f"XYZ:unknown"
+        cell_str += f"keep: {utilities.bool_to_str_fancy(self.keep)} "
+        cell_str += f"pick: {utilities.bool_to_str_fancy(self.sorted)}"
+        return cell_str
         
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
         self.model = "unknown"
         self.cell_model = "unknown"
-        self.cover_on = True
+        self.cover_on = None
         self.size = None
         self.frame_location = None
         self.pose = None

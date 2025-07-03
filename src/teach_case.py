@@ -28,7 +28,6 @@ class _BoundingBoxEditor:
         self.dragging = None  # "move" or "resize"
         self.start_x = 0
         self.start_y = 0
-        # self.delete_mode = False
         self.frame = frame
         self.label = None
         self.tag = tag
@@ -79,7 +78,6 @@ class _BoundingBoxEditor:
             resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs' + self.tag)
             delete_handle = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs' + self.tag)
             self.boxes_items.append([move_handle, resize_handle, delete_handle])
-        # self.boxes_items.append([box, move_handle, resize_handle, text_bg, text_label, delete_btn, delete_label])        
         self.canvas.lift("bbs" + self.tag)
 
     def draw_boxes(self, scale=1, padx=0, pady=0):
@@ -215,13 +213,12 @@ class MemGui(tk.Tk):
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
 
         """ ========== MODULE SETUP ========== """
-        verbose = False
-        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info' if not verbose else 'debug')
-        self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=verbose)
-        self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=verbose)
+        self.verbose = True
+        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info' if not self.verbose else 'debug')
+        self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=self.verbose)
+        self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=self.verbose)
         self.pack_state = PackState()
         self.robot_module.move_to_home()
-        # self.logger.toggle_offon()
 
         """ ========== RESET GUI ========== """
         self.state = {"pack_confirmed" : True, "cells_confirmed" : False, "quals_confirmed" : False}
@@ -229,50 +226,135 @@ class MemGui(tk.Tk):
         self.cell_models = ["aaa", "bbb", "ccc"]
 
         """ ========== LAYOUT GUI ========== """
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        
-        self.fncs_container = tk.Frame(self,  bg='antique white')
-        self.fncs_container.grid(row=0, column=0, sticky='nsew', padx=(5, 0), pady=(0, 5))
-        self.fncs_container.grid_columnconfigure(0, weight=1)
-        
-        for i, fnc in enumerate([self.add_pack_bb, self.locate_pack, self.remove_pack_cover, self.identify_cells, self.assess_cells_qualities, self.pickup_cells]):
-            btn = tk.Button(self.fncs_container, text=fnc.__name__, command=fnc)
-            self.fncs_container.rowconfigure(i, weight=1)
-            btn.grid(row=i, column=0, sticky='nsew', padx=(5, 5))
-        
-        self.frame = HomeScreen(self, self)
-        self.frame.grid(row=0, column=1, rowspan=2, sticky='nsew')
-        self.frame.grid_rowconfigure(0, weight=1)
-    
-        self.btns_container = tk.Frame(self, bg='antique white')
-        self.btns_container.grid(row=1, column=0, sticky='nsew', padx=(5, 0), pady=(5, 0))
-        self.btns_container.grid_columnconfigure(0, weight=1)
+        self.layout_gui()
 
-        self.yes_btn = tk.Button(self.btns_container, text="✔", font=("Arial", 12))
-        self.tmp_btns = []
-        
-        self.pack_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='pack')
+        """ ========== DRAWER GUI ========== """
+        self.pack_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='pack')
         self.cells_bb_drawer = None
         self.quals_editor = None
 
-        # DEBUG
+        """ ========== DEBUG ========== """
         self.pack_state.cover_on = False
-        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+
+    def layout_gui(self):
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=5)
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.configure(bg='white')
+
+        self.top_frame = tk.Frame(self, bg='blue')
+        self.top_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.top_frame.grid_rowconfigure(0, weight=1)
+        self.top_frame.grid_columnconfigure(0, weight=1)
+        self.top_frame.grid_columnconfigure(1, weight=3)
+        self.mid_frame = tk.Frame(self, bg='green')
+        self.mid_frame.grid(row=1, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.mid_frame.grid_rowconfigure(0, weight=1)
+        self.mid_frame.grid_columnconfigure(0, weight=1)
+        self.mid_frame.grid_columnconfigure(1, weight=3)
+        self.bot_frame = tk.Frame(self, bg='red')
+        self.bot_frame.grid(row=2, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.bot_frame.grid_rowconfigure(0, weight=1)
+        self.bot_frame.grid_columnconfigure(0, weight=1)
+        self.bot_frame.grid_columnconfigure(1, weight=3)
+        
+        self.fncs_frame = tk.Frame(self.mid_frame,  bg='antique white')
+        self.fncs_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.fncs_frame.columnconfigure(0, weight=1)
+        self.fncs_frame.grid_propagate(False)
+        
+        self.home_frame = HomeScreen(self.mid_frame, self)
+        self.home_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.home_frame.rowconfigure(0, weight=1)
+        self.home_frame.columnconfigure(0, weight=1)
+        self.home_frame.grid_propagate(False)
+
+        self.progress_bar_frame = tk.Frame(self.top_frame,  bg='antique white')
+        self.progress_bar_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.progress_bar_frame.columnconfigure(0, weight=1)
+        self.progress_bar_frame.rowconfigure(0, weight=1)
+        self.progress_bar_frame.grid_propagate(False)
+        
+        self.info_frame = tk.Frame(self.top_frame,  bg='antique white')
+        self.info_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.info_cols = 4
+        self.info_rows = 5
+        [self.info_frame.columnconfigure(i, weight=1) for i in range(self.info_cols)]
+        [self.info_frame.rowconfigure(i, weight=1, minsize=10) for i in range(self.info_rows)]
+        self.info_frame.grid_propagate(False)
+
+        self.btns_frame = tk.Frame(self.bot_frame, bg='yellow')
+        self.btns_frame.grid(row=0, column=1, sticky='nsew', padx=(15, 5), pady=(5, 5)) # padx is 15 to have this frame the same size as the others
+        self.btns_frame.columnconfigure(0, weight=1)
+        self.btns_frame.grid_propagate(False)
+
+        style = ttk.Style(self)
+        style.configure("custom.Horizontal.TProgressbar", troughcolor='white', background='green')
+        self.progress_bar = ttk.Progressbar(self.progress_bar_frame, style="custom.Horizontal.TProgressbar", orient='horizontal', mode='determinate')
+        self.progress_bar.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(15, 15))
+        self.progress_bar['value'] = 50
+        self.fncs = {
+                        "Human": [self.add_pack_bb], 
+                        "Vision": [self.locate_pack, self.identify_cells, self.assess_cells_qualities], 
+                        "Robot": [self.remove_pack_cover,   self.pickup_cells], 
+                        }
+        
+        self.update_info()
+
+        fncs_idx = 0
+        for cat in self.fncs:
+            self.human_label = tk.Label(self.fncs_frame, text=f"{cat} functions:")
+            self.human_label.grid(row=fncs_idx, column=0, sticky='nsew', padx=(5, 5), pady=(5, 0))
+            self.fncs_frame.rowconfigure(fncs_idx, weight=1)
+            fncs_idx += 1
+            for fnc in self.fncs[cat]:
+                btn = tk.Button(self.fncs_frame, text=fnc.__name__.capitalize().replace("_", " "),command=fnc)
+                btn.grid(row=fncs_idx, column=0, sticky='nsew', padx=(0, 0))
+                self.fncs_frame.rowconfigure(fncs_idx, weight=1)
+                fncs_idx += 1
+
+        self.yes_btn = tk.Button(self.btns_frame, text="✔", font=("Arial", 12))
+        self.tmp_btns = []
+
+    def update_info(self):
+        label = tk.Label(self.info_frame, text=f"Pack model: {self.pack_state.model}")
+        label.grid(row=0, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        label = tk.Label(self.info_frame, text=f"Cover on: {self.pack_state.cover_on if self.pack_state.cover_on is not None else "unknown"}")
+        label.grid(row=1, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        label = tk.Label(self.info_frame, text=f"Pack size: {self.pack_state.size if self.pack_state.size is not None else "unknown"}")
+        label.grid(row=2, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        label = tk.Label(self.info_frame, text=f"Location in frame: {self.pack_state.frame_location if self.pack_state.frame_location is not None else "unknown"}")
+        label.grid(row=3, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        label = tk.Label(self.info_frame, text=f"Real world position: {self.pack_state.pose.t if self.pack_state.pose is not None else "unknown"}")
+        label.grid(row=4, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        
+        label = tk.Label(self.info_frame, text=f"Cells model : {self.pack_state.cells[0].model if len(self.pack_state.cells)!=0 else "unknown"}")
+        label.grid(row=0, column=1, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        label = tk.Label(self.info_frame, text=f"# cells: {len(self.pack_state.cells) if len(self.pack_state.cells)!=0 else "unknown"}")
+        label.grid(row=0, column=2, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        for i, cell in enumerate(self.pack_state.cells):
+            label = tk.Label(self.info_frame, text=f"{i:02d}: "+cell.to_string_short())
+            label.grid(row=(i%(self.info_rows-1))+1, column=(i//self.info_cols)+1, sticky='nsew', padx=(0, 0), pady=(0, 0))
+        
+        # TODO: delete this is just to see if they fit nice when they are 9
+        if len(self.pack_state.cells) != 0:
+            label = tk.Label(self.info_frame, text=f"{i:02d}: "+self.pack_state.cells[0].to_string_short())
+            label.grid(row=1, column=3, sticky='nsew', padx=(0, 0), pady=(0, 0))
 
     def add_pack_bb(self):
         self.logger.info("START: add pack bounding box")
         self.pack_bb_drawer.editable = True
         self.pack_bb_drawer.clear_bbs()
-        self.pack_bb_drawer.add_bb([500, 500, 1000, 1000])
+        x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
+        self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
         self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
         self.yes_btn.config(command=self.confirm_pack)
         for btn in self.tmp_btns:
             btn.pack_forget()
         for propose in self.pack_models:
-            btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
+            btn = tk.Button(self.btns_frame, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
             btn.pack(fill="both", padx=(5, 5))
             self.tmp_btns.append(btn)
         self.logger.info("END: add pack bounding box")
@@ -296,20 +378,20 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
 
-            self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
-            self.yes_btn.config(command=self.confirm_pack)
-
-            # should come from database instead then hardcoded
+            # TODO: delete should come from database instead then hardcoded
             for btn in self.tmp_btns:
                 btn.pack_forget()
             for propose in self.pack_models:
-                btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
+                btn = tk.Button(self.btns_frame, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_pack_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
                 self.tmp_btns.append(btn)
+            
+            self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
+            self.yes_btn.config(command=self.confirm_pack)
         else:
             self.pack_state.cover_on = False
             self.state['pack_confirmed'] = True
-            self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+            self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
             self.logger.info("The cover seems to be already off")
         self.logger.info("END: locate_pack")
     
@@ -338,7 +420,7 @@ class MemGui(tk.Tk):
         for btn in self.tmp_btns:
             btn.pack_forget()
         for propose in self.cell_models:
-            btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
+            btn = tk.Button(self.btns_frame, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
             btn.pack(fill="both", padx=(5, 5))
             self.tmp_btns.append(btn)
         self.logger.info("END: add cell bounding box")
@@ -361,11 +443,11 @@ class MemGui(tk.Tk):
             self.yes_btn.pack(fill="x", side="bottom", padx=(5, 5))
             self.yes_btn.config(command=self.confirm_cells)
 
-            # should come from database instead then hardcoded
+            # TODO: delete should come from database instead then hardcoded
             for btn in self.tmp_btns:
                 btn.pack_forget()
             for propose in self.cell_models:
-                btn = tk.Button(self.btns_container, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
+                btn = tk.Button(self.btns_frame, text=propose, font=("Arial", 12), command= lambda model=propose: self.choose_diff_cell_model(model=model))
                 btn.pack(fill="both", padx=(5, 5))
                 self.tmp_btns.append(btn)
             self.logger.debug(self.pack_state)
@@ -373,6 +455,7 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         self.logger.info("END: identify_cells")
+        self.update_info()
 
     def assess_cells_qualities(self):
         self.logger.info("START: assess_cells_qualities")
@@ -381,8 +464,8 @@ class MemGui(tk.Tk):
             bbs = []
             drawing_bbs = []
             for cell in self.pack_state.cells:
-                bbs.append(cell.frame_position)
-                drawing_bbs.append([cell.frame_position[0] - cell.width//2, cell.frame_position[1] - cell.width//2, cell.frame_position[0] + cell.width//2, cell.frame_position[1] + cell.width//2])
+                bbs.append(cell.frame_location)
+                drawing_bbs.append([cell.frame_location[0] - cell.width//2, cell.frame_location[1] - cell.width//2, cell.frame_location[0] + cell.width//2, cell.frame_location[1] + cell.width//2])
             qualities = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
             self.quals_editor.add_quals(keep_bbs=qualities, bbs=drawing_bbs)
             for qual, cell in zip(qualities, self.pack_state.cells):
@@ -405,9 +488,9 @@ class MemGui(tk.Tk):
                 else:
                     self.robot_module.pick_and_place(cell.pose, self.keep_T)
                     self.logger.info(f"END: cell {i} kept")
-                cell.sorted = self.vision_module.verify_pickup(cell.frame_position, cell.width)
+                cell.sorted = self.vision_module.verify_pickup(cell.frame_location, cell.width)
                 self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
-                self.frame.canvas.update() # to write the outcome real time
+                self.home_frame.canvas.update() # to write the outcome real time
             self.robot_module.move_to_home()
         else:
             self.logger.info("requisites not met")
@@ -425,7 +508,7 @@ class MemGui(tk.Tk):
         center_y = (y_min + y_max) // 2
         self.pack_state.frame_location = [center_x, center_y]
         self.pack_state.size = (x_max - x_min, y_max - y_min)
-        self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
 
     def confirm_cells(self):
         self.logger.info(f"Cells bounding boxes confirmed")
@@ -441,7 +524,7 @@ class MemGui(tk.Tk):
             self.pack_state.cells[i].frame_position = [center_x, center_y]
             self.pack_state.cells[i].width = x_max - x_min
             self.vision_module.set_background()
-        self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
+        self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         
     def confirm_quals(self):
         self.logger.info(f"Cells qualities confirmed")
@@ -451,14 +534,7 @@ class MemGui(tk.Tk):
         for i, keep_cell in enumerate(self.quals_editor.keep_bbs):
             self.pack_state.cells[i].keep = keep_cell
             self.vision_module.set_background()
-        
-    # def confirm(self, var: str):
-    #     self.logger.info(f"{var} now True")
-    #     self.state[var] = True
-    #     for btn in self.tmp_btns:
-    #         btn.pack_forget()
-    #     self.yes_btn.pack_forget()
-
+      
     def choose_diff_pack_model(self, model: str):
         self.logger.info(f"Pack model chosen: {model}")
         self.pack_state.model = model
@@ -477,29 +553,20 @@ class MemGui(tk.Tk):
         """
         pass
 
-    # def write_qualities(self, qualities: list[float], frame: tk.Frame, editable=False):
-    #     """write the quality of each cell on the frame showed to the user
-
-    #     Args:
-    #         bbs_position (list[ndarray]): postions of bounding boxes for each cell
-    #         qualities (list[float]): qualities of each cell
-    #     """
-    #     self.proposed_qualities = qualities    
-
     def write_outcome_picked_cells(self, scale=1, padx=0, pady=0):
         """mark on the image whether or not the battery cell was picked up
 
         Args:
             bbs_position (list[ndarray]): postions of bounding boxes
         """
-        self.frame.canvas.delete('outcome')
+        self.home_frame.canvas.delete('outcome')
         for cell in self.pack_state.cells:
             if cell.sorted is None:
                 break
             txt = "✗" if not cell.sorted else "✓"
             color = "firebrick" if not cell.sorted else "green2"
-            x, y = cell.frame_position[0]*scale + padx, cell.frame_position[1]*scale + pady
-            self.frame.canvas.create_text(x, y, text=txt, font=("Arial", 35), fill=color, tags='outcome')
+            x, y = cell.frame_location[0]*scale + padx, cell.frame_location[1]*scale + pady
+            self.home_frame.canvas.create_text(x, y, text=txt, font=("Arial", 35), fill=color, tags='outcome')
 
     def show_frame_debug(self):
         drawing_frame = self.vision_module.get_current_frame()
@@ -508,33 +575,22 @@ class MemGui(tk.Tk):
             xy_max = (self.pack_state.frame_location[0]+self.pack_state.size[0]//2, self.pack_state.frame_location[1]+self.pack_state.size[1]//2)
             cv2.rectangle(drawing_frame, xy_min, xy_max, color=(0, 0, 255))
         for i, cell in enumerate(self.pack_state.cells):
-            cv2.circle(drawing_frame, cell.frame_position, 1, (0, 100, 100), 3)
-            cv2.circle(drawing_frame, cell.frame_position, cell.width//2, (255, 0, 255), 3)
-            cv2.putText(drawing_frame, f"id: {i}; {cell.model}",      np.array(cell.frame_position)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"c: {cell.frame_position}",  np.array(cell.frame_position)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-            cv2.putText(drawing_frame, f"r: {cell.width//2}; z: {cell.z:0.3f}",    np.array(cell.frame_position)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.circle(drawing_frame, cell.frame_location, 1, (0, 100, 100), 3)
+            cv2.circle(drawing_frame, cell.frame_location, cell.width//2, (255, 0, 255), 3)
+            cv2.putText(drawing_frame, f"id: {i}; {cell.model}",      np.array(cell.frame_location)+(-30, -20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"c: {cell.frame_location}",  np.array(cell.frame_location)+(-30, 0), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+            cv2.putText(drawing_frame, f"r: {cell.width//2}; z: {cell.z:0.3f}",    np.array(cell.frame_location)+(-30,  20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
         cv2.imshow("frame", drawing_frame)
         cv2.waitKey(1)
 
     def after_update(self):
         self.camera_frame = self.vision_module.get_current_frame(format='pil')
-        self.scale, self.padx, self.pady = self.frame.draw_image(self.camera_frame)
-        # self.show_frame_debug()
-        
-        """TODO : remove"""
-        # if self.state['pack_confirmed'] and self.pack_bb_drawer.editable:
-            # self.pack_bb_drawer.lock()
-            # self.cells_bb_drawer = _BoundingBoxEditor(self.frame.canvas, self.frame, tag='cells')
-            # x_min, y_min, x_max, y_max = self.pack_bb_drawer.bbs_position
-        #     center_x = (x_min + x_max) // 2
-        #     center_y = (y_min + y_max) // 2
-        #     self.pack_state.frame_location = [center_x, center_y]
+        self.scale, self.padx, self.pady = self.home_frame.draw_image(self.camera_frame)
+        if self.verbose:
+            self.show_frame_debug()
+
         if self.pack_bb_drawer is not None:
             self.pack_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
-        """TODO : remove"""
-        # if self.state['cells_confirmed'] and self.cells_bb_drawer.editable:
-        #     self.cells_bb_drawer.lock()
-            # self.quals_editor = _QualitiesEditor(self.frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         if self.cells_bb_drawer is not None:
             self.cells_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
         if self.quals_editor is not None:
@@ -545,10 +601,10 @@ class MemGui(tk.Tk):
 
 class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
+        super().__init__(parent, bg="brown")
         self.controller = controller
-        self.canvas = tk.Canvas(self)
-        self.canvas.pack(fill='both', expand=True)
+        self.canvas = tk.Canvas(self, bg="lightblue")
+        self.canvas.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
     
     def draw_image(self, img):
         scale = min(self.canvas.winfo_width() / img.size[0], self.canvas.winfo_height() / img.size[1])
@@ -568,7 +624,7 @@ class HomeScreen(tk.Frame):
 
 if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")
-    camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+    camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
     camera_frame = PIL.Image.fromarray(camera_frame)
     app = MemGui()
     app.after(1, app.after_update)

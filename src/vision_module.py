@@ -144,7 +144,7 @@ class VisionModule():
             T = sm.SE3.Rt(sm.SO3(base_T_TCP.R), tmp.t) # keep the current orientation of the tcp
         except AttributeError:
             self.logger.debug("Frame pos to pose debug")
-            T = sm.SE3([float('inf'), float('inf'), float('inf')])
+            T = sm.SE3([-1, -1, -1])
         return T
 
     def verify_pickup(self, position: ndarray, radius=0.5) -> list[bool]:
