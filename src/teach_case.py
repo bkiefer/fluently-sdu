@@ -200,6 +200,7 @@ class MemGui(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("MeM use case")
+        self.geometry("1280x720")
         
         """ ========== WORKSPACE SETUP ========== """
         self.cell_m_q, self.cell_h_q = 0.6, 0.8
@@ -395,9 +396,6 @@ class MemGui(tk.Tk):
         self.logger.info("END: assess_cells_qualities")
     
     def pickup_cells(self):
-        # TODO: 
-        # check prerequisites 
-        # verify pickup
         self.logger.info("START: pickup_cells")
         if self.state['quals_confirmed']:
             for i, cell in enumerate(self.pack_state.cells):
