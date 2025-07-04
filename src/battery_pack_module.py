@@ -10,7 +10,7 @@ class Cell():
         self.keep = None if quality is None else quality
         self.pose = None if pose is None else pose
         self.frame_location = None if frame_position is None else frame_position
-        self.sorted = False if sorted is None else sorted
+        self.sorted = None if sorted is None else sorted
         self.string_mode = ""
     
     def to_string_short(self):
