@@ -311,7 +311,6 @@ class MemGui(tk.Tk):
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=5)
-        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.configure(bg='white')
 
@@ -319,20 +318,16 @@ class MemGui(tk.Tk):
         self.top_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.top_frame.grid_rowconfigure(0, weight=1)
         self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=3)
+        self.top_frame.grid_columnconfigure(1, weight=2)
         self.mid_frame = tk.Frame(self, bg='green')
         self.mid_frame.grid(row=1, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
-        self.mid_frame.grid_rowconfigure(0, weight=1)
+        self.mid_frame.grid_rowconfigure(0, weight=5)
+        self.mid_frame.grid_rowconfigure(1, weight=1)
         self.mid_frame.grid_columnconfigure(0, weight=1)
-        self.mid_frame.grid_columnconfigure(1, weight=3)
-        self.bot_frame = tk.Frame(self, bg='red')
-        self.bot_frame.grid(row=2, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
-        self.bot_frame.grid_rowconfigure(0, weight=1)
-        self.bot_frame.grid_columnconfigure(0, weight=1)
-        self.bot_frame.grid_columnconfigure(1, weight=3)
+        self.mid_frame.grid_columnconfigure(1, weight=2)
         
         self.fncs_frame = tk.Frame(self.mid_frame,  bg='antique white')
-        self.fncs_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.fncs_frame.grid(row=0, column=0, rowspan=2, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.fncs_frame.columnconfigure(0, weight=1)
         self.fncs_frame.grid_propagate(False)
         
@@ -356,10 +351,14 @@ class MemGui(tk.Tk):
         [self.info_frame.rowconfigure(i, weight=1, minsize=10) for i in range(self.info_rows)]
         self.info_frame.grid_propagate(False)
 
-        self.btns_frame = tk.Frame(self.bot_frame, bg='yellow')
-        self.btns_frame.grid(row=0, column=1, sticky='nsew', padx=(15, 5), pady=(5, 5)) # padx is 15 to have this frame the same size as the others
+        self.btns_frame = tk.Frame(self.mid_frame, bg='yellow')
+        self.btns_frame.grid(row=1, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5)) # padx is 15 to have this frame the same size as the others
         self.btns_frame.columnconfigure(0, weight=1)
+        self.btns_frame.rowconfigure(0, weight=1)
         self.btns_frame.grid_propagate(False)
+
+        self.yes_btn = tk.Button(self.btns_frame, text="YES")
+        self.yes_btn.grid(row=0, column=0, sticky='nsew')
 
         style = ttk.Style(self)
         style.configure("custom.Horizontal.TProgressbar", troughcolor='white', background='green')
@@ -371,9 +370,9 @@ class MemGui(tk.Tk):
         self.update_info()
 
         self.fncs = {
-                        "Robot": [self.remove_pack_cover,   self.pickup_cells], 
-                        "Vision": [self.locate_pack, self.identify_cells, self.assess_cells_qualities], 
-                        "Human": [self.add_pack_bb, self.confirm_pack, self.confirm_cells, self.confirm_quals], 
+                        "Robot": [self.move_robot_home, self.move_robot_change_tool_pose, self.remove_pack_cover, self.pickup_cells], 
+                        "Vision": [self.classify_pack, self.locate_pack, self.check_cover_off, self.classify_cells, self.locate_cells, self.assess_cells_qualities], 
+                        "Human": [self.swap_tool, self.confirm_pack_fastened, self.add_pack_bb, self.confirm_pack, self.add_cell_bb, self.confirm_cells, self.confirm_quals], 
                         }
         fncs_idx, col = 0, 0
         [self.fncs_frame.columnconfigure(i, weight=1) for i in range(2)]
@@ -427,7 +426,11 @@ class MemGui(tk.Tk):
                 self.cells_labels.append(label)
         for i, c_label in enumerate(self.cells_labels):
             c_label.configure(text=f"{i:02d}: "+self.pack_state.cells[i].to_string_short())
-            
+
+    def confirm_pack_fastened(self):
+        self.logger.info("START: pack fastened confirmed")
+        self.logger.info("END: pack fastened confirmed")
+
     def add_pack_bb(self):
         # could be used for both
         self.logger.info("START: add pack bounding box")
@@ -438,7 +441,7 @@ class MemGui(tk.Tk):
 
         self.logger.info("END: add pack bounding box")
 
-    def locate_pack(self):
+    def locate_pack_deprecated(self):
         self.logger.info("START: locate_pack")
         result = self.vision_module.locate_pack(self.camera_frame)
         if result is not None:
@@ -462,6 +465,30 @@ class MemGui(tk.Tk):
             self.logger.info("The cover seems to be already off")
         self.update_info()
         self.logger.info("END: locate_pack")
+    
+    def classify_pack(self):
+        self.logger.info("START: classify pack")
+        self.logger.info("END: classify pack")
+
+    def locate_pack(self):
+        self.logger.info("START: locate pack")
+        self.logger.info("END: locate pack")
+
+    def check_cover_off(self):
+        self.logger.info("START: check cover off")
+        self.logger.info("END: check cover off")
+
+    def swap_tool(self):
+        self.logger.info("START: swap tool")
+        self.logger.info("END: swap tool")
+
+    def move_robot_home(self):
+        self.logger.info("START: robot move to home")
+        self.logger.info("END: robot move to home")
+    
+    def move_robot_change_tool_pose(self):
+        self.logger.info("START: move_robot_change_tool_pose")
+        self.logger.info("END: move_robot_change_tool_pose")
     
     def choose_diff_pack_model(self, model: str):
         self.logger.info(f"Pack model chosen: {model}")
@@ -502,11 +529,12 @@ class MemGui(tk.Tk):
         self.logger.info("START: add cell bounding box")
         self.cell_bb_drawer.editable = True
         self.cell_bb_drawer.clear_bbs()
-        self.cell_bb_drawer.add_bb([500, 500, 1000, 1000])
+        x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
+        self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
         self.logger.info("END: add cell bounding box")
 
-    def identify_cells(self):
-        self.logger.info("START: identify_cells")
+    def identify_cells_deprecated(self):
+        self.logger.info("START: identify_cells deprecated")
         if not self.pack_state.cover_on:
             self.logger.info("requisites ok")
             result = self.vision_module.identify_cells(self.camera_frame)
@@ -532,7 +560,15 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         self.update_info()
-        self.logger.info("END: identify_cells")
+        self.logger.info("END: identify_cells deprecated")
+
+    def classify_cells(self):
+        self.logger.info("START: classify cells")
+        self.logger.info("END: classify cells")
+
+    def locate_cells(self):
+        self.logger.info("START: locate cells")
+        self.logger.info("END: locate cells")
 
     def choose_diff_cell_model(self, model: str):
         self.logger.info(f"Cell model chosen: {model}")
