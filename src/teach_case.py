@@ -340,7 +340,7 @@ class MemGui(tk.Tk):
         self.nr_cells_label.grid(row=0, column=2, sticky='nsew', padx=(0, 0), pady=(0, 0))
         self.cells_labels = []
 
-        self.extra_label = tk.Label(self.info_frame, text=f"")
+        self.extra_label = tk.Label(self.info_frame)
         self.extra_label.grid(row=0, column=3, sticky='nsew', padx=(0, 0), pady=(0, 0))
 
     def update_info(self):
@@ -349,8 +349,9 @@ class MemGui(tk.Tk):
         self.psize_label.configure(text=f"Pack size: {self.pack_state.size if self.pack_state.size is not None else 'unknown'}")
         self.fpos_label.configure(text=f"Location in frame: {self.pack_state.frame_location if self.pack_state.frame_location is not None else 'unknown'}")
         self.rpos_label.configure(text=f"Real world position: {self.pack_state.pose.t if self.pack_state.pose is not None else 'unknown'}")
-        self.cmodel_label.configure(text=f"Cells model : {self.pack_state.cells[0].model if len(self.pack_state.cells)!=0 else 'unknown'}")
+        self.cmodel_label.configure(text=f"Cells model : {self.pack_state.cell_model}")
         self.nr_cells_label.configure(text=f"# cells: {len(self.pack_state.cells) if len(self.pack_state.cells)!=0 else 'unknown'}")
+        self.extra_label.configure(text=f"Active tcp: {self.robot_module.active_gripper}")
         if len(self.cells_labels) == 0:
             for i, cell in enumerate(self.pack_state.cells):
                 label = tk.Label(self.info_frame, text=f"{i:02d}: "+cell.to_string_short())
@@ -370,7 +371,6 @@ class MemGui(tk.Tk):
         self.pack_bb_drawer.clear_bbs()
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
-
         self.logger.info("END: add pack bounding box")
 
     def locate_pack_deprecated(self):
@@ -436,10 +436,22 @@ class MemGui(tk.Tk):
 
     def check_cover_off(self):
         self.logger.info("START: check cover off")
+        result = self.vision_module.locate_pack(self.camera_frame)
+        if result is None:
+            self.pack_state.cover_on = False
+            self.state['pack_confirmed'] = True
+            self.logger.info("The cover seems to be off")
+        else:
+            self.logger.info("The cover seems to be on still")
         self.logger.info("END: check cover off")
 
     def swap_tool(self):
         self.logger.info("START: swap tool")
+        if self.robot_module.active_gripper == "small":
+            self.robot_module.change_gripper("big")
+        elif self.robot_module.active_gripper == "big":
+            self.robot_module.change_gripper("small")
+        self.update_info()
         self.logger.info("END: swap tool")
 
     def move_robot_home(self):
@@ -465,7 +477,6 @@ class MemGui(tk.Tk):
         self.pack_state.frame_location = [center_x, center_y]
         self.pack_state.pose = self.vision_module.frame_pos_to_pose([center_x, center_y], self.robot_module.get_TCP_pose())
         self.pack_state.size = (x_max - x_min, y_max - y_min)
-        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
         self.update_info()
 
     def remove_pack_cover(self):
@@ -487,7 +498,7 @@ class MemGui(tk.Tk):
 
     def add_cell_bb(self):
         self.logger.info("START: add cell bounding box")
-        self.cell_bb_drawer.editable = True
+        self.cells_bb_drawer.editable = True
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.cells_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
         self.logger.info("END: add cell bounding box")
@@ -523,10 +534,44 @@ class MemGui(tk.Tk):
 
     def classify_cells(self):
         self.logger.info("START: classify cells")
-        self.logger.info("END: classify cells")
-
+        if self.pack_state.cover_on == False:
+            self.logger.info("requisites ok")
+            result = self.vision_module.identify_cells(self.camera_frame)
+            self.pack_state.cell_model = (result['model'])
+            self.logger.debug(self.pack_state)
+            self.logger.info(f"classified cells as {self.pack_state.cell_model}")
+        else:
+            self.logger.info("requisites not met")
+        self.update_info()
+        self.logger.info("END: classify cell")
+        
     def locate_cells(self):
         self.logger.info("START: locate cells")
+        if self.pack_state.cover_on == False:
+            self.logger.info("requisites ok")
+            result = self.vision_module.identify_cells(self.camera_frame)
+            drawing_bbs = []
+            self.pack_state.cells = []
+
+            # sometime the depth sensor does not correctly pick up the z, the cells are all the sae model so height as well so we can just fill in
+            median_z = np.median([z for z in result['zs'] if z!= 0])
+
+            for bb, z in zip(result['bbs'], result['zs']):
+                x, y, w = bb
+                cell_z = median_z if abs(z-median_z) > 0.01 else z
+                pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose(), Z=cell_z)
+                self.pack_state.add_cell(self.pack_state.cell_model, width=w, z=cell_z, pose=pose, frame_position=(x, y))
+                drawing_bbs.append([x-w//2, y-w//2, x+w//2, y+w//2])
+        
+            self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+            self.cells_bb_drawer.editable = True
+            self.cells_bb_drawer.clear_bbs()
+            self.cells_bb_drawer.add_bbs(drawing_bbs)
+            self.logger.debug(self.pack_state)
+            self.logger.info(f"END: localized {len(self.pack_state.cells):02d} cells")
+        else:
+            self.logger.info("requisites not met")
+        self.update_info()
         self.logger.info("END: locate cells")
 
     def choose_diff_cell_model(self, model: str):
@@ -546,12 +591,12 @@ class MemGui(tk.Tk):
             self.pack_state.cells[i].pose = self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[i].z)
             self.pack_state.cells[i].width = x_max - x_min
         self.vision_module.set_background()
-        self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         self.update_info()
 
     def assess_cells_qualities(self):
         self.logger.info("START: assess_cells_qualities")
         if self.state['cells_confirmed']:
+            self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
             self.logger.info("requisites ok")
             bbs = []
             drawing_bbs = []

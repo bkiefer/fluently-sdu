@@ -48,7 +48,7 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
-            frame = cv2.imread("data/camera_frame.png")
+            frame = cv2.imread("data/camera_frame1.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)

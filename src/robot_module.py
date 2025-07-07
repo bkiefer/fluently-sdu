@@ -19,6 +19,8 @@ class RobotModule:
             self.robot.add_gripper(gripper=self.gripper)
         except RuntimeError as e:
             self.robot = None
+            self.tcp_length_dict = tcp_length_dict
+            self.active_gripper = active_gripper # debug
             self.logger.warning("The robot could not be started, the module will run for debug purpose")
             self.logger.warning(e)
 
