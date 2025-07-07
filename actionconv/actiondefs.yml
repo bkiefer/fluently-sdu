@@ -1,0 +1,79 @@
+atomic:
+  - [ BatteryFastened, battery.fastened, "Battery fastened" ]
+  - [ BatteryTypeNotChecked, unbound(battery.type), "Battery type not checked" ]
+  - [ BatteryTypeChecked, battery.type, "Battery type checked" ]
+  - [ BatteryKnownType, battery.type != BattUnknown, "Battery type known" ]
+  - [ BatteryTypeVerified, battery.typeVerified, "Battery type verified" ]
+  - [ BatteryLocationChecked, battery.location, "Battery location checked" ]
+  - [ BatteryLocationVerified, battery.locationVerified, "Battery location verified" ]
+  - [ CoverUnchecked, unbound(cover.isOn), "Cover not checked"]
+  - [ CoverDetected, cover.isOn, "Cover detected" ]
+  - [ RobotRemovesCover, cover.whoRemoves == 'robot', "Robot can remove cover"]
+  - [ ToolIsLargeGripper, tool == 'LargeGripper', "Mounted tool is large gripper" ]
+  - [ CollabRemoveCover, cover.whoRemoves == 'collaborative',
+      "The cover is removed together" ]
+  - [ RobotCoverRemoveTried, lastActionWasRobotCoverRemoval(),
+      # "ask('select ?r where ?r <rdf:type> <plan:RemoveCoverR> ?t
+      #                       & {currentSession} <mem:executed> ?r ?t
+      #                       filter ?t isMaximum von allen ?r ?t')",
+      "Robot attempted cover removal" ]
+  - [ RobotNeccessaryForCover, cover.whoRemoves != 'human',
+      "The robot is needed in cover removal"]
+  - [ HumanAskedCoverRemoval, myLastDaIs('Request(RemoveCover)'),
+      "Human asked to remove cover"]
+  - [ HumanAskedCoverCollab, myLastDaIs('Request(Cover)'),
+      "Human asked to participate in cover removal"]
+  - [ HumanIsReady, lastDA('Confirm(Cover)'), "Human is asked to prepare cover removal" ]
+
+actions:
+  - FastenBatteryH:
+      pre: ! BatteryFastened
+      post: BatteryFastened
+  - ClasifyBatteryR:
+      pre: BatteryFastened & BatteryTypeNotChecked
+      post: BatteryTypeChecked
+  - CheckBatteryClassificationH:
+      pre: BatteryTypeChecked
+      post: BatteryTypeChecked & BatteryKnownType & BatteryTypeVerified
+  - LocateBatteryR:
+      pre: "BatteryKnownType
+        & BatteryTypeVerified
+        & ! BatteryLocationChecked
+        & ! BatteryLocationVerified"
+      post: BatteryLocationChecked
+  - CheckLocalizationH:
+      pre: ! BatteryLocationVerified
+      post: BatteryLocationChecked & BatteryLocationVerified
+  - CheckCoverR:
+      pre: BatteryTypeVerified & CoverUnchecked
+      post: ! CoverUnchecked
+  - RemoveCoverAloneR:
+      pre: "CoverDetected
+        & BatteryLocationVerified
+        & RobotRemovesCover
+        & ToolIsLargeGripper"
+      post: RobotCoverRemoveTried
+  - GetSupportFromHumanR:
+      pre: "CoverDetected
+        & BatteryLocationVerified
+        & CollabRemoveCover
+        & ToolIsLargeGripper
+        & ! HumanIsReady
+        & ! HumanAskedCoverCollab"
+      post: ! HumanIsReady & HumanAskedCoverCollab
+  - RemoveCoverBothR:
+      pre: "CoverDetected
+        & BatteryLocationVerified
+        & CollabRemoveCover
+        & ToolIsLargeGripper
+        & HumanIsReady"
+      post: ! CoverDetected
+  - CheckCoverRemoved:
+      pre: "RobotCoverRemoveTried & CoverDetected & ! HumanAskedCoverRemoval"
+  - CheckToolIsLargeH:
+      pre: "CoverDetected
+        & BatteryLocationVerified
+        & RobotNeccessaryForCover"
+  - RemoveCoverH:
+      pre: HumanAskedCoverRemoval & CoverDetected
+      post: ! CoverDetected
