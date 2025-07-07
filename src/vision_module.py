@@ -69,6 +69,8 @@ class VisionModule():
             return None
         label = self.packs_yolo_model.names[int(result[0].boxes[0].cls)]
         confidence = (result[0].boxes[0].conf)
+        if confidence < 0.4:
+            return None
         xywh = result[0].boxes[0].xywh[0]
         # result[0].show()
         return {'shape': label, 'size': (int(xywh[2]), int(xywh[3])), 'cover_on': True, 'location': (int(xywh[0]), int(xywh[1]))}
