@@ -20,6 +20,7 @@ import PIL
 import numpy as np
 import paho.mqtt.client as mqtt
 import json
+import argparse
 
 class FluentlyMQTTClient:
     def __init__(self, client_id: str, broker: str = "localhost", port: int = 1883):
@@ -301,8 +302,8 @@ class MemGui(tk.Tk):
         self.quals_editor = None
 
         """ ========== DEBUG ========== """
-        self.pack_state.cover_on = False
-        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        # self.pack_state.cover_on = False
+        # self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
 
     def layout_gui(self):
         self.title("MeM use case")
@@ -458,7 +459,6 @@ class MemGui(tk.Tk):
         else:
             self.pack_state.cover_on = False
             self.state['pack_confirmed'] = True
-            self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
             self.logger.info("The cover seems to be already off")
         self.update_info()
         self.logger.info("END: locate_pack")
@@ -476,6 +476,7 @@ class MemGui(tk.Tk):
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
         self.pack_state.frame_location = [center_x, center_y]
+        self.pack_state.pose = self.vision_module.frame_pos_to_pose([center_x, center_y], self.robot_module.get_TCP_pose())
         self.pack_state.size = (x_max - x_min, y_max - y_min)
         self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
         self.update_info()
@@ -486,6 +487,8 @@ class MemGui(tk.Tk):
             self.logger.info("requisites ok")
             self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
             self.robot_module.move_to_home()
+            time.sleep(0.5)
+            self.camera_frame = self.vision_module.get_current_frame(format='pil')
             if self.vision_module.locate_pack(self.camera_frame) is None:
                 self.logger.info("cover removed!")
                 self.pack_state.cover_on = False
@@ -509,11 +512,18 @@ class MemGui(tk.Tk):
             result = self.vision_module.identify_cells(self.camera_frame)
             drawing_bbs = []
             self.pack_state.cells = []
+
+            # sometime the depth sensor does not correctly pick up the z, the cells are all the sae model so height as well so we can just fill in
+            median_z = np.median([z for z in result['zs'] if z!= 0])
+
             for bb, z in zip(result['bbs'], result['zs']):
                 x, y, w = bb
-                pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose())
-                self.pack_state.add_cell(result['model'], width=w, z=z, pose=pose, frame_position=(x, y))
+                cell_z = median_z if abs(z-median_z) > 0.01 else z
+                pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose(), Z=cell_z)
+                self.pack_state.add_cell(result['model'], width=w, z=cell_z, pose=pose, frame_position=(x, y))
                 drawing_bbs.append([x-w//2, y-w//2, x+w//2, y+w//2])
+        
+            self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
             self.cells_bb_drawer.editable = True
             self.cells_bb_drawer.clear_bbs()
             self.cells_bb_drawer.add_bbs(drawing_bbs)
@@ -537,7 +547,8 @@ class MemGui(tk.Tk):
             x_min, y_min, x_max, y_max = bb
             center_x = (x_min + x_max) // 2
             center_y = (y_min + y_max) // 2
-            self.pack_state.cells[i].frame_position = [center_x, center_y]
+            self.pack_state.cells[i].frame_location = [center_x, center_y]
+            self.pack_state.cells[i].pose = self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[i].z)
             self.pack_state.cells[i].width = x_max - x_min
         self.vision_module.set_background()
         self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
@@ -575,6 +586,9 @@ class MemGui(tk.Tk):
         self.logger.info("START: pickup_cells")
         if self.state['quals_confirmed']:
             for i, cell in enumerate(self.pack_state.cells):
+                print(cell.z)
+                print(i)
+                print(cell.pose)
                 if cell.keep:
                     self.robot_module.pick_and_place(cell.pose, self.discard_T)
                     self.logger.info(f"END: cell {i} discarded")
@@ -633,8 +647,7 @@ class MemGui(tk.Tk):
         self.scale, self.padx, self.pady = self.home_frame.draw_image(self.camera_frame)
         if self.verbose:
             self.show_frame_debug()
-
-        if self.pack_bb_drawer is not None:
+        if self.pack_bb_drawer is not None and self.cells_bb_drawer is None:
             self.pack_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
         if self.cells_bb_drawer is not None:
             self.cells_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)

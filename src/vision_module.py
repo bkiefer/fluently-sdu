@@ -129,7 +129,7 @@ class VisionModule():
         cells_keeps = np.random.choice([True, False], len(bbs_positions))
         return cells_keeps
 
-    def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP) -> sm.SE3:
+    def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP, Z=None) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
 
         Args:
@@ -139,7 +139,8 @@ class VisionModule():
             sm.SE3(sm.SE3): 4x4 pose in world frame
         """
         try:
-            Z = self.get_z_at_pos(*frame_pos)
+            
+            Z = self.get_z_at_pos(*frame_pos) if Z is None else Z
             P = vision.frame_pos_to_3dpos(frame_pos=frame_pos, camera=self.camera, Z=Z)
             base_T_cam = base_T_TCP * self.camera.extrinsic
             tmp = base_T_cam * sm.SE3(P)
