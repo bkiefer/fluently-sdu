@@ -18,76 +18,8 @@ from tkinter import ttk
 import cv2
 import PIL
 import numpy as np
-import paho.mqtt.client as mqtt
-import json
 import argparse
-
-class FluentlyMQTTClient:
-    def __init__(self, client_id: str, broker: str = "localhost", port: int = 1883):
-        self.client = mqtt.Client(client_id=client_id)
-        self.broker = broker
-        self.port = port
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.message_callback = None
-        self.connect()
-        self.start()
-        self.subscribe("nlu/intent")
-        self.intent = []
-        self.state = 1
-        self.command_given = False
-
-    def on_connect(self, client, userdata, flags, rc):
-        print(f"Connected with result code {rc}")
-
-    def on_message(self, client, userdata, msg):
-        message = msg.payload.decode()
-        topic = msg.topic
-        print(f"Received message on topic '{topic}': {message}")
-        self.intent.append(message)
-        if self.message_callback:
-            self.message_callback(topic, message)
-
-    def connect(self):
-        self.client.connect(self.broker, self.port, keepalive=60)
-
-    def start(self):
-        self.client.loop_start()
-
-    def stop(self):
-        self.client.loop_stop()
-        self.client.disconnect()
-
-    def subscribe(self, topic: str):
-        self.client.subscribe(topic)
-        print(f"Subscribed to topic '{topic}'")
-
-    def publish(self, message_: str):
-        topic = "tts/behaviour"
-        message ={  "id": "fluently",
-            "text": message_,
-            "motion": "",
-            "delay": 0}
-        try:
-            json_message = json.dumps(message)
-            self.client.publish(topic, json_message)
-            print(message_)
-        except (TypeError, ValueError) as e:
-            print(f"Failed to serialize message to JSON: {e}")
-
-    def set_message_callback(self, callback):
-        self.message_callback = callback
-
-    def get_intent(self):
-        if len(self.intent) >=1:
-            ans = self.intent[-1]
-            self.intent = []
-            return ans
-        else:
-            return None
-        
-    def clear_intents(self):
-        self.intent.clear()
+from fluently_mqtt_client import FluentlyMQTTClient
 
 class _BoundingBoxEditor:
     def __init__(self, canvas, frame, tag=''):
@@ -289,7 +221,7 @@ class MemGui(tk.Tk):
         self.robot_module.move_to_home()
 
         """ ========== RESET GUI ========== """
-        self.state = {"pack_confirmed" : True, "cells_confirmed" : False, "quals_confirmed" : False}
+        self.state = {"pack_fastened": False, "pack_confirmed" : False, "cells_confirmed" : False, "quals_confirmed" : False}
         self.pack_models = ["Square", "Trapezoid"]
         self.cell_models = ["aaa", "bbb", "ccc"]
 
@@ -319,7 +251,7 @@ class MemGui(tk.Tk):
         self.top_frame.grid_rowconfigure(0, weight=1)
         self.top_frame.grid_columnconfigure(0, weight=1)
         self.top_frame.grid_columnconfigure(1, weight=2)
-        self.mid_frame = tk.Frame(self, bg='green')
+        self.mid_frame = tk.Frame(self, bg='red')
         self.mid_frame.grid(row=1, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.mid_frame.grid_rowconfigure(0, weight=5)
         self.mid_frame.grid_rowconfigure(1, weight=1)
@@ -429,10 +361,10 @@ class MemGui(tk.Tk):
 
     def confirm_pack_fastened(self):
         self.logger.info("START: pack fastened confirmed")
+        self.state['pack_fastened'] = True
         self.logger.info("END: pack fastened confirmed")
 
     def add_pack_bb(self):
-        # could be used for both
         self.logger.info("START: add pack bounding box")
         self.pack_bb_drawer.editable = True
         self.pack_bb_drawer.clear_bbs()
@@ -459,19 +391,47 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.clear_bbs()
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
+            self.update_info()
         else:
             self.pack_state.cover_on = False
             self.state['pack_confirmed'] = True
             self.logger.info("The cover seems to be already off")
-        self.update_info()
         self.logger.info("END: locate_pack")
     
     def classify_pack(self):
         self.logger.info("START: classify pack")
+        if self.state['pack_fastened']:
+            result = self.vision_module.locate_pack(self.camera_frame)
+            if result is not None:
+                self.pack_state.model = result['shape']
+                self.pack_state.size = result['size']
+                self.pack_state.cover_on = result['cover_on']
+                self.logger.debug(self.pack_state)
+                self.logger.info("pack classified")
+                self.update_info()
+        else:
+            self.logger.info("Requisites not met")
         self.logger.info("END: classify pack")
 
     def locate_pack(self):
         self.logger.info("START: locate pack")
+        result = self.vision_module.locate_pack(self.camera_frame)
+        if self.state['pack_fastened']:
+            if result is not None:
+                self.pack_state.frame_location = result['location']
+                self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
+                self.logger.debug(self.pack_state)
+                self.logger.info("pack located")
+                
+                x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0]//2, self.pack_state.frame_location[1] - self.pack_state.size[1]//2
+                x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0]//2, self.pack_state.frame_location[1] + self.pack_state.size[1]//2
+                self.pack_bb_drawer.editable = True
+                self.pack_bb_drawer.clear_bbs()
+                self.pack_bb_drawer.set_label(self.pack_state.model)
+                self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
+                self.update_info()
+        else:
+            self.logger.info("Requisites not met")
         self.logger.info("END: locate pack")
 
     def check_cover_off(self):
@@ -528,9 +488,8 @@ class MemGui(tk.Tk):
     def add_cell_bb(self):
         self.logger.info("START: add cell bounding box")
         self.cell_bb_drawer.editable = True
-        self.cell_bb_drawer.clear_bbs()
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
-        self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
+        self.cells_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
         self.logger.info("END: add cell bounding box")
 
     def identify_cells_deprecated(self):
@@ -622,9 +581,6 @@ class MemGui(tk.Tk):
         self.logger.info("START: pickup_cells")
         if self.state['quals_confirmed']:
             for i, cell in enumerate(self.pack_state.cells):
-                print(cell.z)
-                print(i)
-                print(cell.pose)
                 if cell.keep:
                     self.robot_module.pick_and_place(cell.pose, self.discard_T)
                     self.logger.info(f"END: cell {i} discarded")
@@ -683,7 +639,7 @@ class MemGui(tk.Tk):
         self.scale, self.padx, self.pady = self.home_frame.draw_image(self.camera_frame)
         if self.verbose:
             self.show_frame_debug()
-        if self.pack_bb_drawer is not None and self.cells_bb_drawer is None:
+        if self.pack_bb_drawer is not None:
             self.pack_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
         if self.cells_bb_drawer is not None:
             self.cells_bb_drawer.draw_boxes(scale=self.scale, padx=self.padx, pady=self.pady)
