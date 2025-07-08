@@ -234,8 +234,17 @@ class MemGui(tk.Tk):
         self.quals_editor = None
 
         """ ========== DEBUG ========== """
-        # self.pack_state.cover_on = False
-        # self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        self.pack_state.cover_on = False
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        # self.camera_frame = self.vision_module.get_current_frame(format='pil')
+        self.camera_frame = cv2.imread("data/camera_frame1.png")
+        self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        self.camera_frame = PIL.Image.fromarray(self.camera_frame)
+        self.classify_cells()
+        self.locate_cells()
+        self.confirm_cells()
+        self.assess_cells_qualities()
+        self.confirm_quals()
 
     def layout_gui(self):
         self.title("MeM use case")
@@ -500,7 +509,7 @@ class MemGui(tk.Tk):
         self.logger.info("START: add cell bounding box")
         self.cells_bb_drawer.editable = True
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
-        self.cells_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
+        self.cells_bb_drawer.add_bb([x-50, y-50, x+50, y+50])
         self.logger.info("END: add cell bounding box")
 
     def identify_cells_deprecated(self):
@@ -568,7 +577,7 @@ class MemGui(tk.Tk):
             self.cells_bb_drawer.clear_bbs()
             self.cells_bb_drawer.add_bbs(drawing_bbs)
             self.logger.debug(self.pack_state)
-            self.logger.info(f"END: localized {len(self.pack_state.cells):02d} cells")
+            self.logger.info(f"localized {len(self.pack_state.cells):02d} cells")
         else:
             self.logger.info("requisites not met")
         self.update_info()
@@ -587,10 +596,16 @@ class MemGui(tk.Tk):
             x_min, y_min, x_max, y_max = bb
             center_x = (x_min + x_max) // 2
             center_y = (y_min + y_max) // 2
-            self.pack_state.cells[i].frame_location = [center_x, center_y]
-            self.pack_state.cells[i].pose = self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[i].z)
-            self.pack_state.cells[i].width = x_max - x_min
+            try:
+                self.pack_state.cells[i].frame_location = [center_x, center_y]
+                self.pack_state.cells[i].pose = self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[i].z)
+                self.pack_state.cells[i].width = x_max - x_min
+            except IndexError:
+                self.pack_state.add_cell(model=self.pack_state.cell_model, width=x_max-x_min, z=self.pack_state.cells[0].z, 
+                                         pose=self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[0].z), 
+                                         frame_position=(center_x, center_y))
         self.vision_module.set_background()
+        self.logger.debug(self.pack_state)
         self.update_info()
 
     def assess_cells_qualities(self):
