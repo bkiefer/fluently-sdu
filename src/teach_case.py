@@ -222,8 +222,8 @@ class MemGui(tk.Tk):
 
         """ ========== RESET GUI ========== """
         self.state = {"pack_fastened": False, "pack_confirmed" : False, "cells_confirmed" : False, "quals_confirmed" : False}
-        self.pack_models = ["Square", "Trapezoid"]
-        self.cell_models = ["aaa", "bbb", "ccc"]
+        self.pack_models = ["Trapezoid", "Square", 'unknown']
+        self.cell_models = ["aaa", "18650", "21700", "bbb", "ccc", 'unknown']
 
         """ ========== LAYOUT GUI ========== """
         self.layout_gui()
@@ -234,21 +234,24 @@ class MemGui(tk.Tk):
         self.quals_editor = None
 
         """ ========== DEBUG ========== """
-        self.pack_state.cover_on = False
-        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
         # self.camera_frame = self.vision_module.get_current_frame(format='pil')
-        self.camera_frame = cv2.imread("data/camera_frame1.png")
-        self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-        self.camera_frame = PIL.Image.fromarray(self.camera_frame)
+        # self.camera_frame = cv2.imread("data/camera_frame1.png")
+        # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        # self.camera_frame = PIL.Image.fromarray(self.camera_frame)
+        
         # self.confirm_pack_fastened()
         # self.classify_pack()
         # self.locate_pack()
-        self.confirm_pack()
-        self.classify_cells()
-        self.locate_cells()
-        self.confirm_cells()
-        self.assess_cells_qualities()
-        self.confirm_quals()
+        # self.confirm_pack()
+        
+        # To skip the pack localization and classification
+        self.pack_state.cover_on = False
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        # self.classify_cells()
+        # self.locate_cells()
+        # self.confirm_cells()
+        # self.assess_cells_qualities()
+        # self.confirm_quals()
 
     def layout_gui(self):
         self.title("MeM use case")
@@ -257,38 +260,39 @@ class MemGui(tk.Tk):
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=5)
         self.grid_columnconfigure(0, weight=1)
-        self.configure(bg='white')
+        self.configure(bg="#4b5661")
 
-        self.top_frame = tk.Frame(self, bg='blue')
+        self.top_frame = tk.Frame(self, bg='#1e2a38')
         self.top_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.top_frame.grid_rowconfigure(0, weight=1)
         self.top_frame.grid_columnconfigure(0, weight=1)
         self.top_frame.grid_columnconfigure(1, weight=2)
-        self.mid_frame = tk.Frame(self, bg='red')
+        self.mid_frame = tk.Frame(self, bg="#1e2a38")
         self.mid_frame.grid(row=1, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.mid_frame.grid_rowconfigure(0, weight=5)
         self.mid_frame.grid_rowconfigure(1, weight=1)
         self.mid_frame.grid_columnconfigure(0, weight=1)
         self.mid_frame.grid_columnconfigure(1, weight=2)
         
-        self.fncs_frame = tk.Frame(self.mid_frame,  bg='antique white')
+        self.fncs_frame = tk.Frame(self.mid_frame,  bg='#e6f0f7')
         self.fncs_frame.grid(row=0, column=0, rowspan=2, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.fncs_frame.columnconfigure(0, weight=1)
         self.fncs_frame.grid_propagate(False)
         
         self.home_frame = HomeScreen(self.mid_frame, self)
+        self.home_frame.config(background='#2e3f4f')
         self.home_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.home_frame.rowconfigure(0, weight=1)
         self.home_frame.columnconfigure(0, weight=1)
         self.home_frame.grid_propagate(False)
 
-        self.progress_bar_frame = tk.Frame(self.top_frame,  bg='antique white')
+        self.progress_bar_frame = tk.Frame(self.top_frame,  bg='#e6f0f7')
         self.progress_bar_frame.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.progress_bar_frame.columnconfigure(0, weight=1)
         self.progress_bar_frame.rowconfigure(0, weight=1)
         self.progress_bar_frame.grid_propagate(False)
         
-        self.info_frame = tk.Frame(self.top_frame,  bg='antique white')
+        self.info_frame = tk.Frame(self.top_frame, background='#f0f4f7')
         self.info_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5))
         self.info_cols = 4
         self.info_rows = 5
@@ -296,20 +300,24 @@ class MemGui(tk.Tk):
         [self.info_frame.rowconfigure(i, weight=1, minsize=10) for i in range(self.info_rows)]
         self.info_frame.grid_propagate(False)
 
-        self.btns_frame = tk.Frame(self.mid_frame, bg='yellow')
+        self.btns_frame = tk.Frame(self.mid_frame, bg='#dde9f3')
         self.btns_frame.grid(row=1, column=1, sticky='nsew', padx=(5, 5), pady=(5, 5)) # padx is 15 to have this frame the same size as the others
         self.btns_frame.columnconfigure(0, weight=1)
+        # self.btns_frame.columnconfigure(1, weight=1)
         self.btns_frame.rowconfigure(0, weight=1)
         self.btns_frame.grid_propagate(False)
 
-        self.yes_btn = tk.Button(self.btns_frame, text="YES")
-        self.yes_btn.grid(row=0, column=0, sticky='nsew')
-
         style = ttk.Style(self)
-        style.configure("custom.Horizontal.TProgressbar", troughcolor='white', background='green')
+        style.theme_use("default")
+
+        style.configure("custom.Horizontal.TProgressbar", troughcolor='white', background='#2c3e50')
+
         self.progress_bar = ttk.Progressbar(self.progress_bar_frame, style="custom.Horizontal.TProgressbar", orient='horizontal', mode='determinate')
         self.progress_bar.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(15, 15))
         self.progress_bar['value'] = 50
+
+        self.dropdown = ttk.Combobox(self.btns_frame, textvariable=tk.StringVar(), state='readonly', style="CustomCombobox.TCombobox")
+        self.dropdown.bind("<<ComboboxSelected>>", self.defocus)
 
         self.create_layout_info()
         self.update_info()
@@ -317,7 +325,8 @@ class MemGui(tk.Tk):
         self.fncs = {
                         "Robot": [self.move_robot_home, self.move_robot_change_tool_pose, self.remove_pack_cover, self.pickup_cells], 
                         "Vision": [self.classify_pack, self.locate_pack, self.check_cover_off, self.classify_cells, self.locate_cells, self.assess_cells_qualities], 
-                        "Human": [self.swap_tool, self.confirm_pack_fastened, self.add_pack_bb, self.confirm_pack, self.add_cell_bb, self.confirm_cells, self.confirm_quals], 
+                        "Human": [self.swap_tool, self.confirm_pack_fastened, self.add_pack_bb, self.choose_diff_pack_model, self.confirm_pack, 
+                                  self.add_cell_bb, self.choose_diff_cell_model, self.confirm_cells, self.confirm_quals], 
                         }
         fncs_idx, col = 0, 0
         [self.fncs_frame.columnconfigure(i, weight=1) for i in range(2)]
@@ -325,7 +334,7 @@ class MemGui(tk.Tk):
             if i == len(self.fncs)-1:
                 fncs_idx = 0
                 col = 1
-            self.human_label = tk.Label(self.fncs_frame, text=f"{cat} functions:")
+            self.human_label = tk.Label(self.fncs_frame, text=f"{cat} functions:", background='#f0f4f7', fg='#2c3e50')
             self.human_label.grid(row=fncs_idx, column=col, sticky='nsew', padx=(5, 5), pady=(5, 0))
             self.fncs_frame.rowconfigure(fncs_idx, weight=1)
             fncs_idx += 1
@@ -335,25 +344,37 @@ class MemGui(tk.Tk):
                 self.fncs_frame.rowconfigure(fncs_idx, weight=1)
                 fncs_idx += 1
 
+    def defocus(self, event):
+        self.dropdown.selection_clear()
+        if self.pack_state.cover_on:
+            self.pack_state.model = self.dropdown.get()
+            if self.pack_bb_drawer is not None:
+                self.pack_bb_drawer.set_label(self.pack_state.model)
+        else:
+            self.pack_state.cell_model = self.dropdown.get()
+            for c in self.pack_state.cells:
+                c.model = self.pack_state.cell_model
+        self.update_info()
+
     def create_layout_info(self):
-        self.pmodel_label = tk.Label(self.info_frame)
+        self.pmodel_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.pmodel_label.grid(row=0, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
-        self.cover_on_label = tk.Label(self.info_frame)
+        self.cover_on_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.cover_on_label.grid(row=1, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
-        self.psize_label = tk.Label(self.info_frame)
+        self.psize_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.psize_label.grid(row=2, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
-        self.fpos_label = tk.Label(self.info_frame)
+        self.fpos_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.fpos_label.grid(row=3, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
-        self.rpos_label = tk.Label(self.info_frame)
+        self.rpos_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.rpos_label.grid(row=4, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
         
-        self.cmodel_label = tk.Label(self.info_frame, )
+        self.cmodel_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.cmodel_label.grid(row=0, column=1, sticky='nsew', padx=(0, 0), pady=(0, 0))
-        self.nr_cells_label = tk.Label(self.info_frame, )
+        self.nr_cells_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.nr_cells_label.grid(row=0, column=2, sticky='nsew', padx=(0, 0), pady=(0, 0))
         self.cells_labels = []
 
-        self.extra_label = tk.Label(self.info_frame)
+        self.extra_label = tk.Label(self.info_frame, background='#f0f4f7', fg='#2c3e50')
         self.extra_label.grid(row=0, column=3, sticky='nsew', padx=(0, 0), pady=(0, 0))
 
     def update_info(self):
@@ -367,7 +388,7 @@ class MemGui(tk.Tk):
         self.extra_label.configure(text=f"Active tcp: {self.robot_module.active_gripper}")
         if len(self.cells_labels) == 0:
             for i, cell in enumerate(self.pack_state.cells):
-                label = tk.Label(self.info_frame, text=f"{i:02d}: "+cell.to_string_short())
+                label = tk.Label(self.info_frame, text=f"{i:02d}: "+cell.to_string_short(), background='#f0f4f7', fg='#2c3e50')
                 label.grid(row=(i%(self.info_rows-1))+1, column=(i//self.info_cols)+1, sticky='nsew', padx=(0, 0), pady=(0, 0))
                 self.cells_labels.append(label)
         for i, c_label in enumerate(self.cells_labels):
@@ -435,7 +456,7 @@ class MemGui(tk.Tk):
                 self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
                 self.logger.debug(self.pack_state)
                 self.logger.info("pack located")
-                
+                self.pack_state.size = result['size']
                 x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0]//2, self.pack_state.frame_location[1] - self.pack_state.size[1]//2
                 x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0]//2, self.pack_state.frame_location[1] + self.pack_state.size[1]//2
                 self.pack_bb_drawer.editable = True
@@ -473,17 +494,22 @@ class MemGui(tk.Tk):
     
     def move_robot_change_tool_pose(self):
         self.logger.info("START: move_robot_change_tool_pose")
+        # TODO: develop
         self.logger.info("END: move_robot_change_tool_pose")
     
-    def choose_diff_pack_model(self, model: str):
-        self.logger.info(f"Pack model chosen: {model}")
-        self.pack_state.model = model
-        self.pack_bb_drawer.set_label(model)
+    def choose_diff_pack_model(self):
+        self.logger.info("START: Choose diff pack model")
+        self.dropdown.grid(row=0, column=0, sticky='nsew', padx=(25, 5), pady=(25, 25))
+        # TODO: should come from database not hardocoded
+        self.dropdown['values'] = self.pack_models
+        self.dropdown.current(self.pack_models.index(self.pack_state.model))
+        self.logger.info("END: Choose diff pack model")
 
     def confirm_pack(self):
         self.logger.info(f"Pack bounding box confirmed")
         self.state['pack_confirmed'] = True
         self.pack_bb_drawer.lock()
+        self.dropdown.grid_forget()
         x_min, y_min, x_max, y_max = self.pack_bb_drawer.bbs_position[0]
         center_x = (x_min + x_max) // 2
         center_y = (y_min + y_max) // 2
@@ -587,15 +613,19 @@ class MemGui(tk.Tk):
         self.update_info()
         self.logger.info("END: locate cells")
 
-    def choose_diff_cell_model(self, model: str):
-        self.logger.info(f"Cell model chosen: {model}")
-        for cell in self.pack_state.cells:
-            cell.model = model
+    def choose_diff_cell_model(self):
+        self.logger.info("START: Choose diff cell model")
+        self.dropdown.grid(row=0, column=0, sticky='nsew', padx=(25, 5), pady=(25, 25))
+        # TODO: should come from database not hardocoded
+        self.dropdown['values'] = self.cell_models
+        self.dropdown.current(self.cell_models.index(self.pack_state.cell_model))
+        self.logger.info("END: Choose diff cell model")
 
     def confirm_cells(self):
         self.logger.info(f"Cells bounding boxes confirmed")
         self.state['cells_confirmed'] = True
         self.cells_bb_drawer.lock()
+        self.dropdown.grid_forget()
         for i, bb in enumerate(self.cells_bb_drawer.bbs_position):
             x_min, y_min, x_max, y_max = bb
             center_x = (x_min + x_max) // 2
@@ -604,6 +634,7 @@ class MemGui(tk.Tk):
                 self.pack_state.cells[i].frame_location = [center_x, center_y]
                 self.pack_state.cells[i].pose = self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[i].z)
                 self.pack_state.cells[i].width = x_max - x_min
+                self.pack_state.cells[i].model = self.pack_state.cell_model # in case it has been changed
             except IndexError:
                 self.pack_state.add_cell(model=self.pack_state.cell_model, width=x_max-x_min, z=self.pack_state.cells[0].z, 
                                          pose=self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[0].z), 
@@ -715,10 +746,10 @@ class MemGui(tk.Tk):
 
 class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="brown")
+        super().__init__(parent)
         self.controller = controller
-        self.canvas = tk.Canvas(self, bg="lightblue")
-        self.canvas.grid(row=0, column=0, sticky='nsew', padx=(5, 5), pady=(5, 5))
+        self.canvas = tk.Canvas(self)
+        self.canvas.grid(row=0, column=0, sticky='nsew', padx=(0, 0), pady=(0, 0))
     
     def draw_image(self, img):
         scale = min(self.canvas.winfo_width() / img.size[0], self.canvas.winfo_height() / img.size[1])

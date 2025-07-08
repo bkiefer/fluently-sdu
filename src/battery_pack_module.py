@@ -113,6 +113,7 @@ class PackState():
         if self.pose is not None:
             printable += f"pose: {utilities.T_to_rotvec(self.pose)}\n"
         printable += f"cover_on: {self.cover_on}\n"
+        printable += f"cell_model: {self.cell_model}\n"
         if len(self.cells) != 0:
             printable += " ========== CELLS: ==========\n"
             for i, cell in enumerate(self.cells):
