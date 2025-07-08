@@ -240,6 +240,10 @@ class MemGui(tk.Tk):
         self.camera_frame = cv2.imread("data/camera_frame1.png")
         self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         self.camera_frame = PIL.Image.fromarray(self.camera_frame)
+        # self.confirm_pack_fastened()
+        # self.classify_pack()
+        # self.locate_pack()
+        self.confirm_pack()
         self.classify_cells()
         self.locate_cells()
         self.confirm_cells()
