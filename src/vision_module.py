@@ -37,9 +37,6 @@ class VisionModule():
         self.logger.debug("Setting background")
         new_bg = self.get_current_frame()
         self.background = new_bg
-        # DEBUG
-        frame = cv2.imread("data/camera_frame1.png")
-        self.background = frame
 
     def get_current_frame(self, format="cv2", wait_delay=0) -> np.ndarray:
         """get the current frame from the camera
@@ -130,7 +127,8 @@ class VisionModule():
         Returns:
             list[float]: the scores evaluated by the system
         """
-        cells_keeps = np.random.choice([True, False], len(bbs_positions))
+        # cells_keeps = np.random.choice([True, False], len(bbs_positions))
+        cells_keeps = np.random.choice([True], len(bbs_positions))
         return cells_keeps
 
     def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP, Z=None) -> sm.SE3:

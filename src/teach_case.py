@@ -208,6 +208,9 @@ class MemGui(tk.Tk):
         t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
         self.camera_Ext = sm.SE3.Rt(R, t)
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
+        self.swap_q = [ 0.3724, -1.8346, 2.1107, -1.0513, 1.5848, -0.4372]
+        self.pack_models = ["Trapezoid", "Square", 'unknown']
+        self.cell_models = ["aaa", "18650", "21700", "bbb", "ccc", 'unknown']
 
         """ ========== MODULE SETUP ========== """
         parser = argparse.ArgumentParser(description="My script with options")
@@ -222,8 +225,7 @@ class MemGui(tk.Tk):
 
         """ ========== RESET GUI ========== """
         self.state = {"pack_fastened": False, "pack_confirmed" : False, "cells_confirmed" : False, "quals_confirmed" : False}
-        self.pack_models = ["Trapezoid", "Square", 'unknown']
-        self.cell_models = ["aaa", "18650", "21700", "bbb", "ccc", 'unknown']
+        self.changing_pack_model, self.changing_cell_model = False, False
 
         """ ========== LAYOUT GUI ========== """
         self.layout_gui()
@@ -234,7 +236,7 @@ class MemGui(tk.Tk):
         self.quals_editor = None
 
         """ ========== DEBUG ========== """
-        # self.camera_frame = self.vision_module.get_current_frame(format='pil')
+        self.camera_frame = self.vision_module.get_current_frame(format='pil')
         # self.camera_frame = cv2.imread("data/camera_frame1.png")
         # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         # self.camera_frame = PIL.Image.fromarray(self.camera_frame)
@@ -245,8 +247,8 @@ class MemGui(tk.Tk):
         # self.confirm_pack()
         
         # To skip the pack localization and classification
-        self.pack_state.cover_on = False
-        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        # self.pack_state.cover_on = False
+        # self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
         # self.classify_cells()
         # self.locate_cells()
         # self.confirm_cells()
@@ -346,11 +348,11 @@ class MemGui(tk.Tk):
 
     def defocus(self, event):
         self.dropdown.selection_clear()
-        if self.pack_state.cover_on:
+        if self.changing_pack_model:
             self.pack_state.model = self.dropdown.get()
             if self.pack_bb_drawer is not None:
                 self.pack_bb_drawer.set_label(self.pack_state.model)
-        else:
+        elif self.changing_cell_model:
             self.pack_state.cell_model = self.dropdown.get()
             for c in self.pack_state.cells:
                 c.model = self.pack_state.cell_model
@@ -434,12 +436,13 @@ class MemGui(tk.Tk):
     
     def classify_pack(self):
         self.logger.info("START: classify pack")
-        if self.state['pack_fastened']:
+        if self.state['pack_fastened'] and not self.state['pack_confirmed']:
             result = self.vision_module.locate_pack(self.camera_frame)
             if result is not None:
                 self.pack_state.model = result['shape']
                 self.pack_state.size = result['size']
                 self.pack_state.cover_on = result['cover_on']
+                self.pack_bb_drawer.set_label(self.pack_state.model)
                 self.logger.debug(self.pack_state)
                 self.logger.info("pack classified")
                 self.update_info()
@@ -450,7 +453,7 @@ class MemGui(tk.Tk):
     def locate_pack(self):
         self.logger.info("START: locate pack")
         result = self.vision_module.locate_pack(self.camera_frame)
-        if self.state['pack_fastened']:
+        if self.state['pack_fastened'] and not self.state['pack_confirmed']:
             if result is not None:
                 self.pack_state.frame_location = result['location']
                 self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
@@ -490,11 +493,12 @@ class MemGui(tk.Tk):
 
     def move_robot_home(self):
         self.logger.info("START: robot move to home")
+        self.robot_module.move_to_home()
         self.logger.info("END: robot move to home")
     
     def move_robot_change_tool_pose(self):
         self.logger.info("START: move_robot_change_tool_pose")
-        # TODO: develop
+        self.robot_module.robot.moveJ(self.swap_q)
         self.logger.info("END: move_robot_change_tool_pose")
     
     def choose_diff_pack_model(self):
@@ -503,6 +507,8 @@ class MemGui(tk.Tk):
         # TODO: should come from database not hardocoded
         self.dropdown['values'] = self.pack_models
         self.dropdown.current(self.pack_models.index(self.pack_state.model))
+        self.changing_pack_model = True
+        self.changing_cell_model = False
         self.logger.info("END: Choose diff pack model")
 
     def confirm_pack(self):
@@ -516,6 +522,7 @@ class MemGui(tk.Tk):
         self.pack_state.frame_location = [center_x, center_y]
         self.pack_state.pose = self.vision_module.frame_pos_to_pose([center_x, center_y], self.robot_module.get_TCP_pose())
         self.pack_state.size = (x_max - x_min, y_max - y_min)
+        self.changing_pack_model = False
         self.update_info()
 
     def remove_pack_cover(self):
@@ -537,7 +544,10 @@ class MemGui(tk.Tk):
 
     def add_cell_bb(self):
         self.logger.info("START: add cell bounding box")
+        
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells') if self.cells_bb_drawer is None else self.cells_bb_drawer
         self.cells_bb_drawer.editable = True
+            
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.cells_bb_drawer.add_bb([x-50, y-50, x+50, y+50])
         self.logger.info("END: add cell bounding box")
@@ -616,6 +626,8 @@ class MemGui(tk.Tk):
     def choose_diff_cell_model(self):
         self.logger.info("START: Choose diff cell model")
         self.dropdown.grid(row=0, column=0, sticky='nsew', padx=(25, 5), pady=(25, 25))
+        self.changing_cell_model = True
+        self.changing_pack_model = False
         # TODO: should come from database not hardocoded
         self.dropdown['values'] = self.cell_models
         self.dropdown.current(self.cell_models.index(self.pack_state.cell_model))
@@ -636,10 +648,17 @@ class MemGui(tk.Tk):
                 self.pack_state.cells[i].width = x_max - x_min
                 self.pack_state.cells[i].model = self.pack_state.cell_model # in case it has been changed
             except IndexError:
-                self.pack_state.add_cell(model=self.pack_state.cell_model, width=x_max-x_min, z=self.pack_state.cells[0].z, 
-                                         pose=self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=self.pack_state.cells[0].z), 
+                if len(self.pack_state.cells) != 0:
+                    z_cell = self.pack_state.cells[0].z
+                else: # case in which the human has done everything by itself
+                    z_cell = np.median([self.vision_module.get_z_at_pos(x=bb[0]+bb[2]//2, y=bb[1]+bb[3]//2) for bb in self.cells_bb_drawer.bbs_position])
+                self.pack_state.add_cell(model=self.pack_state.cell_model, width=x_max-x_min, z=z_cell, 
+                                         pose=self.vision_module.frame_pos_to_pose((center_x, center_y), self.robot_module.get_TCP_pose(), Z=z_cell), 
                                          frame_position=(center_x, center_y))
+                    
+                    
         self.vision_module.set_background()
+        self.changing_cell_model = False
         self.logger.debug(self.pack_state)
         self.update_info()
 
@@ -676,16 +695,19 @@ class MemGui(tk.Tk):
         self.logger.info("START: pickup_cells")
         if self.state['quals_confirmed']:
             for i, cell in enumerate(self.pack_state.cells):
-                if cell.keep:
-                    self.robot_module.pick_and_place(cell.pose, self.discard_T)
-                    self.logger.info(f"END: cell {i} discarded")
-                else:
-                    self.robot_module.pick_and_place(cell.pose, self.keep_T)
-                    self.logger.info(f"END: cell {i} kept")
-                cell.sorted = self.vision_module.verify_pickup(cell.frame_location, cell.width)
-                self.update_info()
-                self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
-                self.home_frame.canvas.update() # to write the outcome real time
+                if not cell.sorted:
+                    if cell.keep:
+                        self.robot_module.pick_and_place(cell.pose, self.keep_T)
+                        self.logger.info(f"END: cell {i} kept")
+                    else:
+                        self.robot_module.pick_and_place(cell.pose, self.discard_T)
+                        self.logger.info(f"END: cell {i} discarded")
+                    self.robot_module.move_to_home()
+                    time.sleep(0.5)
+                    cell.sorted = self.vision_module.verify_pickup(cell.frame_location, cell.width)
+                    self.update_info()
+                    self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
+                    self.home_frame.canvas.update() # to write the outcome real time
             self.robot_module.move_to_home()
         else:
             self.logger.info("requisites not met")
