@@ -236,7 +236,7 @@ class MemGui(tk.Tk):
         self.quals_editor = None
 
         """ ========== DEBUG ========== """
-        self.camera_frame = self.vision_module.get_current_frame(format='pil')
+        # self.camera_frame = self.vision_module.get_current_frame(format='pil')
         # self.camera_frame = cv2.imread("data/camera_frame1.png")
         # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         # self.camera_frame = PIL.Image.fromarray(self.camera_frame)
