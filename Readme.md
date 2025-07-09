@@ -57,3 +57,13 @@ In the top level directory, call
 Now the agent that ties everything together is ready to go:
 
     ./run.sh
+
+# Reasoner, Condition and Action extension
+
+The python implementation for the reasoner has started in the `reasoner` subdirectory (guess what).
+
+To define the actions and conditions, the `actiondefs.yml` file has been added that can be converted using the `convertactions.sh` script into an `action.owl` file in the ontology. This ontology file only contains instances of Action and Condition classes.
+
+Currently, only the `BasicCondition` and `AskQueryCondition` classes work as expected, the rest ist still work in progress. `Action`s can be defined in the .yml file, specifying complex conditions with `&`, `|` and `!` for conjunction, disjunction and negation, respectively. To keep parsing simple, the atomic conditions used can only be those defined in the `atomic` section of the file.
+
+Make sure to have the latest version of the [hfc-thrift](https://github.com/bkiefer/hfc-thrift) python package installed, versions below `0.2.0` do not work at all.

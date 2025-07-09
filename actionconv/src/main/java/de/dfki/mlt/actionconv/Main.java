@@ -53,7 +53,7 @@ public class Main implements AutoCloseable {
 
 
   public static final IRI planns = IRI
-      .create("http://www.fluently.eu/2025/04/planner#", "osm.owl");
+      .create("http://www.fluently.eu/2025/04/planner#", "");
   public static final String planner_file = "planner.owl";
   public static IRI ns = planns;
   public static String data_file = "";
@@ -106,8 +106,10 @@ public class Main implements AutoCloseable {
     man.getIRIMappers().add(iriMapper);
 
     // add import of osm.owl to MAPDATA.owl
+    //OWLImportsDeclaration importDecl = df.getOWLImportsDeclaration(
+    //    IRI.create(planns.getNamespace().replace("#", "/") + planner_file));
     OWLImportsDeclaration importDecl = df.getOWLImportsDeclaration(
-        IRI.create(planns.getNamespace().replace("#", "/") + planner_file));
+        IRI.create(planns.getNamespace().replace("#", "")));
     man.applyChange(new AddImport(onto, importDecl));
     plan.setPrefix("plan:", planns.getNamespace());
 

@@ -5,3 +5,5 @@ if test -x vondac; then
 else
     vondac "$@" -c config.yml
 fi
+cd actionconv
+mvn clean install

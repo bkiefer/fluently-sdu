@@ -29,7 +29,7 @@ actions:
   - FastenBatteryH:
       pre: ! BatteryFastened
       post: BatteryFastened
-  - ClasifyBatteryR:
+  - ClassifyBatteryR:
       pre: BatteryFastened & BatteryTypeNotChecked
       post: BatteryTypeChecked
   - CheckBatteryClassificationH:
