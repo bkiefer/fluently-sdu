@@ -8,7 +8,6 @@ from behaviors import *
 from viewer import BtViewer
 import spatialmath as sm
 import numpy as np
-
 import PIL.Image
 import PIL.ImageTk
 import sys
