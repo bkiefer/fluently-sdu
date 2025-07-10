@@ -36,7 +36,6 @@ class VisionModule():
     def set_background(self):
         self.logger.debug("Setting background")
         new_bg = self.get_current_frame()
-        # cv2.imwrite("Background.jpg", new_bg)
         self.background = new_bg
 
     def get_current_frame(self, format="cv2", wait_delay=0) -> np.ndarray:
@@ -48,7 +47,9 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
+            # frame = cv2.imread("data/camera_frame.png")
             frame = cv2.imread("data/camera_frame1.png")
+            # frame = cv2.imread("data/camera_frame1.jpg")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -126,7 +127,8 @@ class VisionModule():
         Returns:
             list[float]: the scores evaluated by the system
         """
-        cells_keeps = np.random.choice([True, False], len(bbs_positions))
+        # cells_keeps = np.random.choice([True, False], len(bbs_positions))
+        cells_keeps = np.random.choice([True], len(bbs_positions))
         return cells_keeps
 
     def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP, Z=None) -> sm.SE3:
@@ -174,8 +176,6 @@ class VisionModule():
                 point = (np.array([cx, cy]) + (np.array([np.cos(deg), np.sin(deg)]) * r)).astype(int)
                 votes += result[point[1]][point[0]]/255 # access to opnecv mat x, y inverted if white=255, then we add a vote for a hit otherwise 0
         pickedup = (votes/voting > 0.5)
-        self.logger.warning("pickedup, generate a random value")
-        return np.random.choice([True, False])
         return pickedup
 
 if __name__ == "__main__":
