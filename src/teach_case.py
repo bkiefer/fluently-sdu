@@ -222,6 +222,7 @@ class MemGui(tk.Tk):
         self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=self.verbose)
         self.pack_state = PackState()
         self.robot_module.move_to_home()
+        self.voice_module = FluentlyMQTTClient(client_id="fluentlyClient", verbose=self.verbose)
 
         """ ========== RESET GUI ========== """
         self.state = {"pack_fastened": False, "pack_confirmed" : False, "cells_confirmed" : False, "quals_confirmed" : False}
@@ -754,6 +755,9 @@ class MemGui(tk.Tk):
     def after_update(self):
         self.camera_frame = self.vision_module.get_current_frame(format='pil')
         self.scale, self.padx, self.pady = self.home_frame.draw_image(self.camera_frame)
+        voice_command = self.voice_module.get_intent()
+        if  voice_command is not None:
+            self.logger.info(f"New voice command: {voice_command}")
         if self.verbose:
             self.show_frame_debug()
         if self.pack_bb_drawer is not None:
