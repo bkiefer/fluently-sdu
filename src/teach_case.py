@@ -21,7 +21,7 @@ import argparse
 from fluently_mqtt_client import FluentlyMQTTClient
 
 class _BoundingBoxEditor:
-    def __init__(self, canvas, frame, tag=''):
+    def __init__(self, canvas, frame, tag='', move_color='blue'):
         self.canvas = canvas
         self.selected_box = None
         self.dragging = None  # "move" or "resize"
@@ -30,6 +30,7 @@ class _BoundingBoxEditor:
         self.frame = frame
         self.label = None
         self.tag = tag
+        self.move_color = move_color
 
         self.boxes_items = []  # Store drawn objects
         self.bbs_position = []
@@ -39,6 +40,9 @@ class _BoundingBoxEditor:
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
         self.editable = True
+
+    def set_color_icon(self, color: str):
+        self.move_color = color
 
     def set_label(self, label):
         self.label = label
@@ -73,7 +77,7 @@ class _BoundingBoxEditor:
         self.canvas.create_text(x_max-len(label)*5, y_max, text=label, font=("Arial", 10), tags='bbs' + self.tag) # label txt
         if self.editable:
             self.canvas.create_rectangle(x_max-7, y_min-7, x_max+7, y_min+7, fill="white", outline="red", tags='bbs' + self.tag) # delete_bg
-            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill="blue", tags='bbs' + self.tag)
+            move_handle = self.canvas.create_oval(center_x-5, center_y-5, center_x+5, center_y+5, fill=self.move_color, tags='bbs' + self.tag)
             resize_handle = self.canvas.create_rectangle(x_min-5, y_min-5, x_min+5, y_min+5, fill="red", tags='bbs' + self.tag)
             delete_handle = self.canvas.create_text(x_max, y_min, text="X", fill="red", font=("Arial", 10), tags = 'bbs' + self.tag)
             self.boxes_items.append([move_handle, resize_handle, delete_handle])
@@ -208,15 +212,17 @@ class MemGui(tk.Tk):
         self.camera_Ext = sm.SE3.Rt(R, t)
         home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
         self.swap_q = [ 0.3724, -1.8346, 2.1107, -1.0513, 1.5848, -0.4372]
-        self.pack_models = ["Trapezoid", "Square", 'unknown']
-        self.cell_models = ["aaa", "18650", "21700", "bbb", "ccc", 'unknown']
+        self.pack_models = ['Trapezoid', 'Square', 'unknown']
+        self.cell_models = ['aaa', '18650', '21700', 'bbb', 'ccc', 'unknown']
+        self.cells_icon_color = {'aaa': "#0373e2", '18650': "#17d627", '21700': "#b140a7",
+                                 'bbb': "#f1a10a", 'ccc': "#684115", 'unknown': ''}
 
         """ ========== MODULE SETUP ========== """
         parser = argparse.ArgumentParser(description="My script with options")
         parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
         args = parser.parse_args()
         self.verbose = args.verbose
-        self.logger = utilities.CustomLogger("MeM", "MeM.log", console_level='info' if not self.verbose else 'debug')
+        self.logger = utilities.CustomLogger('MeM', 'MeM.log', console_level='info' if not self.verbose else 'debug')
         self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=self.verbose)
         self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=self.verbose)
         self.pack_state = PackState()
@@ -224,7 +230,7 @@ class MemGui(tk.Tk):
         self.voice_module = FluentlyMQTTClient(client_id="fluentlyClient", verbose=self.verbose)
 
         """ ========== RESET GUI ========== """
-        self.state = {"pack_fastened": False, "pack_confirmed" : False, "cells_confirmed" : False, "quals_confirmed" : False}
+        self.state = {'pack_fastened': False, 'pack_confirmed' : False, 'cells_confirmed' : False, 'quals_confirmed' : False}
         self.changing_pack_model, self.changing_cell_model = False, False
 
         """ ========== LAYOUT GUI ========== """
@@ -233,9 +239,10 @@ class MemGui(tk.Tk):
         """ ========== DRAWER GUI ========== """
         self.pack_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='pack')
         self.cells_bb_drawer = None
-        self.quals_editor = None
-
-        """ ========== DEBUG ========== """
+        self.quals_editor = None        
+        
+    def skip_parts(self):
+        self.logger.info("Skipping some parts")
         # self.camera_frame = self.vision_module.get_current_frame(format='pil')
         # self.camera_frame = cv2.imread("data/camera_frame1.png")
         # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
@@ -245,7 +252,6 @@ class MemGui(tk.Tk):
         # self.classify_pack()
         # self.locate_pack()
         # self.confirm_pack()
-        
         # To skip the pack localization and classification
         # self.pack_state.cover_on = False
         # self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
@@ -356,6 +362,7 @@ class MemGui(tk.Tk):
             self.pack_state.cell_model = self.dropdown.get()
             for c in self.pack_state.cells:
                 c.model = self.pack_state.cell_model
+            self.cells_bb_drawer.set_color_icon(self.cells_icon_color[self.pack_state.cell_model])
         self.update_info()
 
     def create_layout_info(self):
@@ -587,6 +594,8 @@ class MemGui(tk.Tk):
             self.logger.info("requisites ok")
             result = self.vision_module.identify_cells(self.camera_frame)
             self.pack_state.cell_model = (result['model'])
+            if self.cells_bb_drawer is not None:
+                self.cells_bb_drawer.set_color_icon(self.cells_icon_color[self.pack_state.cell_model])
             self.logger.debug(self.pack_state)
             self.logger.info(f"classified cells as {self.pack_state.cell_model}")
         else:
@@ -616,6 +625,7 @@ class MemGui(tk.Tk):
             self.cells_bb_drawer.editable = True
             self.cells_bb_drawer.clear_bbs()
             self.cells_bb_drawer.add_bbs(drawing_bbs)
+            self.cells_bb_drawer.set_color_icon(self.cells_icon_color[self.pack_state.cell_model])
             self.logger.debug(self.pack_state)
             self.logger.info(f"localized {len(self.pack_state.cells):02d} cells")
         else:

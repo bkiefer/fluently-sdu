@@ -11,6 +11,7 @@ class RobotModule:
         console_level = 'debug' if verbose else 'info'
         self.logger = utilities.CustomLogger("Robot", "MeMRobot.log", console_level=console_level, file_level=None)
         try:
+            raise RuntimeError
             self.robot = robotics.Robot(ip=ip, home_jpos=home_position)
             self.gripper = robotics.VacuumGripper(self.robot, gripper_id) # find correct id
             self.active_gripper = active_gripper

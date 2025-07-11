@@ -6,18 +6,21 @@ class FluentlyMQTTClient:
     def __init__(self, client_id: str, topic="nlu/intent", broker: str = "localhost", port: int = 1883, verbose=False):
         console_level = 'debug' if verbose else 'info'
         self.logger = utilities.CustomLogger("Voice", "MeMVoice.log", console_level=console_level, file_level=None)
-        self.client = mqtt.Client(client_id=client_id)
-        self.broker = broker
-        self.port = port
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.message_callback = None
-        self.connect()
-        self.start()
-        self.subscribe(topic)
-        self.intent = []
-        self.state = 1
-        self.command_given = False
+        try:
+            self.intent = []
+            self.client = mqtt.Client(client_id=client_id)
+            self.broker = broker
+            self.port = port
+            self.client.on_connect = self.on_connect
+            self.client.on_message = self.on_message
+            self.message_callback = None
+            self.connect()
+            self.start()
+            self.subscribe(topic)
+            self.state = 1
+            self.command_given = False
+        except ConnectionRefusedError:
+            self.logger.warning("The voice module could not be started, the module will run for debug purpose")
 
     def on_connect(self, client, userdata, flags, rc):
         self.logger.info(f"Connected with result code {rc}")
@@ -61,7 +64,6 @@ class FluentlyMQTTClient:
         self.message_callback = callback
 
     def get_intent(self):
-        # print(self.intent)
         if len(self.intent) >=1:
             ans = self.intent[-1]
             self.intent = []
