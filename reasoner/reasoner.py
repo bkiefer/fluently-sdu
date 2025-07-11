@@ -18,7 +18,13 @@ ActionClass = RdfProxy.getClass('<plan:Action>')
 
 def basic_eval(self, globals):
     print(self.basicCondition)
-    return eval(self.basicCondition, globals)
+    val = False
+    try:
+        val = eval(self.basicCondition, globals)
+    except Exception as ex:
+        print(f"ERROR: {ex}")
+        return False
+    return val
 BasicClass.eval = basic_eval
 
 def askq_eval(self):
@@ -42,28 +48,93 @@ def someq_eval(self):
     return any(predicate(x) for x in res)
 SomeQueryClass.eval = someq_eval
 
-def eval_condition(cond, violated, globals):
-    val = False
-    if ConjunctionClass.superclass_of(cond):
-        val = True
-        for sub in cond.conditions:
-            sval = eval_condition(sub, violated, globals)
-            val = val and sval
-    elif DisjunctionClass.superclass_of(cond):
-        for sub in cond.conditions:
-            sval = eval_condition(sub, violated, globals)
-            val = val or sval
-    elif AtomicClass.superclass_of(cond):
-        val = cond.eval(globals)
-        if not val:
-            print(cond.description)
-            violated.append(cond)
-    return val
 
-def actionExecutable(self, globals):
-    cond = self.condition
-    print(cond.uri)
-    violated = []
-    val = eval_condition(cond, violated, globals)
-    return val, violated
-ActionClass.executable = actionExecutable
+class Reasoner(object):
+    def __init__(self):
+        self.actions = RdfProxy.selectQuery(
+            "select ?a where ?a <rdf:type> <plan:Action> ?_")
+        # This maps atomic conditions to actions, to reduce evaluation cost
+        self._atomic2action = {}
+        for action in self.actions:
+            self._collect_atomics(action.condition, action)
+        # This caches the values of the evaluation of action conditions
+        # the value is a tuple (bool, list(violations))
+        self._action_results = {}
+        # This caches the values of the last run of atomic conditions
+        self._last_atomic_results = {}
+        # current values of evaluation of atomic conditions
+        self._atomic_results = {}
+
+
+    def _collect_atomics(self, cond, action):
+        """
+        create a mapping from atomic conditions to actions that are depending on
+        it by recursively going through the complex conditions in the action,
+        if any
+        """
+        if ConjunctionClass.superclass_of(cond) or \
+            DisjunctionClass.superclass_of(cond):
+            for sub in cond.conditions:
+                self._collect_atomics(sub, action)
+        elif NegationClass.superclass_of(cond):
+            self._collect_atomics(cond.condition, action)
+        elif AtomicClass.superclass_of(cond):
+            if cond in self._atomic2action:
+                self._atomic2action[cond].append(action)
+            else:
+                self._atomic2action[cond] = [action]
+
+    def _eval_condition(self, cond, violated, bindings):
+        val = False
+        if ConjunctionClass.superclass_of(cond):
+            val = True
+            for sub in cond.conditions:
+                sval = self._eval_condition(sub, violated, bindings)
+                val = val and sval
+        elif DisjunctionClass.superclass_of(cond):
+            for sub in cond.conditions:
+                sval = self._eval_condition(sub, violated, bindings)
+                val = val or sval
+        elif NegationClass.superclass_of(cond):
+            sval = self._eval_condition(cond.condition, violated, bindings)
+            val = not sval
+        elif AtomicClass.superclass_of(cond):
+            # avoid re-evaluation
+            val = self._atomic_results[cond]
+            if not val:
+                print(cond.description)
+                violated.append(cond)
+        return val
+
+    def _evaluate_action(self, action, bindings):
+        violated = []
+        val = self._eval_condition(action.condition, violated, bindings)
+        return val, violated
+
+    def evaluate_actions(self, bindings, delta=True):
+        """
+        This will return a dict of actions and their evaluations which have
+        changed from the last evaluation to the current one, if delta is True,
+        all actions with evaluations otherwise.
+
+        An evaluation consists of a boolean value and a list of violated
+        atomic conditions.
+        """
+
+        # first evaluate all atomic conditions
+        self._atomic_results = {}
+        for atomic in self._atomic2action.keys():
+            self._atomic_results[atomic] = atomic.eval(bindings)
+
+        # compare the values to the last run (if available)
+        last_atomic_values = self._last_atomic_results if delta else {}
+        changed_actions = {}
+        # all atomics
+        for atomic in self._atomic2action.keys():
+            if atomic not in last_atomic_values or \
+                    last_atomic_values[atomic] != self._atomic_results[atomic]:
+                for action in self._atomic2action[atomic]:
+                    changed_actions[action] = self._evaluate_action(action, bindings)
+
+        self._last_atomic_results = self._atomic_results
+        return changed_actions
