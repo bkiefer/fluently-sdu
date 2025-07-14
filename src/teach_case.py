@@ -559,35 +559,6 @@ class MemGui(tk.Tk):
         self.cells_bb_drawer.add_bb([x-50, y-50, x+50, y+50])
         self.logger.info("END: add cell bounding box")
 
-    def identify_cells_deprecated(self):
-        self.logger.info("START: identify_cells deprecated")
-        if not self.pack_state.cover_on:
-            self.logger.info("requisites ok")
-            result = self.vision_module.identify_cells(self.camera_frame)
-            drawing_bbs = []
-            self.pack_state.cells = []
-
-            # sometime the depth sensor does not correctly pick up the z, the cells are all the sae model so height as well so we can just fill in
-            median_z = np.median([z for z in result['zs'] if z!= 0])
-
-            for bb, z in zip(result['bbs'], result['zs']):
-                x, y, w = bb
-                cell_z = median_z if abs(z-median_z) > 0.01 else z
-                pose = self.vision_module.frame_pos_to_pose((x, y), self.robot_module.get_TCP_pose(), Z=cell_z)
-                self.pack_state.add_cell(result['model'], width=w, z=cell_z, pose=pose, frame_position=(x, y))
-                drawing_bbs.append([x-w//2, y-w//2, x+w//2, y+w//2])
-        
-            self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
-            self.cells_bb_drawer.editable = True
-            self.cells_bb_drawer.clear_bbs()
-            self.cells_bb_drawer.add_bbs(drawing_bbs)
-            self.logger.debug(self.pack_state)
-            self.logger.info(f"END: identified {len(self.pack_state.cells):02d} cells")
-        else:
-            self.logger.info("requisites not met")
-        self.update_info()
-        self.logger.info("END: identify_cells deprecated")
-
     def classify_cells(self):
         self.logger.info("START: classify cells")
         if self.pack_state.cover_on == False:
@@ -722,14 +693,6 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         self.logger.info("END: pickup_cells")
-                   
-    def ask_for_help(self,  query: str):
-        """ask human for help for something
-
-        Args:
-            query (str): the question/request for the human
-        """
-        pass
 
     def write_outcome_picked_cells(self, scale=1, padx=0, pady=0):
         """mark on the image whether or not the battery cell was picked up
