@@ -1,0 +1,7 @@
+path: /home/gu/Gubo-kit/data/in/yolo_dataset_cell
+train: images/train
+val: images/valid
+
+names:
+  0: 18650
+  1: 21700
