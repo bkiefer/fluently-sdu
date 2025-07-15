@@ -1,6 +1,6 @@
-path: /home/gu/fluently_ws/fluently_mem/data/yolo_18650
+path: /home/gu/fluently_ws/fluently_mem/data/yolo_dataset_cell
 train: imgs/train
-val: images/valid
+val: imgs/valid
 
 names:
   0: 18650
