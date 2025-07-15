@@ -229,6 +229,9 @@ public class Main implements AutoCloseable {
 
   public OWLNamedIndividual createBasic(String id) {
     // get it from internal map
+    if (! atomics.containsKey(id)) {
+      throw new RuntimeException(id + " is not a valid atomic condition");
+    }
     return atomics.get(id);
   }
 

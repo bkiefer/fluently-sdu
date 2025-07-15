@@ -3,7 +3,7 @@ from hfc_thrift.rdfproxy import RdfProxy
 RdfProxy.init_rdfproxy(port=7070, ns='cim:', classmapping={"<plan:Action>":"Action"})
 RdfProxy.UNDEFINED_SLOTS_ARE_ERRORS = False
 
-from reasoner import ActionClass, Reasoner
+from reasoner import Reasoner
 
 actions = RdfProxy.selectQuery("select ?a where ?a <rdf:type> <plan:Action> ?_")
 
