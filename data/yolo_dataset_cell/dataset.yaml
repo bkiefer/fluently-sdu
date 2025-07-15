@@ -1,6 +1,9 @@
 path: /home/gu/fluently_ws/fluently_mem/data/yolo_dataset_cell
-train: imgs/train
-val: imgs/valid
+train: images/train
+val: images/valid
+test: images/test
+
+nc: 2
 
 names:
   0: 18650
