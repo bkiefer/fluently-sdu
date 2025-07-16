@@ -216,6 +216,29 @@ class MemGui(tk.Tk):
         self.cell_models = ['aaa', '18650', '21700', 'bbb', 'ccc', 'unknown']
         self.cells_icon_color = {'aaa': "#0373e2", '18650': "#17d627", '21700': "#b140a7",
                                  'bbb': "#f1a10a", 'ccc': "#684115", 'unknown': ''}
+        self.fncs = {
+                        "Robot":  {"Move robot home": self.move_robot_home, 
+                                   "Robot to tool pose": self.move_robot_change_tool_pose, 
+                                   "Remove pack cover": self.remove_pack_cover, 
+                                   "Pickup cells": self.pickup_cells},
+                        "Vision": {"Classify pack": self.classify_pack, 
+                                   "Locate pack": self.locate_pack, 
+                                   "Check cover off": self.check_cover_off, 
+                                   "Classify cells": self.classify_cells, 
+                                   "Locate cells": self.locate_cells, 
+                                   "Assess cells qualities": self.assess_cells_qualities},
+                        "Human":  {"Equip small tool": self.equip_small_tool, 
+                                   "Equip large tool": self.equip_large_tool, 
+                                   "Confirm pack fastened": self.confirm_pack_fastened, 
+                                   "Add pack bounding box": self.add_pack_bb, 
+                                   "Choose pack model": self.choose_diff_pack_model, 
+                                   "Confirm pack": self.confirm_pack, 
+                                   "A cell bounding box": self.add_cell_bb, 
+                                   "Choose cell model": self.choose_diff_cell_model, 
+                                   "Confirm cells": self.confirm_cells, 
+                                   "Confirm qualities": self.confirm_quals, 
+                                   "Confirme cells picked up": self.confirm_cells_picked}, 
+                        }
 
         """ ========== MODULE SETUP ========== """
         parser = argparse.ArgumentParser(description="My script with options")
@@ -239,7 +262,9 @@ class MemGui(tk.Tk):
         """ ========== DRAWER GUI ========== """
         self.pack_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='pack')
         self.cells_bb_drawer = None
-        self.quals_editor = None        
+        self.quals_editor = None   
+
+        self.skip_parts()     
         
     def skip_parts(self):
         self.logger.info("Skipping some parts")
@@ -330,12 +355,6 @@ class MemGui(tk.Tk):
         self.create_layout_info()
         self.update_info()
 
-        self.fncs = {
-                        "Robot": [self.move_robot_home, self.move_robot_change_tool_pose, self.remove_pack_cover, self.pickup_cells], 
-                        "Vision": [self.classify_pack, self.locate_pack, self.check_cover_off, self.classify_cells, self.locate_cells, self.assess_cells_qualities], 
-                        "Human": [self.equip_small_tool, self.equip_large_tool, self.confirm_pack_fastened, self.add_pack_bb, self.choose_diff_pack_model, self.confirm_pack, 
-                                  self.add_cell_bb, self.choose_diff_cell_model, self.confirm_cells, self.confirm_quals, self.confirm_cells_picked], 
-                        }
         fncs_idx, col = 0, 0
         [self.fncs_frame.columnconfigure(i, weight=1) for i in range(2)]
         for i, cat in enumerate(self.fncs):
@@ -346,8 +365,8 @@ class MemGui(tk.Tk):
             self.human_label.grid(row=fncs_idx, column=col, sticky='nsew', padx=(5, 5), pady=(5, 0))
             self.fncs_frame.rowconfigure(fncs_idx, weight=1)
             fncs_idx += 1
-            for fnc in self.fncs[cat]:
-                btn = tk.Button(self.fncs_frame, text=fnc.__name__.capitalize().replace("_", " "),command=fnc)
+            for fnc_name in self.fncs[cat]:
+                btn = tk.Button(self.fncs_frame, text=fnc_name,command= lambda arg=(cat+';'+fnc_name): self.verify_precodintion_and_execute(arg))
                 btn.grid(row=fncs_idx, column=col, sticky='nsew', padx=(5, 5))
                 self.fncs_frame.rowconfigure(fncs_idx, weight=1)
                 fncs_idx += 1
@@ -402,6 +421,12 @@ class MemGui(tk.Tk):
                 self.cells_labels.append(label)
         for i, c_label in enumerate(self.cells_labels):
             c_label.configure(text=f"{i:02d}: "+self.pack_state.cells[i].to_string_short())
+
+    def verify_precodintion_and_execute(self, keys: str):
+        self.logger.info("START: verify precondition")
+        cat, fnc_to_call = keys.split(';')
+        self.fncs[cat][fnc_to_call]()
+
 
     def confirm_pack_fastened(self):
         self.logger.info("START: pack fastened confirmed")
