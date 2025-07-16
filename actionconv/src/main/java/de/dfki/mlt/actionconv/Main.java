@@ -38,8 +38,15 @@ import org.semanticweb.owlapi.util.SimpleIRIMapper;
 import org.yaml.snakeyaml.Yaml;
 
 public class Main implements AutoCloseable {
+  private class ParseException extends RuntimeException {
+    private static final long serialVersionUID = -7082461845237896276L;
 
-    private class OwlMapEntry {
+    public ParseException(String msg) {
+      super(msg);
+    }
+  }
+
+  private class OwlMapEntry {
     String xsdType;
     String key;
 
@@ -75,11 +82,10 @@ public class Main implements AutoCloseable {
 
   private OWLClass owlActionClass;
 
-
-  // RDF lists
   private OWLDataProperty basicCondition;
   private OWLDataProperty rdlQuery;
   private OWLDataProperty description;
+  private OWLDataProperty name;
 
   private OWLObjectProperty condition;
   private OWLObjectProperty conditions;
@@ -105,9 +111,7 @@ public class Main implements AutoCloseable {
         IRI.create(ontoFile));
     man.getIRIMappers().add(iriMapper);
 
-    // add import of osm.owl to MAPDATA.owl
-    //OWLImportsDeclaration importDecl = df.getOWLImportsDeclaration(
-    //    IRI.create(planns.getNamespace().replace("#", "/") + planner_file));
+    // add import of base ontology to this ontology
     OWLImportsDeclaration importDecl = df.getOWLImportsDeclaration(
         IRI.create(planns.getNamespace().replace("#", "")));
     man.applyChange(new AddImport(onto, importDecl));
@@ -128,6 +132,7 @@ public class Main implements AutoCloseable {
     basicCondition = df.getOWLDataProperty("plan:basicCondition", plan);
     rdlQuery = df.getOWLDataProperty("plan:rdlQuery", plan);
     description = df.getOWLDataProperty("plan:description", plan);
+    name = df.getOWLDataProperty("plan:name", plan);
 
     owlActionClass = df.getOWLClass("plan:Action", plan);
     condition = df.getOWLObjectProperty("plan:condition", plan);
@@ -230,7 +235,7 @@ public class Main implements AutoCloseable {
   public OWLNamedIndividual createBasic(String id) {
     // get it from internal map
     if (! atomics.containsKey(id)) {
-      throw new RuntimeException(id + " is not a valid atomic condition");
+      throw new ParseException(id + " is not a valid atomic condition");
     }
     return atomics.get(id);
   }
@@ -277,14 +282,30 @@ public class Main implements AutoCloseable {
   }
 
   OWLNamedIndividual parseCondition(String expression) {
+    if (expression == null || expression.isBlank()) return null;
     CondParser p = new CondParser(new Lexer(new StringReader(expression)));
     p.main = this;
     try {
       if (p.parse()) return p._cond;
     } catch (IOException ex) {
-      // never happens
+      // never happens, String IO
+    } catch (ParseException pex) {
+      System.out.println(pex);
     }
     return null;
+  }
+
+  public void addCondition(OWLNamedIndividual act, Map<String, String> conds,
+      String id, String what, OWLObjectProperty prop) {
+    if (conds.containsKey(what)) {
+      OWLNamedIndividual cond = parseCondition(conds.get(what));
+      if (cond == null) {
+        System.out.println("Wrong or illegal condition for "
+            + what + " of  action " + id);
+        System.exit(1);
+      }
+      addPropertyValue(act, prop, cond, plan);
+    }
   }
 
   public void processAction(Map<String, Object> action) {
@@ -293,14 +314,9 @@ public class Main implements AutoCloseable {
     @SuppressWarnings("unchecked")
     Map<String, String> conds = (Map<String, String>) action.get(id);
     OWLNamedIndividual act = createEntityWithClass(id, owlActionClass);
-    if (conds.containsKey("pre")) {
-      OWLNamedIndividual cond = parseCondition(conds.get("pre"));
-      addPropertyValue(act, condition, cond, plan);
-    }
-    if (conds.containsKey("post")) {
-      OWLNamedIndividual cond = parseCondition(conds.get("post"));
-      addPropertyValue(act, postCondition, cond, plan);
-    }
+    addPropertyValue(act, name, id);
+    addCondition(act, conds, id, "pre", condition);
+    addCondition(act, conds, id, "post", postCondition);
   }
 
 
@@ -380,10 +396,6 @@ public class Main implements AutoCloseable {
       e.printStackTrace();
     }
   }
-
-
-
-
 
 
   @Override
