@@ -1,7 +1,9 @@
 atomic:
   - [ AlwaysTrue, 'True', 'Always true' ]
   - [ BatteryFastened, app.pack_state.fastened, "Pack fastened" ]
-  - [ BatteryLocationSet, 'area(app.pack_bb_drawer.bbs_position[0]) > 1', "Pack bounding box has been set" ]
+  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model set" ]
+  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model confirmed" ]
+  - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "Pack bounding box has been set" ]
   - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box confirmed" ]
   - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "The cover may still be on" ]
   - [ CoverOff, app.pack_state.cover_on == False, "The cover is off" ]
@@ -19,24 +21,24 @@ actions:
   - confirm_pack_fastened: # H
       pre: ! BatteryFastened
       post: BatteryFastened
+  - classify_pack: # R
+      pre: BatteryFastened & ! BatteryModelConfirmed
+      #post: BatteryModelSet # No, might still be unknown if not identified
   - choose_diff_pack_model: # H
-      pre: BatteryLocationSet
-      post: BatteryLocationConfirmed
-  - add_pack_bb: #H
-      pre: ! BatteryLocationConfirmed
-      post: BatteryLocationConfirmed # where to read that off?
-  - classify_pack:
-      pre: BatteryFastened & ! BatteryLocationConfirmed
-      post: BatteryLocationConfirmed # NO: pack classified? where to read that off?
-  - confirm_pack: #H
-      pre: AlwaysTrue # BatteryLocationSet # NO PREREQUISITES
-      post: BatteryLocationConfirmed
+      pre: BatteryFastened & ! BatteryModelConfirmed
+      post: BatteryModelConfirmed
   - locate_pack: #R
       pre: BatteryFastened & ! BatteryLocationConfirmed
-      #post: BatteryLocationSet # WHERE CAN I READ THAT OFF?
+      post: BatteryLocationSet
+  - add_pack_bb: #H
+      pre: BatteryFastened & ! BatteryLocationConfirmed
+      post: BatteryLocationConfirmed # where to read that off?
+  - confirm_pack: #H
+      pre: BatteryModelSet & BatteryLocationSet # BK: or BatteryModelConfirmed?
+      post: BatteryLocationConfirmed & BatteryModelConfirmed
   - check_cover_off: #R
-      pre: ! CoverOff
-      post: CoverOff & BatteryLocationConfirmed # where can i read that off?
+      pre: BatteryFastened # ! CoverOff
+      post: CoverOff & BatteryLocationConfirmed
   - remove_pack_cover: #R
       pre: ! CoverOff & BatteryLocationConfirmed
   - move_robot_change_tool_pose:
@@ -48,17 +50,18 @@ actions:
       pre: ! RobotAtHomePose
       post: RobotAtHomePose
   - choose_diff_cell_model:
-      pre: AlwaysTrue # ??
+      pre: CoverOff & ! CellsConfirmed
   - add_cell_bb: #H: Might have an area check, as with pack?? problematic??
-      pre: AlwaysTrue
+      pre: CoverOff & ! CellsConfirmed
+      post: CellsLocated
   - classify_cells:
-      pre: CoverOff # & CellsLocated
+      pre: CoverOff & ! CellsConfirmed
       post: CellModelSet
   - locate_cells:
-      pre: CoverOff # CellModelSet?
+      pre: CoverOff & ! CellsConfirmed
       post: CellsLocated # ?? how to check that?
   - confirm_cells:
-      pre: CellsLocated
+      pre: CellsLocated & CellModelSet
       post: CellsConfirmed
   - assess_cells_qualities:
       pre: CellsConfirmed
@@ -68,5 +71,5 @@ actions:
       post: CellQualitiesConfirmed
   - pickup_cells:
       pre: CellQualitiesConfirmed # & RobotAtHome
-  - verify_cell_pickup: # Not found
+  - verify_cell_pickup: # Not found, where is the function??
       pre: AlwaysTrue
