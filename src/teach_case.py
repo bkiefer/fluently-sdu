@@ -230,7 +230,7 @@ class MemGui(tk.Tk):
         self.voice_module = FluentlyMQTTClient(client_id="fluentlyClient", verbose=self.verbose)
 
         """ ========== RESET GUI ========== """
-        self.state = {'pack_fastened': False, 'pack_confirmed' : False, 'cells_confirmed' : False, 'quals_confirmed' : False}
+        self.state = {'pack_fastened': False, 'pack_confirmed' : False, 'cells_confirmed' : False, 'quals_confirmed' : False, 'pick_cells_attempted' : False}
         self.changing_pack_model, self.changing_cell_model = False, False
 
         """ ========== LAYOUT GUI ========== """
@@ -333,8 +333,8 @@ class MemGui(tk.Tk):
         self.fncs = {
                         "Robot": [self.move_robot_home, self.move_robot_change_tool_pose, self.remove_pack_cover, self.pickup_cells], 
                         "Vision": [self.classify_pack, self.locate_pack, self.check_cover_off, self.classify_cells, self.locate_cells, self.assess_cells_qualities], 
-                        "Human": [self.swap_tool, self.confirm_pack_fastened, self.add_pack_bb, self.choose_diff_pack_model, self.confirm_pack, 
-                                  self.add_cell_bb, self.choose_diff_cell_model, self.confirm_cells, self.confirm_quals], 
+                        "Human": [self.equip_small_tool, self.equip_large_tool, self.confirm_pack_fastened, self.add_pack_bb, self.choose_diff_pack_model, self.confirm_pack, 
+                                  self.add_cell_bb, self.choose_diff_cell_model, self.confirm_cells, self.confirm_quals, self.confirm_cells_picked], 
                         }
         fncs_idx, col = 0, 0
         [self.fncs_frame.columnconfigure(i, weight=1) for i in range(2)]
@@ -489,14 +489,17 @@ class MemGui(tk.Tk):
             self.logger.info("The cover seems to be on still")
         self.logger.info("END: check cover off")
 
-    def swap_tool(self):
-        self.logger.info("START: swap tool")
-        if self.robot_module.active_gripper == "small":
-            self.robot_module.change_gripper("big")
-        elif self.robot_module.active_gripper == "big":
-            self.robot_module.change_gripper("small")
+    def equip_small_tool(self):
+        self.logger.info("START: equip small tool")
+        self.robot_module.change_gripper("small")
         self.update_info()
-        self.logger.info("END: swap tool")
+        self.logger.info("END: equip small tool")
+
+    def equip_large_tool(self):
+        self.logger.info("START: equip large tool")
+        self.robot_module.change_gripper("big")
+        self.update_info()
+        self.logger.info("END: equip large tool")
 
     def move_robot_home(self):
         self.logger.info("START: robot move to home")
@@ -674,6 +677,7 @@ class MemGui(tk.Tk):
 
     def pickup_cells(self):
         self.logger.info("START: pickup_cells")
+        self.state["pick_cells_attempted"] = True
         if self.state['quals_confirmed']:
             for i, cell in enumerate(self.pack_state.cells):
                 if not cell.sorted:
@@ -693,6 +697,16 @@ class MemGui(tk.Tk):
         else:
             self.logger.info("requisites not met")
         self.logger.info("END: pickup_cells")
+
+    def confirm_cells_picked(self):
+        self.logger.info("START: confirm_cells_picked")
+        if self.state['pick_cells_attempted']:
+            self.logger.info("requisites ok")
+            self.destroy()
+            exit()
+        else:
+            self.logger.info("requisites not met")
+        self.logger.info("END: confirm_cells_picked")
 
     def write_outcome_picked_cells(self, scale=1, padx=0, pady=0):
         """mark on the image whether or not the battery cell was picked up
