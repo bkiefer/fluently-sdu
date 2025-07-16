@@ -415,31 +415,6 @@ class MemGui(tk.Tk):
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
         self.logger.info("END: add pack bounding box")
-
-    def locate_pack_deprecated(self):
-        self.logger.info("START: locate_pack")
-        result = self.vision_module.locate_pack(self.camera_frame)
-        if result is not None:
-            self.pack_state.model = result['shape']
-            self.pack_state.size = result['size']
-            self.pack_state.cover_on = result['cover_on']
-            self.pack_state.frame_location = result['location']
-            self.pack_state.pose = self.vision_module.frame_pos_to_pose(result['location'], self.robot_module.get_TCP_pose())
-            self.logger.debug(self.pack_state)
-            self.logger.info("pack located")
-            
-            x_min, y_min = self.pack_state.frame_location[0] - self.pack_state.size[0]//2, self.pack_state.frame_location[1] - self.pack_state.size[1]//2
-            x_max, y_max = self.pack_state.frame_location[0] + self.pack_state.size[0]//2, self.pack_state.frame_location[1] + self.pack_state.size[1]//2
-            self.pack_bb_drawer.editable = True
-            self.pack_bb_drawer.clear_bbs()
-            self.pack_bb_drawer.set_label(self.pack_state.model)
-            self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
-            self.update_info()
-        else:
-            self.pack_state.cover_on = False
-            self.state['pack_confirmed'] = True
-            self.logger.info("The cover seems to be already off")
-        self.logger.info("END: locate_pack")
     
     def classify_pack(self):
         self.logger.info("START: classify pack")

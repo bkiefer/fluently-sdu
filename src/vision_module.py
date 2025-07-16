@@ -93,6 +93,7 @@ class VisionModule():
         output = {'bbs': [], 'zs': []}
         models = []
         for i, box in enumerate(result[0].boxes):
+            print(box, box.cls)
             model = self.cells_yolo_model.names[int(box.cls)]
             models.append(model)
             confidence = (box.conf)
