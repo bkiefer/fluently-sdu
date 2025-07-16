@@ -253,8 +253,8 @@ class MemGui(tk.Tk):
         # self.locate_pack()
         # self.confirm_pack()
         # To skip the pack localization and classification
-        # self.pack_state.cover_on = False
-        # self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
+        self.pack_state.cover_on = False
+        self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
         # self.classify_cells()
         # self.locate_cells()
         # self.confirm_cells()
