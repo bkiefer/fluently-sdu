@@ -1,26 +1,161 @@
 from hfc_thrift.rdfproxy import RdfProxy
 
-def get_user_session_pairs(first_name: str, last_name: str):      
-    user_session_pairs = RdfProxy.selectQuery('select distinct ?user ?sess where ?user <rdf:type> <cim:User> ?_ '
-                                            '& ?user <cim:userSessions> ?sess ?_ '
-                                            '& ?user <soho:hasName> "{first_name}" ?_ '
-                                            '& ?user  <soho:hasSurname> "{last_name}" ?_'.format(first_name=first_name,last_name=last_name))
-    return user_session_pairs
-
-def init_proxy():
-    port=7070
+# RdfProxy must have been initialized
+def init_proxy(port=7070):
     RdfProxy.init_rdfproxy(port=port)
 
-def update_strategy(num_sessions, blackboard):
-    strategy = []
+AtomicClass = RdfProxy.getClass('<plan:AtomicCondition>')
 
-    init_proxy()
-    
-    first_name = blackboard.get("first_name")
-    last_name = blackboard.get("last_name")
+BasicClass = RdfProxy.getClass('<plan:BasicCondition>')
+AskQueryClass = RdfProxy.getClass('<plan:AskQueryCondition>')
+AllQueryClass = RdfProxy.getClass('<plan:AllQueryCondition>')
+SomeQueryClass = RdfProxy.getClass('<plan:SomeQueryCondition>')
 
-    user_session_pairs = get_user_session_pairs(first_name,last_name)
+NegationClass = RdfProxy.getClass('<plan:Negation>')
+ConjunctionClass = RdfProxy.getClass('<plan:Conjunction>')
+DisjunctionClass = RdfProxy.getClass('<plan:Disjunction>')
 
-    # TODO: reasoning based on session data 
+ActionClass = RdfProxy.getClass('<plan:Action>')
 
-    blackboard.set("strategy", strategy)
+def basic_eval(self, globals):
+    print(self.basicCondition)
+    val = False
+    try:
+        val = eval(self.basicCondition, globals)
+    except Exception as ex:
+        print(f"ERROR: {ex}")
+        return False
+    return val
+BasicClass.eval = basic_eval
+
+def askq_eval(self):
+    res = RdfProxy.selectQuery(self.rdlQuery)
+    return len(res) > 0
+AskQueryClass.eval = askq_eval
+
+#
+def allq_eval(self):
+    """Use this if you want to check one conforming or zero"""
+    res = RdfProxy.selectQuery(self.rdlQuery)
+    predicate = eval(self.predicate) # TODO: CAN THIS BE A "CONDITION" ??
+    return all(predicate(x) for x in res)
+AllQueryClass.eval = allq_eval
+
+#
+def someq_eval(self):
+    """at least one must fulfill the condition"""
+    res = RdfProxy.selectQuery(self.rdlQuery)
+    predicate = eval(self.predicate) # TODO: CAN THIS BE A "CONDITION" ??
+    return any(predicate(x) for x in res)
+SomeQueryClass.eval = someq_eval
+
+
+class Reasoner(object):
+    def __init__(self):
+        self.actions = RdfProxy.selectQuery(
+            "select ?a where ?a <rdf:type> <plan:Action> ?_")
+        # a mapping from action names to action objects
+        self._name2action = {}
+        # This maps atomic conditions to actions, to reduce evaluation cost
+        self._atomic2action = {}
+        for action in self.actions:
+            self._name2action[action.name] = action
+            self._collect_atomics(action.condition, action)
+        # This caches the values of the evaluation of action conditions
+        # the value is a tuple (bool, list(violations))
+        self._action_results = {}
+        # This caches the values of the last run of atomic conditions
+        self._last_atomic_results = {}
+        # current values of evaluation of atomic conditions
+        self._atomic_results = {}
+
+    def _collect_atomics(self, cond, action):
+        """
+        Create a mapping from atomic conditions to dependant actions.
+
+        That an action is depending on a condition is determined
+        by recursively going through the complex conditions in the action,
+        if any
+        """
+        if ConjunctionClass.superclass_of(cond) or \
+           DisjunctionClass.superclass_of(cond):
+            for sub in cond.conditions:
+                self._collect_atomics(sub, action)
+        elif NegationClass.superclass_of(cond):
+            self._collect_atomics(cond.condition, action)
+        elif AtomicClass.superclass_of(cond):
+            if cond in self._atomic2action:
+                self._atomic2action[cond].append(action)
+            else:
+                self._atomic2action[cond] = [action]
+
+    def _eval_condition(self, cond, violated, bindings):
+        val = False
+        if ConjunctionClass.superclass_of(cond):
+            val = True
+            for sub in cond.conditions:
+                sval = self._eval_condition(sub, violated, bindings)
+                val = val and sval
+        elif DisjunctionClass.superclass_of(cond):
+            for sub in cond.conditions:
+                sval = self._eval_condition(sub, violated, bindings)
+                val = val or sval
+        elif NegationClass.superclass_of(cond):
+            sval = self._eval_condition(cond.condition, violated, bindings)
+            val = not sval
+        elif AtomicClass.superclass_of(cond):
+            # avoid re-evaluation
+            val = self._atomic_results[cond]
+            if not val:
+                print(cond.description)
+                violated.append(cond)
+        return val
+
+    def _evaluate_action(self, action, bindings):
+        violated = []
+        val = self._eval_condition(action.condition, violated, bindings)
+        return val, violated
+
+    def evaluate_actions(self, bindings, delta=True):
+        """
+        Evaluate the executability of actions.
+
+        This will return a dict of actions and their evaluations which have
+        changed from the last evaluation to the current one, if delta is True,
+        all actions with evaluations otherwise.
+
+        An evaluation consists of a boolean value and a list of violated
+        atomic conditions.
+        """
+        # first evaluate all atomic conditions
+        self._atomic_results = {}
+        for atomic in self._atomic2action.keys():
+            self._atomic_results[atomic] = atomic.eval(bindings)
+
+        # compare the values to the last run (if available)
+        last_atomic_values = self._last_atomic_results if delta else {}
+        changed_actions = {}
+        # all atomics
+        for atomic in self._atomic2action.keys():
+            if atomic not in last_atomic_values or \
+                    last_atomic_values[atomic] != self._atomic_results[atomic]:
+                for action in self._atomic2action[atomic]:
+                    new_value = self._evaluate_action(action, bindings)
+                    changed_actions[action] = new_value
+                    self._action_results[action] = new_value
+
+        self._last_atomic_results = self._atomic_results
+        return changed_actions
+
+    def get_action(self, action_name):
+        """Return the action with that name."""
+        return self._name2action[action_name]
+
+    def action_is_executable(self, action):
+        """
+        Return the executability of an action.
+
+        Given the action name, get its executability and the violated
+        atomic conditions for that action
+        """
+        return self.action_results[action]

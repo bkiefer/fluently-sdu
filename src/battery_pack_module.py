@@ -35,12 +35,19 @@ class Cell():
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
         self.model = "unknown"
+        self.model_confirmed = False
         self.cell_model = "unknown"
         self.cover_on = None
         self.size = None
         self.frame_location = None
+        self.location_confirmed = False
         self.pose = None
         self.cells = []
+        self.cells_confirmed = False
+        self.quals = None # Either None, 'set' or 'confirmed'
+        self.fastened = False
+        self.pickplace_attempted = False
+
         # self.update_dim(rows=rows, cols=cols)
     
     def update_dim(self, rows: int, cols: int):

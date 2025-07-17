@@ -6,6 +6,8 @@ py_trees==2.2.3
 pyrealsense2==2.55.1.6486
 scipy==1.8.0
 spatialmath_python==1.1.8
-thrift
+hfc-thrift>=0.2.0
 opencv-python
 roboticstoolbox-python
+ultralytics
+paho-mqtt<=2.1.0
