@@ -842,3 +842,4 @@ if __name__ == "__main__":
     gui_app = MemGui()
     gui_app.after(1, gui_app.after_update)
     gui_app.mainloop()
+
