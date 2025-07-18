@@ -1,17 +1,17 @@
 atomic:
   - [ AlwaysTrue, 'True', 'Always true' ]
-  - [ BatteryFastened, app.pack_state.fastened, "Pack is fastened" ]
-  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model is set" ]
-  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model is confirmed" ]
-  - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "Pack bounding box has been set" ]
-  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box is confirmed" ]
+  - [ BatteryFastened, app.pack_state.fastened, "Pack is {neg}fastened" ]
+  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model is {neg}set" ]
+  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model is {neg}confirmed" ]
+  - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "Pack bounding box has {neg}been set" ]
+  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box is {neg}confirmed" ]
   - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "The cover may still be on" ]
-  - [ CoverOff, app.pack_state.cover_on == False, "The cover is off" ]
-  - [ CellModelSet, app.pack_state.cell_model != None, "Cell model is identified" ]
-  - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box is confirmed" ]
-  - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have been located" ]
-  - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is set" ]
-  - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "Quality of cells confirmed" ]
+  - [ CoverOff, app.pack_state.cover_on == False, "The cover is {neg}off" ]
+  - [ CellModelSet, app.pack_state.cell_model != None, "Cell model is {neg}identified" ]
+  - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box is {neg}confirmed" ]
+  - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have {neg}been located" ]
+  - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is {neg}set" ]
+  - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "Quality of cells is {neg}confirmed" ]
 
   - [ RobotAtToolPose, 'True', 'robot arm is at tool pose' ] # TO CHECK
   - [ RobotAtHomePose, 'True', 'robot arm is at home pose' ] # TO CHECK
