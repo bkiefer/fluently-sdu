@@ -46,14 +46,11 @@ import java.util.ArrayList;
 
 import java.io.Reader;
 import java.util.*;
+import de.dfki.mlt.actionconv.Formula;
 
-import org.semanticweb.owlapi.model.OWLNamedIndividual;
+@SuppressWarnings({"fallthrough", "unused"})
 
-import de.dfki.mlt.actionconv.Main;
-
-@SuppressWarnings({"serial", "unchecked", "fallthrough", "unused"})
-
-/* "CondParser.java":55  */
+/* "CondParser.java":54  */
 
 /**
  * A Bison parser, automatically generated from <tt>CondParser.y</tt>.
@@ -260,6 +257,34 @@ public class CondParser
   }
 
 
+  private java.io.PrintStream yyDebugStream = System.err;
+
+  /**
+   * The <tt>PrintStream</tt> on which the debugging output is printed.
+   */
+  public final java.io.PrintStream getDebugStream() { return yyDebugStream; }
+
+  /**
+   * Set the <tt>PrintStream</tt> on which the debug output is printed.
+   * @param s The stream that is used for debugging output.
+   */
+  public final void setDebugStream(java.io.PrintStream s) { yyDebugStream = s; }
+
+  private int yydebug = 0;
+
+  /**
+   * Answer the verbosity of the debugging output; 0 means that all kinds of
+   * output from the parser are suppressed.
+   */
+  public final int getDebugLevel() { return yydebug; }
+
+  /**
+   * Set the verbosity of the debugging output; 0 means that all kinds of
+   * output from the parser are suppressed.
+   * @param level The verbosity level for debugging output.
+   */
+  public final void setDebugLevel(int level) { yydebug = level; }
+
 
   private int yynerrs = 0;
 
@@ -278,6 +303,15 @@ public class CondParser
   }
 
 
+  protected final void yycdebugNnl(String s) {
+    if (0 < yydebug)
+      yyDebugStream.print(s);
+  }
+
+  protected final void yycdebug(String s) {
+    if (0 < yydebug)
+      yyDebugStream.println(s);
+  }
 
   private final class YYStack {
     private int[] stateStack = new int[16];
@@ -403,76 +437,80 @@ public class CondParser
        users should not rely upon it.  */
     Object yyval = (0 < yylen) ? yystack.valueAt(yylen - 1) : yystack.valueAt(0);
 
+    yyReducePrint(yyn, yystack);
+
     switch (yyn)
       {
           case 2: /* start: disj  */
   if (yyn == 2)
-    /* "CondParser.y":40  */
-            { _cond = ((OWLNamedIndividual)(yystack.valueAt (0))); };
+    /* "CondParser.y":37  */
+            { cond = ((Formula)(yystack.valueAt (0))); };
   break;
 
 
   case 3: /* disj: disj '|' conj  */
   if (yyn == 3)
-    /* "CondParser.y":43  */
-                    { yyval = main.createDisj(((OWLNamedIndividual)(yystack.valueAt (2))), ((OWLNamedIndividual)(yystack.valueAt (0)))); };
+    /* "CondParser.y":40  */
+                    { yyval = Formula.createDisj(((Formula)(yystack.valueAt (2))), ((Formula)(yystack.valueAt (0)))); };
   break;
 
 
   case 4: /* disj: conj  */
   if (yyn == 4)
-    /* "CondParser.y":44  */
-          { yyval = ((OWLNamedIndividual)(yystack.valueAt (0))); };
+    /* "CondParser.y":41  */
+          { yyval = ((Formula)(yystack.valueAt (0))); };
   break;
 
 
   case 5: /* conj: conj '&' unary  */
   if (yyn == 5)
-    /* "CondParser.y":48  */
-                    { yyval = main.createConj(((OWLNamedIndividual)(yystack.valueAt (2))), ((OWLNamedIndividual)(yystack.valueAt (0)))); };
+    /* "CondParser.y":45  */
+                    { yyval = Formula.createConj(((Formula)(yystack.valueAt (2))), ((Formula)(yystack.valueAt (0)))); };
   break;
 
 
   case 6: /* conj: unary  */
   if (yyn == 6)
-    /* "CondParser.y":49  */
-           { yyval = ((OWLNamedIndividual)(yystack.valueAt (0))); };
+    /* "CondParser.y":46  */
+           { yyval = ((Formula)(yystack.valueAt (0))); };
   break;
 
 
   case 7: /* unary: '!' basic  */
   if (yyn == 7)
-    /* "CondParser.y":54  */
-               { yyval = main.createNeg(((OWLNamedIndividual)(yystack.valueAt (0)))); };
+    /* "CondParser.y":50  */
+               { yyval = Formula.createNeg(((Formula)(yystack.valueAt (0)))); };
   break;
 
 
   case 8: /* unary: basic  */
   if (yyn == 8)
-    /* "CondParser.y":55  */
-           { yyval = ((OWLNamedIndividual)(yystack.valueAt (0))); };
+    /* "CondParser.y":51  */
+           { yyval = ((Formula)(yystack.valueAt (0))); };
   break;
 
 
   case 9: /* basic: BASIC  */
   if (yyn == 9)
-    /* "CondParser.y":59  */
-           { yyval = main.createBasic((( String )(yystack.valueAt (0)))); };
+    /* "CondParser.y":55  */
+           { yyval = Formula.createBasic((( String )(yystack.valueAt (0)))); };
   break;
 
 
   case 10: /* basic: '(' disj ')'  */
   if (yyn == 10)
-    /* "CondParser.y":60  */
-                  { yyval = ((OWLNamedIndividual)(yystack.valueAt (1))); };
+    /* "CondParser.y":56  */
+                  { yyval = ((Formula)(yystack.valueAt (1))); };
   break;
 
 
 
-/* "CondParser.java":471  */
+/* "CondParser.java":509  */
 
         default: break;
       }
+
+    yySymbolPrint("-> $$ =", SymbolKind.get(yyr1_[yyn]), yyval);
 
     yystack.pop(yylen);
     yylen = 0;
@@ -483,6 +521,19 @@ public class CondParser
   }
 
 
+  /*--------------------------------.
+  | Print this symbol on YYOUTPUT.  |
+  `--------------------------------*/
+
+  private void yySymbolPrint(String s, SymbolKind yykind,
+                             Object yyvalue) {
+      if (0 < yydebug) {
+          yycdebug(s
+                   + (yykind.getCode() < YYNTOKENS_ ? " token " : " nterm ")
+                   + yykind.getName() + " ("
+                   + (yyvalue == null ? "(null)" : yyvalue.toString()) + ")");
+      }
+  }
 
 
   /**
@@ -516,6 +567,7 @@ public class CondParser
 
 
 
+    yycdebug ("Starting parse");
     yyerrstatus_ = 0;
     yynerrs = 0;
 
@@ -530,6 +582,9 @@ public class CondParser
         /* New state.  Unlike in the C/C++ skeletons, the state is already
            pushed when we come here.  */
       case YYNEWSTATE:
+        yycdebug ("Entering state " + yystate);
+        if (0 < yydebug)
+          yystack.print (yyDebugStream);
 
         /* Accept?  */
         if (yystate == YYFINAL_)
@@ -547,6 +602,7 @@ public class CondParser
         if (yychar == YYEMPTY_)
           {
 
+            yycdebug ("Reading a token");
             yychar = yylexer.yylex ();
             yylval = yylexer.getLVal();
 
@@ -554,6 +610,8 @@ public class CondParser
 
         /* Convert token to internal form.  */
         yytoken = yytranslate_ (yychar);
+        yySymbolPrint("Next token is", yytoken,
+                      yylval);
 
         if (yytoken == SymbolKind.S_YYerror)
           {
@@ -588,6 +646,9 @@ public class CondParser
             else
               {
                 /* Shift the lookahead token.  */
+                yySymbolPrint("Shifting", yytoken,
+                              yylval);
+
                 /* Discard the token being shifted.  */
                 yychar = YYEMPTY_;
 
@@ -698,6 +759,8 @@ public class CondParser
 
             yystack.pop ();
             yystate = yystack.stateAt(0);
+            if (0 < yydebug)
+              yystack.print (yyDebugStream);
           }
 
         if (label == YYABORT)
@@ -707,6 +770,8 @@ public class CondParser
 
 
         /* Shift the error token.  */
+        yySymbolPrint("Shifting", SymbolKind.get(yystos_[yyn]),
+                      yylval);
 
         yystate = yyn;
         yystack.push (yyn, yylval);
@@ -988,6 +1053,36 @@ private static final byte[] yycheck_ = yycheck_init();
 
 
 
+  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+  private static final byte[] yyrline_ = yyrline_init();
+  private static final byte[] yyrline_init()
+  {
+    return new byte[]
+    {
+       0,    37,    37,    40,    41,    45,    46,    50,    51,    55,
+      56
+    };
+  }
+
+
+  // Report on the debug stream that the rule yyrule is going to be reduced.
+  private void yyReducePrint (int yyrule, YYStack yystack)
+  {
+    if (yydebug == 0)
+      return;
+
+    int yylno = yyrline_[yyrule];
+    int yynrhs = yyr2_[yyrule];
+    /* Print the symbols being reduced, and their result.  */
+    yycdebug ("Reducing stack by rule " + (yyrule - 1)
+              + " (line " + yylno + "):");
+
+    /* The symbols being reduced.  */
+    for (int yyi = 0; yyi < yynrhs; yyi++)
+      yySymbolPrint("   $" + (yyi + 1) + " =",
+                    SymbolKind.get(yystos_[yystack.stateAt(yynrhs - (yyi + 1))]),
+                    yystack.valueAt ((yynrhs) - (yyi + 1)));
+  }
 
   /* YYTRANSLATE_(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
      as returned by yylex, with out-of-bounds checking.  */
@@ -1043,14 +1138,12 @@ private static final byte[] yycheck_ = yycheck_init();
   private static final int YYNTOKENS_ = 9;
 
 /* Unqualified %code blocks.  */
-/* "CondParser.y":27  */
+/* "CondParser.y":26  */
 
 
-public Main main;
-
-public OWLNamedIndividual _cond;
+public Formula cond;
 
 
-/* "CondParser.java":1053  */
+/* "CondParser.java":1148  */
 
 }

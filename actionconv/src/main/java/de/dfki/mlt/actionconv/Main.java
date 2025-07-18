@@ -9,6 +9,7 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -195,7 +196,7 @@ public class Main implements AutoCloseable {
     return String.format("%s%0,5d", prefix, ++ID);
   }
 
-  public OWLNamedIndividual createConj(OWLNamedIndividual arg0,
+  private OWLNamedIndividual createConj(OWLNamedIndividual arg0,
       OWLNamedIndividual arg1) {
     OWLNamedIndividual conj;
     if (arg0.getIRI().getIRIString().contains("#Conj")) {
@@ -209,7 +210,7 @@ public class Main implements AutoCloseable {
     return conj;
   }
 
-  public OWLNamedIndividual createDisj(OWLNamedIndividual arg0,
+  private OWLNamedIndividual createDisj(OWLNamedIndividual arg0,
       OWLNamedIndividual arg1) {
     OWLNamedIndividual disj;
     if (arg0.getIRI().getIRIString().contains("#Disj")) {
@@ -223,7 +224,7 @@ public class Main implements AutoCloseable {
     return disj;
   }
 
-  public OWLNamedIndividual createNeg(OWLNamedIndividual arg0) {
+  private OWLNamedIndividual createNeg(OWLNamedIndividual arg0) {
     String id = newId("Neg");
     OWLNamedIndividual conj = createEntityWithClass(id, owlNegationClass);
     addPropertyValue(conj, condition, arg0, plan);
@@ -232,7 +233,7 @@ public class Main implements AutoCloseable {
 
   Map<String, OWLNamedIndividual> atomics = new HashMap<>();
 
-  public OWLNamedIndividual createBasic(String id) {
+  private OWLNamedIndividual createBasic(String id) {
     // get it from internal map
     if (! atomics.containsKey(id)) {
       throw new ParseException(id + " is not a valid atomic condition");
@@ -281,12 +282,36 @@ public class Main implements AutoCloseable {
     atomics.put(id, cond);
   }
 
+  private OWLNamedIndividual formula2Owl(Formula f) {
+    if (f.what == 'l') {
+      OWLNamedIndividual b = createBasic(f.code);
+      return f.neg ? createNeg(b) : b;
+    }
+
+    OWLNamedIndividual result;
+    if (f.what == 'c') {
+      result = createEntityWithClass(newId("Conj"), owlConjunctionClass);
+    } else {
+      result = createEntityWithClass(newId("Disj"), owlDisjunctionClass);
+    }
+    for (Formula sub: f.subs) {
+      addPropertyValue(result, conditions, formula2Owl(sub), plan);
+    }
+    return result;
+  }
+
   OWLNamedIndividual parseCondition(String expression) {
     if (expression == null || expression.isBlank()) return null;
     CondParser p = new CondParser(new Lexer(new StringReader(expression)));
-    p.main = this;
     try {
-      if (p.parse()) return p._cond;
+      if (p.parse()) {
+        Formula f = p.cond;
+        f.pushDownNeg(); // push negations to the literals
+        f.flattenStrata(); // now there's a sequence of conj only and disj only
+        // TODO: construct DNF
+        // turn it into OWLNamedIndividuals
+        return formula2Owl(f);
+      }
     } catch (IOException ex) {
       // never happens, String IO
     } catch (ParseException pex) {

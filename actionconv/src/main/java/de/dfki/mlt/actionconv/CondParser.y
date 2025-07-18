@@ -4,17 +4,16 @@
 
 import java.io.Reader;
 import java.util.*;
-import de.dfki.mlt.memactions.Main;
-import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import de.dfki.mlt.actionconv.Formula;
 
-@SuppressWarnings({"serial", "unchecked", "fallthrough", "unused"})
+@SuppressWarnings({"fallthrough", "unused"})
 }
 
 %language "Java"
 
 //                       %locations
 
-%define api.package "de.dfki.mlt.memactions"
+%define api.package "de.dfki.mlt.actionconv"
 
 %define api.parser.public
 
@@ -22,13 +21,11 @@ import org.semanticweb.owlapi.model.OWLNamedIndividual;
 
 %define parse.error verbose
 
-%type <OWLNamedIndividual> conj disj unary basic
+%type <Formula> conj disj unary basic
 
 %code {
 
-public Main main;
-
-public OWLNamedIndividual _cond;
+public Formula cond;
 
 }
 
@@ -37,24 +34,23 @@ public OWLNamedIndividual _cond;
 %%
 
 // start rule
-start: disj { _cond = $1; };
+start: disj { cond = $1; };
 
 disj
-   : disj  '|' conj { $$ = main.createDisj($1, $3); }
+   : disj  '|' conj { $$ = Formula.createDisj($1, $3); }
    | conj { $$ = $1; }
    ;
 
 conj
-   : conj '&' unary { $$ = main.createConj($1, $3); }
+   : conj '&' unary { $$ = Formula.createConj($1, $3); }
    | unary { $$ = $1; }
    ;
 
-
 unary
-   : '!' basic { $$ = main.createNeg($2); }
+   : '!' basic { $$ = Formula.createNeg($2); }
    | basic { $$ = $1; }
    ;
 
 basic
-   : BASIC { $$ = main.createBasic($1); }
+   : BASIC { $$ = Formula.createBasic($1); }
    | '(' disj ')' { $$ = $2; }

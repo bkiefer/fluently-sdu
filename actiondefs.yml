@@ -1,16 +1,16 @@
 atomic:
   - [ AlwaysTrue, 'True', 'Always true' ]
-  - [ BatteryFastened, app.pack_state.fastened, "Pack fastened" ]
-  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model set" ]
-  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model confirmed" ]
+  - [ BatteryFastened, app.pack_state.fastened, "Pack is fastened" ]
+  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model is set" ]
+  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model is confirmed" ]
   - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "Pack bounding box has been set" ]
-  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box confirmed" ]
+  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box is confirmed" ]
   - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "The cover may still be on" ]
   - [ CoverOff, app.pack_state.cover_on == False, "The cover is off" ]
-  - [ CellModelSet, app.pack_state.cell_model != None, "Cell model identified" ]
-  - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box confirmed" ]
+  - [ CellModelSet, app.pack_state.cell_model != None, "Cell model is identified" ]
+  - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box is confirmed" ]
   - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have been located" ]
-  - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells set" ]
+  - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is set" ]
   - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "Quality of cells confirmed" ]
 
   - [ RobotAtToolPose, 'True', 'robot arm is at tool pose' ] # TO CHECK
@@ -19,49 +19,49 @@ atomic:
 
 actions:
   - confirm_pack_fastened: # H
-      pre: ! BatteryFastened
+      pre: '! BatteryFastened'
       post: BatteryFastened
   - classify_pack: # R
-      pre: BatteryFastened & ! BatteryModelConfirmed
+      pre: 'BatteryFastened & ! BatteryModelConfirmed'
       #post: BatteryModelSet # No, might still be unknown if not identified
   - choose_diff_pack_model: # H
-      pre: BatteryFastened & ! BatteryModelConfirmed
+      pre: 'BatteryFastened & ! BatteryModelConfirmed'
       post: BatteryModelConfirmed
   - locate_pack: #R
-      pre: BatteryFastened & ! BatteryLocationConfirmed
+      pre: 'BatteryFastened & ! BatteryLocationConfirmed'
       post: BatteryLocationSet
   - add_pack_bb: #H
-      pre: BatteryFastened & ! BatteryLocationConfirmed
+      pre: 'BatteryFastened & ! BatteryLocationConfirmed'
       post: BatteryLocationConfirmed # where to read that off?
   - confirm_pack: #H
-      pre: BatteryModelSet & BatteryLocationSet # BK: or BatteryModelConfirmed?
-      post: BatteryLocationConfirmed & BatteryModelConfirmed
+      pre: 'BatteryModelSet & BatteryLocationSet' # BK: or BatteryModelConfirmed?
+      post: 'BatteryLocationConfirmed & BatteryModelConfirmed'
   - check_cover_off: #R
       pre: BatteryFastened # ! CoverOff
-      post: CoverOff & BatteryLocationConfirmed
+      post: 'CoverOff & BatteryLocationConfirmed'
   - remove_pack_cover: #R
-      pre: ! CoverOff & BatteryLocationConfirmed
+      pre: '! CoverOff & BatteryLocationConfirmed'
   - move_robot_change_tool_pose:
-      pre: ! RobotAtToolPose
+      pre: '! RobotAtToolPose'
       post: RobotAtToolPose
   - swap_tool: #H: I'd like to have two: EquipSmall & EquipLarge ...
       pre: AlwaysTrue
   - move_robot_home:
-      pre: ! RobotAtHomePose
+      pre: '! RobotAtHomePose'
       post: RobotAtHomePose
   - choose_diff_cell_model:
-      pre: CoverOff & ! CellsConfirmed
+      pre: 'CoverOff & ! CellsConfirmed'
   - add_cell_bb: #H: Might have an area check, as with pack?? problematic??
-      pre: CoverOff & ! CellsConfirmed
+      pre: 'CoverOff & ! CellsConfirmed'
       post: CellsLocated
   - classify_cells:
-      pre: CoverOff & ! CellsConfirmed
+      pre: 'CoverOff & ! CellsConfirmed'
       post: CellModelSet
   - locate_cells:
-      pre: CoverOff & ! CellsConfirmed
+      pre: 'CoverOff & ! CellsConfirmed'
       post: CellsLocated # ?? how to check that?
   - confirm_cells:
-      pre: CellsLocated & CellModelSet
+      pre: 'CellsLocated & CellModelSet'
       post: CellsConfirmed
   - assess_cells_qualities:
       pre: CellsConfirmed
