@@ -1,57 +1,108 @@
+"""
+This module implemements a lightweight reasoner/planner.
+
+It evaluates the conditions of actions, both of which are stored in a RDF
+representation in an external RDF/OWL DB/reasoner.
+"""
+
 from hfc_thrift.rdfproxy import RdfProxy
 
+
+AtomicClass = None
+
+BasicClass = None
+AskQueryClass = None
+AllQueryClass = None
+SomeQueryClass = None
+
+NegationClass = None
+ConjunctionClass = None
+DisjunctionClass = None
+
+ActionClass = None
+
 # RdfProxy must have been initialized
-def init_proxy(port=7070):
-    RdfProxy.init_rdfproxy(port=port)
+def init_proxy(port=7070, ns='cim:',
+               classmapping={"<plan:Action>": "Action"}):
+    """Initialize the link to the external RDF/OWL reasoner."""
+    RdfProxy.init_rdfproxy(port=port, ns=ns, classmapping=classmapping)
 
-AtomicClass = RdfProxy.getClass('<plan:AtomicCondition>')
 
-BasicClass = RdfProxy.getClass('<plan:BasicCondition>')
-AskQueryClass = RdfProxy.getClass('<plan:AskQueryCondition>')
-AllQueryClass = RdfProxy.getClass('<plan:AllQueryCondition>')
-SomeQueryClass = RdfProxy.getClass('<plan:SomeQueryCondition>')
+def init_classes():
+    """
+    Initialize global classes for actions and conditions.
 
-NegationClass = RdfProxy.getClass('<plan:Negation>')
-ConjunctionClass = RdfProxy.getClass('<plan:Conjunction>')
-DisjunctionClass = RdfProxy.getClass('<plan:Disjunction>')
+    The values of these global variables are proxies of RDF classes.
+    Common functionality is added for easy evaluation and use in the code.
+    """
+    global AtomicClass, BasicClass, AskQueryClass, AllQueryClass
+    global SomeQueryClass, NegationClass, ConjunctionClass, DisjunctionClass
+    global ActionClass
 
-ActionClass = RdfProxy.getClass('<plan:Action>')
+    AtomicClass = RdfProxy.getClass('<plan:AtomicCondition>')
 
-def basic_eval(self, globals):
-    print(self.basicCondition)
-    val = False
-    try:
-        val = eval(self.basicCondition, globals)
-    except Exception as ex:
-        print(f"ERROR: {ex}")
-        return False
-    return val
-BasicClass.eval = basic_eval
+    BasicClass = RdfProxy.getClass('<plan:BasicCondition>')
+    AskQueryClass = RdfProxy.getClass('<plan:AskQueryCondition>')
+    AllQueryClass = RdfProxy.getClass('<plan:AllQueryCondition>')
+    SomeQueryClass = RdfProxy.getClass('<plan:SomeQueryCondition>')
 
-def askq_eval(self):
-    res = RdfProxy.selectQuery(self.rdlQuery)
-    return len(res) > 0
-AskQueryClass.eval = askq_eval
+    NegationClass = RdfProxy.getClass('<plan:Negation>')
+    ConjunctionClass = RdfProxy.getClass('<plan:Conjunction>')
+    DisjunctionClass = RdfProxy.getClass('<plan:Disjunction>')
 
-#
-def allq_eval(self):
-    """Use this if you want to check one conforming or zero"""
-    res = RdfProxy.selectQuery(self.rdlQuery)
-    predicate = eval(self.predicate) # TODO: CAN THIS BE A "CONDITION" ??
-    return all(predicate(x) for x in res)
-AllQueryClass.eval = allq_eval
+    ActionClass = RdfProxy.getClass('<plan:Action>')
 
-#
-def someq_eval(self):
-    """at least one must fulfill the condition"""
-    res = RdfProxy.selectQuery(self.rdlQuery)
-    predicate = eval(self.predicate) # TODO: CAN THIS BE A "CONDITION" ??
-    return any(predicate(x) for x in res)
-SomeQueryClass.eval = someq_eval
+    def basic_eval(self, globals):
+        # print(self.basicCondition)
+        val = False
+        try:
+            val = eval(self.basicCondition, globals)
+        except Exception as ex:
+            print(f"ERROR: {ex}")
+            return False
+        return val
+    BasicClass.eval = basic_eval
+
+    def askq_eval(self):
+        res = RdfProxy.selectQuery(self.rdlQuery)
+        return len(res) > 0
+    AskQueryClass.eval = askq_eval
+
+    #
+    def allq_eval(self):
+        """Use this if you want to check one conforming or zero."""
+        res = RdfProxy.selectQuery(self.rdlQuery)
+        predicate = eval(self.predicate)  # TODO: CAN THIS BE A "CONDITION" ??
+        return all(predicate(x) for x in res)
+    AllQueryClass.eval = allq_eval
+
+    #
+    def someq_eval(self):
+        """At least one must fulfill the condition."""
+        res = RdfProxy.selectQuery(self.rdlQuery)
+        predicate = eval(self.predicate)  # TODO: CAN THIS BE A "CONDITION" ??
+        return any(predicate(x) for x in res)
+    SomeQueryClass.eval = someq_eval
 
 
 class Reasoner(object):
+    """A lightweight reasoner, able to give explanations of failing conditions.
+
+    It pulls all actions from an RDF database and offers evaluation of their
+    preconditions. If the precondition for an action is not fulfilled, the list
+    of literals responsible for this is computed, and an "explanation", based
+    on this, is generated.
+    """
+
     def __init__(self):
+        """Create a new Reasoner object.
+
+        Before creating a reasoner, it's important that the connection to
+        the database has been established calling init_proxy() first.
+        If necessary, the global class variables will be initialized.
+        """
+        if AtomicClass is None:
+            init_classes()
         self.actions = RdfProxy.selectQuery(
             "select ?a where ?a <rdf:type> <plan:Action> ?_")
         # a mapping from action names to action objects
@@ -77,6 +128,7 @@ class Reasoner(object):
         by recursively going through the complex conditions in the action,
         if any
         """
+        #print(cond)
         if ConjunctionClass.superclass_of(cond) or \
            DisjunctionClass.superclass_of(cond):
             for sub in cond.conditions:
@@ -107,7 +159,7 @@ class Reasoner(object):
             # avoid re-evaluation
             val = self._atomic_results[cond]
             if not val:
-                print(cond.description)
+                # print(cond.description)
                 violated.append(cond)
         return val
 
@@ -145,6 +197,7 @@ class Reasoner(object):
                     self._action_results[action] = new_value
 
         self._last_atomic_results = self._atomic_results
+        #print(self._action_results)
         return changed_actions
 
     def get_action(self, action_name):
@@ -158,4 +211,7 @@ class Reasoner(object):
         Given the action name, get its executability and the violated
         atomic conditions for that action
         """
-        return self.action_results[action]
+        return self._action_results[action]
+
+if __name__ == "__main__":
+    init_proxy()

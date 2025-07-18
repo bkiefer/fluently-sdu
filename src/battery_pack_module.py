@@ -1,6 +1,6 @@
 import spatialmath as sm
-import numpy as np
 from gubokit import utilities
+#import utilities
 
 class Cell():
     def __init__(self, model=None, width=None, z=None, quality=None, pose=None, frame_position=None, sorted=None):
@@ -12,7 +12,7 @@ class Cell():
         self.frame_location = None if frame_position is None else frame_position
         self.sorted = None if sorted is None else sorted
         self.string_mode = ""
-    
+
     def to_string_short(self):
         cell_str = ""
         cell_str += f"f_pos: {utilities.bool_to_str_fancy(not self.frame_location is None)}"
@@ -31,25 +31,24 @@ class Cell():
         cell_str += f"keep: {utilities.bool_to_str_fancy(self.keep)} "
         cell_str += f"pick: {utilities.bool_to_str_fancy(self.sorted)}"
         return cell_str
-        
+
 class PackState():
     def __init__(self, rows: int=1, cols: int=1):
         self.model = "unknown"
         self.model_confirmed = False
         self.cell_model = "unknown"
-        self.cover_on = None
+        self.cover_on = True
         self.size = None
         self.frame_location = None
         self.location_confirmed = False
         self.pose = None
         self.cells = []
         self.cells_confirmed = False
-        self.quals = None # Either None, 'set' or 'confirmed'
-        self.fastened = False
-        self.pickplace_attempted = False
-
+        self.quals = None # Either none, 'set' or 'confirmed'
+        self.fastened = True
+        self.pickup_attempted = False
         # self.update_dim(rows=rows, cols=cols)
-    
+
     def update_dim(self, rows: int, cols: int):
         self.cells = []
         self.rows = rows
