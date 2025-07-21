@@ -13,7 +13,6 @@ import PIL
 import argparse
 from fluently_mqtt_client import FluentlyMQTTClient
 from gubokit import utilities
-#import utilities
 from reasoner import Reasoner, init_proxy
 
 class App:
