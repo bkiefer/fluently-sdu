@@ -31,6 +31,8 @@ class VisionModule():
             self.logger.warning("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
+        self.qual_cnn = vision.CustomConvNeuralNet(n_classes=2)
+        self.qual_cnn.load_weigths("data/cell_qual_classifier.pth")
         self.set_background()
         
     def set_background(self):
