@@ -1,56 +1,59 @@
-# vosk_command_listener.py
+import whisper
 import json
 import queue
-import sounddevice as sd
+import sounddevice
 from vosk import Model, KaldiRecognizer
+import numpy as np
 
-# 1. Define your command functions
-def move_robot_home():
-    print("Robot moving to home position.")
+class VoiceModule():
+    def __init__(self, commands: dict):
+        self.model = Model("data/vosk-model-small-en-us-0.15")
+        self.samplerate = 16000
+        self.block_size = 16000
+        self.vosk = KaldiRecognizer(self.model, self.samplerate)
+        self.whisper = whisper.load_model("small")
+        self.commands = commands
+        self.queue = queue.Queue()
+        self.stream = sounddevice.RawInputStream(
+            samplerate=self.samplerate,
+            blocksize=self.block_size,
+            dtype='int16',
+            channels=1,
+            callback=self.audio_callback
+        )
+        self.stream.start()
 
-def shutdown_robot():
-    print("Shutting down robot.")
+    def audio_callback(self, indata, frames, time, status):
+        print("audio call_back")
+        if status:
+            print("Audio status:", status)
+        self.queue.put(bytes(indata))
+
+    def listen_vosk(self):
+        data = self.queue.get()
+        sounddevice.play(np.frombuffer(data, dtype='int16'), samplerate=self.samplerate) # to listen back to what the module heard            
+        if self.vosk.AcceptWaveform(data):
+            result = json.loads(self.vosk.Result())
+            text = result.get("text", "").lower()
+            print(f"Recognized from vosk: {text}")
+            for phrase, action in self.commands.items():
+                if phrase in text:
+                    action()
+                    return
+            print("No matching command.")
+    
+    def listen_vosk(self):
+        pass
+        # result = self.whisper.transcribe(data)
+        # print(f"Recognized from whisper: {result}")
 
 def say_hello():
-    print("Hello there!")
+    print("Hello")
 
-# 2. Define command dictionary
-COMMANDS = {
-    "move the robot to home position": move_robot_home,
-    "shut down the robot": shutdown_robot,
-    "say hello": say_hello,
-}
-
-# 3. Load Vosk model
-# model = Model("data/vosk-model-en-us-0.22-lgraph")
-model = Model("data/vosk-model-small-en-us-0.15")
-recognizer = KaldiRecognizer(model, 16000)
-
-# 4. Create audio queue
-q = queue.Queue()
-
-def audio_callback(indata, frames, time, status):
-    if status:
-        print("Audio status:", status)
-    q.put(bytes(indata))
-
-# 5. Main loop
-def listen_and_execute():
-    print("Listening... Speak a command.")
-    with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16',
-                           channels=1, callback=audio_callback):
-        while True:
-            data = q.get()
-            if recognizer.AcceptWaveform(data):
-                result = json.loads(recognizer.Result())
-                text = result.get("text", "").lower()
-                print(f"Recognized: {text}")
-                for phrase, action in COMMANDS.items():
-                    if phrase in text:
-                        action()
-                        return
-                print("No matching command.")
+def move_robot_home():
+    print("Move robot home")
 
 if __name__ == "__main__":
+    voice_module = VoiceModule({"say hello": say_hello, "move robot home": move_robot_home})
     while True:
-        listen_and_execute()
+        voice_module.listen_vosk()
