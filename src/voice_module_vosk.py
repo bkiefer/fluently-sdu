@@ -51,9 +51,13 @@ class VoiceModule():
         sounddevice.play((audio_np * 32768).astype(np.int16), samplerate=self.samplerate) # to listen back top what the module heard
         sounddevice.wait() # the play is non-blocking, the buffer is always 2 seconds (with vosk is real time) so we need this wait to listen back
         result = self.whisper.transcribe(audio_np, fp16=False)
-        text = result.get("text", "").lower()
-        print(f"Recognized from whisper: {text}")
-        self._handle_commands(text=text)
+        print(result.get('segments', [{}]))
+        no_speech_prob = result.get('segments', [{}])[0].get("no_speech_prob", 1)
+        print(no_speech_prob)
+        if no_speech_prob < 0.6:
+            text = result.get("text", "").lower()
+            print(f"Recognized from whisper: {text}")
+            self._handle_commands(text=text)
 
     def _handle_commands(self, text):
         for phrase, action in self.commands.items():
