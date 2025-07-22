@@ -275,7 +275,7 @@ class MemGui(tk.Tk):
 
     def skip_parts(self):
         self.logger.info("Skipping some parts")
-        # self.camera_frame = self.vision_module.get_current_frame(format='pil')
+        self.camera_frame = self.vision_module.get_current_frame(format='pil')
         # self.camera_frame = cv2.imread("data/camera_frame1.png")
         # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         # self.camera_frame = PIL.Image.fromarray(self.camera_frame)
@@ -287,10 +287,10 @@ class MemGui(tk.Tk):
         # To skip the pack localization and classification
         self.pack_state.cover_on = False
         self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
-        # self.classify_cells()
-        # self.locate_cells()
-        # self.confirm_cells()
-        # self.assess_cells_qualities()
+        self.classify_cells()
+        self.locate_cells()
+        self.confirm_cells()
+        self.assess_cells_qualities()
         # self.confirm_quals()
 
     def _check_decorator(self, fn):
@@ -707,7 +707,7 @@ class MemGui(tk.Tk):
         bbs = []
         drawing_bbs = []
         for cell in self.pack_state.cells:
-            bbs.append(cell.frame_location)
+            bbs.append([*cell.frame_location, cell.width, cell.width])
             drawing_bbs.append([cell.frame_location[0] - cell.width//2, cell.frame_location[1] - cell.width//2, cell.frame_location[0] + cell.width//2, cell.frame_location[1] + cell.width//2])
         qualities = self.vision_module.assess_cells_qualities(self.camera_frame, bbs)
         self.quals_editor.add_quals(keep_bbs=qualities, bbs=drawing_bbs)

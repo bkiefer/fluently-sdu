@@ -32,7 +32,7 @@ class VisionModule():
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
         self.qual_cnn = vision.CustomConvNeuralNet(n_classes=2)
-        self.qual_cnn.load_weigths("data/cell_qual_classifier.pth")
+        self.qual_cnn.load_model("data/cell_qual_classifier.pth")
         self.set_background()
         
     def set_background(self):
@@ -131,8 +131,13 @@ class VisionModule():
             list[float]: the scores evaluated by the system
         """
         # cells_keeps = np.random.choice([True, False], len(bbs_positions))
-        cells_keeps = np.random.choice([True], len(bbs_positions))
-        return cells_keeps
+        cells_keep = []
+        img = cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR)
+        for bb in bbs_positions:
+            x, y, w, h = bb
+            close_up = img[(y-h//2):(y+h//2), (x-w//2):(x+w//2)]
+            cells_keep.append(self.qual_cnn.predict_img(close_up))
+        return cells_keep
 
     def frame_pos_to_pose(self, frame_pos:ndarray, base_T_TCP, Z=None) -> sm.SE3:
         """convert a position in the frame into a 4x4 pose in world frame
