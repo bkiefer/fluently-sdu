@@ -306,9 +306,9 @@ public class Main implements AutoCloseable {
     try {
       if (p.parse()) {
         Formula f = p.cond;
-        f.pushDownNeg(); // push negations to the literals
-        f.flattenStrata(); // now there's a sequence of conj only and disj only
-        // TODO: construct DNF
+        // turn it into disjunctive normal form: Explanations can be better
+        // understood
+        f = f.constructDnf();
         // turn it into OWLNamedIndividuals
         return formula2Owl(f);
       }

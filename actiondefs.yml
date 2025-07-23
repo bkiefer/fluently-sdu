@@ -12,7 +12,9 @@ atomic:
   - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have {neg}been located" ]
   - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is {neg}set" ]
   - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "Quality of cells is {neg}confirmed" ]
-
+  - [ SmallToolEquipped, app.robot_module.active_gripper == 'small', "Small Gripper is {neg}equipped" ]
+  - [ LargeToolEquipped, app.robot_module.active_gripper == 'big', "Large Gripper is {neg}equipped" ]
+  - [ PickPlaceAttempted, app.pack_state.pickplace_attempted, "Pick and Place has {neg}been attempted" ]
   - [ RobotAtToolPose, 'True', 'robot arm is at tool pose' ] # TO CHECK
   - [ RobotAtHomePose, 'True', 'robot arm is at home pose' ] # TO CHECK
 
@@ -44,8 +46,12 @@ actions:
   - move_robot_change_tool_pose:
       pre: '! RobotAtToolPose'
       post: RobotAtToolPose
-  - swap_tool: #H: I'd like to have two: EquipSmall & EquipLarge ...
-      pre: AlwaysTrue
+  - equip_small_tool: #H:
+      pre: ! SmallToolEquipped
+      post: SmallToolEquipped
+  - equip_large_tool: #H:
+      pre: ! LargeToolEquipped
+      post: LargeToolEquipped
   - move_robot_home:
       pre: '! RobotAtHomePose'
       post: RobotAtHomePose
@@ -71,5 +77,7 @@ actions:
       post: CellQualitiesConfirmed
   - pickup_cells:
       pre: CellQualitiesConfirmed # & RobotAtHome
+  - confirm_cells_picked:
+      pre: PickPlaceAttempted
   - verify_cell_pickup: # Not found, where is the function??
       pre: AlwaysTrue
