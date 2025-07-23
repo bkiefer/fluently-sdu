@@ -7,7 +7,7 @@ atomic:
   - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box is {neg}confirmed" ]
   - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "The cover may still be on" ]
   - [ CoverOff, app.pack_state.cover_on == False, "The cover is {neg}off" ]
-  - [ CellModelSet, app.pack_state.cell_model != None, "Cell model is {neg}identified" ]
+  - [ CellModelSet, 'app.pack_state.cell_model != None', "Cell model is {neg}identified" ]
   - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box is {neg}confirmed" ]
   - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have {neg}been located" ]
   - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is {neg}set" ]
@@ -47,10 +47,10 @@ actions:
       pre: '! RobotAtToolPose'
       post: RobotAtToolPose
   - equip_small_tool: #H:
-      pre: ! SmallToolEquipped
+      pre: '! SmallToolEquipped'
       post: SmallToolEquipped
   - equip_large_tool: #H:
-      pre: ! LargeToolEquipped
+      pre: '! LargeToolEquipped'
       post: LargeToolEquipped
   - move_robot_home:
       pre: '! RobotAtHomePose'
@@ -79,5 +79,5 @@ actions:
       pre: CellQualitiesConfirmed # & RobotAtHome
   - confirm_cells_picked:
       pre: PickPlaceAttempted
-  - verify_cell_pickup: # Not found, where is the function??
-      pre: AlwaysTrue
+#  - verify_cell_pickup: # Not found, where is the function??
+#      pre: AlwaysTrue
