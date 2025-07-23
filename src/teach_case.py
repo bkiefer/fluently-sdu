@@ -259,6 +259,7 @@ class MemGui(tk.Tk):
         self.changing_pack_model, self.changing_cell_model = False, False
 
         """ ========== REASONER SETUP ========== """
+        init_proxy()
         self.reasoner = Reasoner()
         self.EVALUATION_DELAY = 50
         self.evaluation_counter = 0
@@ -271,7 +272,7 @@ class MemGui(tk.Tk):
         self.cells_bb_drawer = None
         self.quals_editor = None
 
-        self.skip_parts()
+        # self.skip_parts()
 
     def skip_parts(self):
         self.logger.info("Skipping some parts")
@@ -837,7 +838,6 @@ if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")
     camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
     camera_frame = PIL.Image.fromarray(camera_frame)
-    init_proxy()
     gui_app = MemGui()
     gui_app.after(1, gui_app.after_update)
     gui_app.mainloop()
