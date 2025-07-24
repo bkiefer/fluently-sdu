@@ -66,8 +66,8 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
-            # frame = cv2.imread("data/camera_frame.png")
-            frame = cv2.imread("data/camera_frame1.png")
+            frame = cv2.imread("data/camera_frame.png")
+            # frame = cv2.imread("data/camera_frame1.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
@@ -127,7 +127,6 @@ class VisionModule():
         output = {'bbs': [], 'zs': []}
         models = []
         for i, box in enumerate(result[0].boxes):
-            print(box, box.cls)
             model = self.cells_yolo_model.names[int(box.cls)]
             models.append(model)
             confidence = (box.conf)
@@ -228,25 +227,10 @@ class VisionModule():
         return pickedup
 
 if __name__ == "__main__":
-    cell_m_q, cell_h_q = 0.6, 0.8
-    cover_place_pose = sm.SE3([-0.45, -0.12, 0.050]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
-    discard_T = sm.SE3([0.155, -0.495, 0.306]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
-    keep_T = sm.SE3([0.083, -0.308, 0.306]) * sm.SE3.Rx(np.pi) * sm.SE3.Rz(np.pi - 20*np.pi/180)
     R = sm.SO3([[-0.003768884463184431, -0.9999801870110973700,  0.0050419336721138118], 
         [0.9999374423980765800, -0.0038217260702308998, -0.0105121691499708400], 
         [0.0105312297618392200,  0.0050019991098505349,  0.9999320342926355500]])
     t = np.array([0.051939876523448010, -0.0323596382860819900,  0.0211982932413351600])
     camera_Ext = sm.SE3.Rt(R, t)
-    home_pos = [0.5599642992019653, -1.6431008778014125, 1.8597601095782679, -1.7663117847838343, -1.5613859335528772, -1.4]
-
     vision_module = VisionModule(camera_Ext=camera_Ext)
-    robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0)
-    robot_module.move_to_home()
     
-    foldername = "data/pics_18650"
-    for f in os.listdir(foldername):
-        print(f)
-        frame = cv2.imread(os.path.join(foldername, f))
-        vision_module.identify_cells(frame, drawing_frame=frame)
-        cv2.imshow("detection", frame)
-        cv2.waitKey(0)
