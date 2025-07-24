@@ -1,0 +1,13 @@
+#!/bin/bash
+scrdir=`dirname $0`
+hfc_dir="$HOME/src/java/hfc-thrift"
+
+runpid=`ps -fu $USER | grep hfc-server | grep -v grep | sed "s/$USER *\([0-9]*\).*/\1/"`
+
+if test -n "$runpid"; then
+    kill $runpid
+fi
+
+if test -z "$1"; then
+    "$hfc_dir"/bin/run_server -p7070 "$scrdir"/src/main/resources/ontology/fluently.yml &
+fi

@@ -1,0 +1,40 @@
+# Docker compose file used to load the broker, ASR, and dialogue_manager
+# TTS still to do
+version: "3"
+
+networks:
+  mlt:
+    driver: bridge
+
+services:
+  rasa:
+    image: 'rasa/rasa:3.6.20-full'
+    user: "${UID}:${GID}"
+    command: run --enable-api --port 5005
+    networks:
+      - mlt
+    restart: always
+    container_name: 'rasa_nlu_mem'
+    hostname: 'rasa_nlu'
+    ports:
+      - '9796:5005'
+    volumes:
+      - ./rasa/:/app
+
+  dialog_manager:
+    depends_on:
+      - rasa
+    build:
+      context: .
+    image: fluently_nlu:latest
+    networks:
+      - mlt
+    container_name:  fluently_nlu_mem
+    volumes:
+      - ./docker_config.yml:/app/config.yml
+      - ./logs/:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    #stdin_open: true # docker run -i
+    #tty: true        # docker run -t

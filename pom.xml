@@ -25,7 +25,7 @@
     <dependency>
       <groupId>de.dfki.mlt</groupId>
       <artifactId>vonda-nlp</artifactId>
-      <version>[1.0,)</version>
+      <version>[1.2.3,)</version>
     </dependency>
 
     <dependency>
