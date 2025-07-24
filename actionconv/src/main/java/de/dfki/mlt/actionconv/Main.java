@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,26 +72,30 @@ public class Main implements AutoCloseable {
   private final OWLDataFactory df;
   private final PrefixManager plan;
 
-  private OWLClass owlBasicConditionClass;
-  private OWLClass owlAskQueryCondtionClass;
-  private OWLClass owlAllQueryCondtionClass;
-  private OWLClass owlSomeQueryConditionClass;
+  private final OWLClass owlBasicConditionClass;
+  private final OWLClass owlAskQueryCondtionClass;
+  private final OWLClass owlAllQueryCondtionClass;
+  private final OWLClass owlSomeQueryConditionClass;
+
+  private final OWLClass owlConjunctionClass;
+  private final OWLClass owlDisjunctionClass;
+  private final OWLClass owlNegationClass;
+
+  private final OWLClass owlActionClass;
+
+  private final OWLDataProperty basicCondition;
+  private final OWLDataProperty rdlQuery;
+  private final OWLDataProperty description;
+  private final OWLDataProperty name;
+
+  private final OWLObjectProperty condition;
+  private final OWLObjectProperty conditions;
+  private final OWLObjectProperty postCondition;
+
+  Map<String, OWLNamedIndividual> atomics = new HashMap<>();
+  Map<String, OWLNamedIndividual> actions = new HashMap<>();
 
 
-  private OWLClass owlConjunctionClass;
-  private OWLClass owlDisjunctionClass;
-  private OWLClass owlNegationClass;
-
-  private OWLClass owlActionClass;
-
-  private OWLDataProperty basicCondition;
-  private OWLDataProperty rdlQuery;
-  private OWLDataProperty description;
-  private OWLDataProperty name;
-
-  private OWLObjectProperty condition;
-  private OWLObjectProperty conditions;
-  private OWLObjectProperty postCondition;
 
   @SuppressWarnings("serial")
   private final HashMap<String, OwlMapEntry> props = new HashMap<>() {
@@ -117,6 +122,7 @@ public class Main implements AutoCloseable {
         IRI.create(planns.getNamespace().replace("#", "")));
     man.applyChange(new AddImport(onto, importDecl));
     plan.setPrefix("plan:", planns.getNamespace());
+    man.loadOntology(IRI.create(ontoFile));
 
     for (Map.Entry<String, OwlMapEntry> entry : props.entrySet()) {
       OwlMapEntry e = entry.getValue();
@@ -231,8 +237,6 @@ public class Main implements AutoCloseable {
     return conj;
   }
 
-  Map<String, OWLNamedIndividual> atomics = new HashMap<>();
-
   private OWLNamedIndividual createBasic(String id) {
     // get it from internal map
     if (! atomics.containsKey(id)) {
@@ -342,13 +346,15 @@ public class Main implements AutoCloseable {
     addPropertyValue(act, name, id);
     addCondition(act, conds, id, "pre", condition);
     addCondition(act, conds, id, "post", postCondition);
+    actions.put(id, act);
   }
 
-
+  /*
   private boolean isTrue(String val) {
     String[] yes = { "true", "yes" };
     return Arrays.binarySearch(yes, val.toLowerCase()) >= 0;
   }
+  */
 
 
   public void saveOntology(File where)
@@ -357,6 +363,21 @@ public class Main implements AutoCloseable {
   }
 
   @SuppressWarnings("unchecked")
+  public void readDefinitions(Reader r) {
+    Yaml yaml = new Yaml();
+    Map<String,Object> defs = yaml.load(r);
+    System.out.print(" basic conditions ...");
+    for (List<String> atomic : (List<List<String>>)defs.get("atomic")) {
+      processAtomic(atomic);
+    }
+    System.out.print(" actions ...");
+    for (Map<String, Object> action :
+      (List<Map<String, Object>>)defs.get("actions")) {
+      processAction(action);
+    }
+    System.out.println(" read.");
+  }
+
   public static void main(String[] args) throws IOException {
 
     /* *********************************************************************
@@ -398,18 +419,7 @@ public class Main implements AutoCloseable {
        * Parsing .yaml file and adding entries to ontology
        * ********************************************************************/
       System.out.print("### Reading actions file ...");
-
-      Yaml yaml = new Yaml();
-      Map<String,Object> defs = yaml.load(new FileReader(inputFile));
-      System.out.print(" basic conditions ...");
-      for (List<String> atomic : (List<List<String>>)defs.get("atomic")) {
-        main.processAtomic(atomic);
-      }
-      System.out.print(" actions ...");
-      for (Map<String, Object> action : (List<Map<String, Object>>)defs.get("actions")) {
-        main.processAction(action);
-      }
-      System.out.println(" read.");
+      main.readDefinitions(new FileReader(inputFile));
 
       /* *********************************************************************
        * Save ontology

@@ -69,6 +69,13 @@
     </dependency>
 
     <dependency>
+      <groupId>de.dfki.lt.hfc</groupId>
+      <artifactId>hfc-thrift</artifactId>
+      <version>[1.2.5,)</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
