@@ -27,6 +27,7 @@ ENV PATH=${PATH}:${JAVA_HOME}/bin
 WORKDIR /app
 
 COPY src/main/resources /app/src/main/resources
+COPY startnlu.sh /app/startnlu.sh
 COPY target/fluently_sdu_nlu.jar /app/fluently_sdu_nlu.jar
 
-ENTRYPOINT ["java", "-jar", "fluently_sdu_nlu.jar", "-c", "config.yml"]
+ENTRYPOINT ["/bin/bash", "-c", "./startnlu.sh"]

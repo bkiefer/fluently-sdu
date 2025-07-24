@@ -16,8 +16,6 @@ services:
     restart: always
     container_name: 'rasa_nlu_mem'
     hostname: 'rasa_nlu'
-    ports:
-      - '9796:5005'
     volumes:
       - ./rasa/:/app
 
@@ -29,7 +27,7 @@ services:
     image: fluently_nlu:latest
     networks:
       - mlt
-    container_name:  fluently_nlu_mem
+    container_name: fluently_nlu_mem
     volumes:
       - ./docker_config.yml:/app/config.yml
       - ./logs/:/app/logs

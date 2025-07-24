@@ -5,6 +5,8 @@ nlu:
   examples: |
     - this looks good
     - that's good
+    - that's fine
+    - that is fine
     - good for now
     - the result is fine
     - yes

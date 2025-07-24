@@ -19,6 +19,8 @@ $accept = (
     yep |
     yeah |
     fine |
+    "that's" (ok|okay) |
+    (this|that) is (ok|okay) |
     ok ) { out.da="Confirm"; };
 
 $reject = (
@@ -34,6 +36,8 @@ $reject = (
     nope |
     "don't" think so |
     "don't" |
+    "that's" not (ok|okay)
+    (this|that) is not (ok|okay)
     not like this
 ) { out.da="Disconfirm"; };
 

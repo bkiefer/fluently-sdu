@@ -46,13 +46,15 @@ NLU:
         toLower: true           # turn all output to lower case
         removePunctuation: true  # remove all punctuation tokens
     - class: de.dfki.mlt.rudimant.agent.nlp.RasaNlu
-      host: rasa_nlu  # host.docker.internal if not docker compose
-      port: 9796
+      host: rasa_nlu  # if docker compose
+      port: 5005      # if docker compose
+#      host: host.docker.internal  # if not docker compose
+#      port: 9796                  # if not docker compose
       min_confidence: 0.8
       converter: src/main/resources/cplanner/rasaconv
 
 # ########## Debugger/GUI SETTINGS ##########
-debugPort: 9777
+#debugPort: 9777
 
 customCompileCommands:
   compile: ./compile
