@@ -37,16 +37,17 @@ class PackState():
         self.model = "unknown"
         self.model_confirmed = False
         self.cell_model = "unknown"
-        self.cover_on = True
+        self.cover_on = None
         self.size = None
         self.frame_location = None
         self.location_confirmed = False
         self.pose = None
         self.cells = []
         self.cells_confirmed = False
-        self.quals = None # Either none, 'set' or 'confirmed'
-        self.fastened = True
-        self.pickup_attempted = False
+        self.quals = None  # Either None, 'set' or 'confirmed'
+        self.fastened = False
+        self.pickplace_attempted = False
+
         # self.update_dim(rows=rows, cols=cols)
 
     def update_dim(self, rows: int, cols: int):
@@ -129,4 +130,3 @@ class PackState():
 if __name__ == "__main__":
     ps = PackState(2, 2)
     print(ps)
-

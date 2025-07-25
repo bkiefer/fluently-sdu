@@ -13,15 +13,10 @@ import PIL
 import argparse
 from fluently_mqtt_client import FluentlyMQTTClient
 from gubokit import utilities
+# import utilities # stubs for debugging
 from reasoner import Reasoner, init_proxy
-
-class App:
-    def __init__(self):
-        self.pack_state = None
-
-global app 
-app = App()
-app.pack_state = PackState()
+from voice_module import VoiceModule
+import json
 
 class _BoundingBoxEditor:
     def __init__(self, canvas, frame, tag='', move_color='blue'):
@@ -140,7 +135,6 @@ class _BoundingBoxEditor:
 
         self.start_x = event.x
         self.start_y = event.y
-        self.draw_boxes()
 
     def on_release(self, event):
         """Resets after dragging"""
@@ -240,7 +234,31 @@ class MemGui(tk.Tk):
                                    "Choose cell model": self.choose_diff_cell_model,
                                    "Confirm cells": self.confirm_cells,
                                    "Confirm qualities": self.confirm_quals,
-                                   "Confirme cells picked up": self.confirm_cells_picked},
+                                   "Confirm cells picked up": self.confirm_cells_picked},
+        }
+        self.fncs = {
+                        "Robot":  [{"fnc_name" : "Move robot home", "voice_cmd": "move home", "fnc": self.move_robot_home},
+                                   {"fnc_name" : "Robot to tool pose", "voice_cmd": "move home", "fnc": self.move_robot_change_tool_pose},
+                                   {"fnc_name" : "Remove pack cover", "voice_cmd": "move home", "fnc": self.remove_pack_cover},
+                                   {"fnc_name" : "Pickup cells", "voice_cmd": "move home", "fnc": self.pickup_cells}],
+                        "Vision": [{"fnc_name" : "Classify pack", "voice_cmd": "classify pack", "fnc": self.classify_pack},
+                                   {"fnc_name" : "Locate pack", "voice_cmd": "locate pack", "fnc": self.locate_pack},
+                                   {"fnc_name" : "Check cover off", "voice_cmd": "check cover", "fnc": self.check_cover_off},
+                                   {"fnc_name" : "Classify cells", "voice_cmd": "classify cells", "fnc": self.classify_cells},
+                                   {"fnc_name" : "Locate cells", "voice_cmd": "locate cells", "fnc": self.locate_cells},
+                                   {"fnc_name" : "Assess cells qualities", "voice_cmd": "assess qualities", "fnc": self.assess_cells_qualities}],
+                        "Human":  [ 
+                                   {"fnc_name" : "Equip small tool", "voice_cmd": "small tool", "fnc": self.equip_small_tool},
+                                   {"fnc_name" : "Equip large tool", "voice_cmd": "large tool", "fnc": self.equip_large_tool},
+                                   {"fnc_name" : "Confirm pack fastened", "voice_cmd": "pack fastened", "fnc": self.confirm_pack_fastened},
+                                   {"fnc_name" : "Add pack boundingbox", "voice_cmd": "add pack box", "fnc": self.add_pack_bb},
+                                   {"fnc_name" : "Choose pack model", "voice_cmd": "choose pack model", "fnc": self.choose_diff_pack_model},
+                                   {"fnc_name" : "Confirm pack", "voice_cmd": "pack ok", "fnc": self.confirm_pack},
+                                   {"fnc_name" : "Add cell boundingbox", "voice_cmd": "add cell box", "fnc": self.add_cell_bb},
+                                   {"fnc_name" : "Choose cell model", "voice_cmd": "choose cell model", "fnc": self.choose_diff_cell_model},
+                                   {"fnc_name" : "Confirm cells", "voice_cmd": "cells ok", "fnc": self.confirm_cells},
+                                   {"fnc_name" : "Confirm qualities", "voice_cmd": "qualities ok", "fnc": self.confirm_quals},
+                                   {"fnc_name" : "Confirm cells picked up", "voice_cmd": "cells picked up", "fnc": self.confirm_cells_picked}],
         }
 
         """ ========== MODULE SETUP ========== """
@@ -251,18 +269,24 @@ class MemGui(tk.Tk):
         self.logger = utilities.CustomLogger('MeM', 'MeM.log', console_level='info' if not self.verbose else 'debug')
         self.vision_module = VisionModule(camera_Ext=self.camera_Ext, verbose=self.verbose)
         self.robot_module = RobotModule(ip="192.168.1.100", home_position=home_pos, tcp_length_dict={'small': -0.072, 'big': -0.08}, active_gripper='big', gripper_id=0, verbose=self.verbose)
-        self.pack_state = app.pack_state
+        self.pack_state = PackState()
         self.robot_module.move_to_home()
-        self.voice_module = FluentlyMQTTClient(client_id="fluentlyClient", verbose=self.verbose)
+        command_map = {}
+        for cat in self.fncs:
+            for fnc_dict in self.fncs[cat]:
+                command_map[fnc_dict['voice_cmd']] = self.check_executor(cat, fnc_dict['fnc_name'])
+        self.voice_module = VoiceModule(command_map, verbose=self.verbose)
 
         """ ========== RESET GUI ========== """
+        #self.state = {'pack_fastened': False, 'pack_confirmed' : False, 'cells_confirmed' : False, 'quals_confirmed' : False, 'pick_cells_attempted' : False}
         self.changing_pack_model, self.changing_cell_model = False, False
 
         """ ========== REASONER SETUP ========== """
-        init_proxy()
         self.reasoner = Reasoner()
-        self.EVALUATION_DELAY = 50
+        self.EVALUATION_DELAY = 100
         self.evaluation_counter = 0
+        self.fnc2action = {}
+        self.action2btn = {}
 
         """ ========== LAYOUT GUI ========== """
         self.layout_gui()
@@ -276,7 +300,7 @@ class MemGui(tk.Tk):
 
     def skip_parts(self):
         self.logger.info("Skipping some parts")
-        self.camera_frame = self.vision_module.get_current_frame(format='pil')
+        # self.camera_frame = self.vision_module.get_current_frame(format='pil')
         # self.camera_frame = cv2.imread("data/camera_frame1.png")
         # self.camera_frame = cv2.cvtColor(self.camera_frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
         # self.camera_frame = PIL.Image.fromarray(self.camera_frame)
@@ -288,30 +312,39 @@ class MemGui(tk.Tk):
         # To skip the pack localization and classification
         self.pack_state.cover_on = False
         self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells')
-        self.classify_cells()
-        self.locate_cells()
-        self.confirm_cells()
+        # self.classify_cells()
+        # self.locate_cells()
+        # self.confirm_cells()
         self.assess_cells_qualities()
         # self.confirm_quals()
 
-    def _check_decorator(self, fn):
-        #def checked_fn():
-        print(fn.__name__)
-        action = self.reasoner.get_action(fn.__name__)
-        value, violated = self.reasoner.action_is_executable(action)
-        print("value",value,"violated",violated)
+    def verify_precondition_and_execute(self, cat, fn_name):
+        self.logger.info(f"Verify precondition of {fn_name}")
+        for f in self.fncs[cat]:
+            if f["fnc_name"] == fn_name:
+                fn = f["fnc"]
+                break
+        action = self.fnc2action[fn]
+        value, viol, reason = self.reasoner.action_is_executable(action)
+        self.logger.info(f"Precondition of {fn_name} is {value}")
         if value:
-            return True
+            self.logger.info(f"START: {fn_name}")
+            fn()
+            self.logger.info(f"END: {fn_name}")
+            self.update_info()
+            self.update_actions()
+            value, viol, reason = self.reasoner.check_postcondition(action, globals())
+            if not value:
+                self.logger.error(f"Postcondition for action {fn_name} not"
+                                  + f"fulfilled after execution: {reason}")
         else:
-            reason = ''
-            # TODO: FIX THE OUTPUT FOR NEGATED ATOMICS
-            # TODO: SHOW THE ERROR DIALOG
-            for atomic in violated:
-                if reason:
-                    reason += ' and ' + atomic.description
-                else:
-                    reason = atomic.description
-            return False
+            # TODO: show the reason (in an error dialog?)
+            print(f"{fn_name} not executable because {reason}")
+
+    def check_executor(self, cat: str, fn_name: str):
+        def executor_fn() -> None:
+            self.verify_precondition_and_execute(cat, fn_name)
+        return executor_fn
 
     def layout_gui(self):
         self.title("MeM use case")
@@ -382,8 +415,6 @@ class MemGui(tk.Tk):
         self.create_layout_info()
         self.update_info()
 
-        self.buttons = {} 
-
         fncs_idx, col = 0, 0
         [self.fncs_frame.columnconfigure(i, weight=1) for i in range(2)]
         for i, cat in enumerate(self.fncs):
@@ -394,17 +425,16 @@ class MemGui(tk.Tk):
             self.human_label.grid(row=fncs_idx, column=col, sticky='nsew', padx=(5, 5), pady=(5, 0))
             self.fncs_frame.rowconfigure(fncs_idx, weight=1)
             fncs_idx += 1
-            for fnc_name in self.fncs[cat]:
-                btn = tk.Button(self.fncs_frame,
-                                text=fnc_name,
-                                command = lambda arg=(cat+';'+fnc_name): self.verify_precondition_and_execute(arg))
+            for fnc_dict in self.fncs[cat]:
+                btn = tk.Button(self.fncs_frame, text=f"{fnc_dict['fnc_name']}\n({fnc_dict['voice_cmd']})",
+                                command=self.check_executor(cat, fnc_dict['fnc_name']))
+                fnc = fnc_dict['fnc']
+                action = self.reasoner.get_action(fnc.__name__)
+                self.fnc2action[fnc] = action
+                self.action2btn[action] = btn
                 btn.grid(row=fncs_idx, column=col, sticky='nsew', padx=(5, 5))
                 self.fncs_frame.rowconfigure(fncs_idx, weight=1)
-                
-                self.buttons[(cat,fnc_name)] = btn
                 fncs_idx += 1
-        
-        self.update_button_colors()
 
     def defocus(self, event):
         self.dropdown.selection_clear()
@@ -457,61 +487,25 @@ class MemGui(tk.Tk):
         for i, c_label in enumerate(self.cells_labels):
             c_label.configure(text=f"{i:02d}: "+self.pack_state.cells[i].to_string_short())
 
-    def verify_precondition_and_execute(self, keys: str):
-        self.logger.info("START: Verify precondition")
-        cat, fnc_to_call = keys.split(";")
-        verified = self._check_decorator(self.fncs[cat][fnc_to_call])
-
-        #print("model",self.pack_state.model)
-        #print("model_confirmed",self.pack_state.model_confirmed)
-        #print("cell_model",self.pack_state.cell_model)
-        #print("cover_on",self.pack_state.cover_on)
-        #print("frame_location",self.pack_state.frame_location)
-        #print("location_confirmed",self.pack_state.location_confirmed)
-        #print("cells",self.pack_state.cells)
-        #print("cells_confirmed",self.pack_state.cells_confirmed)
-        #print("fastened",self.pack_state.fastened)
-        
-        if verified:
-            self.logger.info("Preconditions satisfied")
-            self.fncs[cat][fnc_to_call]()
-            self.update_button_colors()
-        else:
-            self.logger.info("Preconditions not satisfied")
-
-    def update_button_colors(self):
-        self.reasoner.evaluate_actions(globals())
-        for cat in self.fncs:
-            for fnc in self.fncs[cat]:
-                try:
-                    verified = self._check_decorator(self.fncs[cat][fnc])
-                    if verified:
-                        btn = self.buttons[(cat,fnc)]
-                        btn.configure(bg="#A8E6A3")
-                    else:
-                        btn = self.buttons.get((cat,fnc))
-                        btn.configure(bg="#F4A7A7")
-                except:
-                    pass
+    def update_actions(self):
+        changed = self.reasoner.evaluate_actions(globals())
+        # adapt button color
+        for action in changed:
+            value, violated, reason = changed[action]
+            self.action2btn[action]['bg'] = 'green' if value else 'red'
+        self.evaluation_counter = 1
 
     def confirm_pack_fastened(self):
-        self.logger.info("START: pack fastened confirmed")
         self.pack_state.fastened = True
-        self.logger.info("END: pack fastened confirmed")
 
     def add_pack_bb(self):
-        self.logger.info("START: add pack bounding box")
         self.pack_bb_drawer.editable = True
         self.pack_bb_drawer.clear_bbs()
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.pack_bb_drawer.add_bb([x-100, y-100, x+100, y+100])
-
-        self.pack_state.frame_location = "set" # for reasoner
-
-        self.logger.info("END: add pack bounding box")
+        # BK: no change in the pack_state?
 
     def classify_pack(self):
-        self.logger.info("START: classify pack")
         result = self.vision_module.locate_pack(self.camera_frame)
         if result is not None:
             self.pack_state.model = result['shape']
@@ -520,11 +514,8 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.logger.debug(self.pack_state)
             self.logger.info("pack classified")
-            self.update_info()
-        self.logger.info("END: classify pack")
 
     def locate_pack(self):
-        self.logger.info("START: locate pack")
         result = self.vision_module.locate_pack(self.camera_frame)
         if result is not None:
             self.pack_state.frame_location = result['location']
@@ -538,11 +529,8 @@ class MemGui(tk.Tk):
             self.pack_bb_drawer.clear_bbs()
             self.pack_bb_drawer.set_label(self.pack_state.model)
             self.pack_bb_drawer.add_bb([x_min, y_min, x_max, y_max])
-            self.update_info()
-        self.logger.info("END: locate pack")
 
     def check_cover_off(self):
-        self.logger.info("START: check cover off")
         result = self.vision_module.locate_pack(self.camera_frame)
         if result is None:
             self.pack_state.cover_on = False
@@ -550,42 +538,29 @@ class MemGui(tk.Tk):
             self.logger.info("The cover seems to be off")
         else:
             self.logger.info("The cover seems to be on still")
-        self.logger.info("END: check cover off")
 
     def equip_small_tool(self):
-        self.logger.info("START: equip small tool")
         self.robot_module.change_gripper("small")
-        self.update_info()
-        self.logger.info("END: equip small tool")
 
     def equip_large_tool(self):
-        self.logger.info("START: equip large tool")
         self.robot_module.change_gripper("big")
-        self.update_info()
-        self.logger.info("END: equip large tool")
 
     def move_robot_home(self):
-        self.logger.info("START: robot move to home")
         self.robot_module.move_to_home()
-        self.logger.info("END: robot move to home")
 
     def move_robot_change_tool_pose(self):
-        self.logger.info("START: move_robot_change_tool_pose")
         self.robot_module.robot.moveJ(self.swap_q)
-        self.logger.info("END: move_robot_change_tool_pose")
 
     def choose_diff_pack_model(self):
-        self.logger.info("START: Choose diff pack model")
         self.dropdown.grid(row=0, column=0, sticky='nsew', padx=(25, 5), pady=(25, 25))
         # TODO: should come from database not hardocoded
         self.dropdown['values'] = self.pack_models
         self.dropdown.current(self.pack_models.index(self.pack_state.model))
         self.changing_pack_model = True
         self.changing_cell_model = False
-        self.logger.info("END: Choose diff pack model")
 
     def confirm_pack(self):
-        self.logger.info(f"Pack bounding box confirmed")
+        # if self.pack_state.frame_location: # NO: could be human set
         self.pack_state.location_confirmed = True
         self.pack_state.model_confirmed = True
         self.pack_bb_drawer.lock()
@@ -597,10 +572,8 @@ class MemGui(tk.Tk):
         self.pack_state.pose = self.vision_module.frame_pos_to_pose([center_x, center_y], self.robot_module.get_TCP_pose())
         self.pack_state.size = (x_max - x_min, y_max - y_min)
         self.changing_pack_model = False
-        self.update_info()
 
     def remove_pack_cover(self):
-        self.logger.info("START: remove_pack_cover")
         self.robot_module.pick_and_place(self.pack_state.pose, self.cover_place_pose)
         self.robot_module.move_to_home()
         time.sleep(0.5)
@@ -610,35 +583,23 @@ class MemGui(tk.Tk):
             self.pack_state.cover_on = False
         else:
             self.logger.info("cover not removed correctly")
-        self.logger.info("END: remove_pack_cover")
 
     def add_cell_bb(self):
-        self.logger.info("START: add cell bounding box")
-
         self.cells_bb_drawer = _BoundingBoxEditor(self.home_frame.canvas, self.home_frame, tag='cells') if self.cells_bb_drawer is None else self.cells_bb_drawer
         self.cells_bb_drawer.editable = True
 
         x, y = self.home_frame.canvas.winfo_width() // 2, self.home_frame.canvas.winfo_height() // 2
         self.cells_bb_drawer.add_bb([x-50, y-50, x+50, y+50])
 
-        # for reasoner check that len(pack_state.cells) is not None
-        if len(self.pack_state.cells) == 0:
-            self.pack_state.add_cell(self.pack_state.cell_model, width=None, z=None, pose=None, frame_position=None)
-        self.logger.info("END: add cell bounding box")
-
     def classify_cells(self):
-        self.logger.info("START: classify cells")
         result = self.vision_module.identify_cells(self.camera_frame)
         self.pack_state.cell_model = (result['model'])
         if self.cells_bb_drawer is not None:
             self.cells_bb_drawer.set_color_icon(self.cells_icon_color[self.pack_state.cell_model])
         self.logger.debug(self.pack_state)
         self.logger.info(f"classified cells as {self.pack_state.cell_model}")
-        self.update_info()
-        self.logger.info("END: classify cell")
 
     def locate_cells(self):
-        self.logger.info("START: locate cells")
         result = self.vision_module.identify_cells(self.camera_frame)
         drawing_bbs = []
         self.pack_state.cells = []
@@ -660,21 +621,16 @@ class MemGui(tk.Tk):
         self.cells_bb_drawer.set_color_icon(self.cells_icon_color[self.pack_state.cell_model])
         self.logger.debug(self.pack_state)
         self.logger.info(f"localized {len(self.pack_state.cells):02d} cells")
-        self.update_info()
-        self.logger.info("END: locate cells")
 
     def choose_diff_cell_model(self):
-        self.logger.info("START: Choose diff cell model")
         self.dropdown.grid(row=0, column=0, sticky='nsew', padx=(25, 5), pady=(25, 25))
         self.changing_cell_model = True
         self.changing_pack_model = False
         # TODO: should come from database not hardcoded
         self.dropdown['values'] = self.cell_models
         self.dropdown.current(self.cell_models.index(self.pack_state.cell_model))
-        self.logger.info("END: Choose diff cell model")
 
     def confirm_cells(self):
-        self.logger.info(f"Cells bounding boxes confirmed")
         self.pack_state.cells_confirmed = True
         self.cells_bb_drawer.lock()
         self.dropdown.grid_forget()
@@ -700,10 +656,9 @@ class MemGui(tk.Tk):
         self.vision_module.set_background()
         self.changing_cell_model = False
         self.logger.debug(self.pack_state)
-        self.update_info()
 
     def assess_cells_qualities(self):
-        self.logger.info("START: assess_cells_qualities")
+        self.pack_state.quals = 'set'
         self.quals_editor = _QualitiesEditor(self.home_frame.canvas, cell_m_q=self.cell_m_q, cell_h_q=self.cell_h_q)
         bbs = []
         drawing_bbs = []
@@ -715,22 +670,17 @@ class MemGui(tk.Tk):
         for qual, cell in zip(qualities, self.pack_state.cells):
             cell.keep = qual > self.cell_h_q
         self.logger.info(f"{sum(q > self.cell_h_q for q in qualities):02d} cells will be kept")
-        self.pack_state.quals = 'set'
-        self.update_info()
-        self.logger.info("END: assess_cells_qualities")
 
     def confirm_quals(self):
-        self.logger.info(f"Cells qualities confirmed")
         self.pack_state.quals = 'confirmed'
         self.quals_editor.lock()
         for i, keep_cell in enumerate(self.quals_editor.keep_bbs):
             self.pack_state.cells[i].keep = keep_cell
             self.vision_module.set_background()
-            self.update_info()
+            self.update_info() # done in the executor wrapper, but only once
 
     def pickup_cells(self):
-        self.logger.info("START: pickup_cells")
-        self.pack_state.pickup_attempted = True
+        self.pack_state.pickplace_attempted = True
         for i, cell in enumerate(self.pack_state.cells):
             if not cell.sorted:
                 if cell.keep:
@@ -742,21 +692,14 @@ class MemGui(tk.Tk):
                 self.robot_module.move_to_home()
                 time.sleep(0.5)
                 cell.sorted = self.vision_module.verify_pickup(cell.frame_location, cell.width)
-                self.update_info()
+                self.update_info() # done in the executor wrapper, but only once
                 self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
                 self.home_frame.canvas.update() # to write the outcome real time
         self.robot_module.move_to_home()
-        self.logger.info("END: pickup_cells")
 
     def confirm_cells_picked(self):
-        self.logger.info("START: confirm_cells_picked")
-        if self.pack_state.pickup_attempted:
-            self.logger.info("requisites ok")
-            self.destroy()
-            exit()
-        else:
-            self.logger.info("requisites not met")
-        self.logger.info("END: confirm_cells_picked")
+        self.destroy()
+        exit()
 
     def write_outcome_picked_cells(self, scale=1, padx=0, pady=0):
         """mark on the image whether or not the battery cell was picked up
@@ -791,9 +734,9 @@ class MemGui(tk.Tk):
     def after_update(self):
         self.camera_frame = self.vision_module.get_current_frame(format='pil')
         self.scale, self.padx, self.pady = self.home_frame.draw_image(self.camera_frame)
-        voice_command = self.voice_module.get_intent()
-        if voice_command is not None:
-            self.logger.info(f"New voice command: {voice_command}")
+        fnc_executed, voice_cmd = self.voice_module.listen_vosk()
+        if fnc_executed:
+            self.logger.info(f"Function called with voice: {voice_cmd}")
         if self.verbose:
             self.show_frame_debug()
         if self.pack_bb_drawer is not None:
@@ -804,12 +747,12 @@ class MemGui(tk.Tk):
             self.quals_editor.write_qualities(scale=self.scale, padx=self.padx, pady=self.pady)
         if self.pack_state.quals == 'confirmed':
             self.write_outcome_picked_cells(scale=self.scale, padx=self.padx, pady=self.pady)
-        self.after(1, self.after_update)
         if self.evaluation_counter == 0:
-            self.reasoner.evaluate_actions(globals())
-
-        self.evaluation_counter += 1
-        self.evaluation_counter %= self.EVALUATION_DELAY
+            self.update_actions()
+        else:
+            self.evaluation_counter += 1
+            self.evaluation_counter %= self.EVALUATION_DELAY
+        self.after(1, self.after_update)
 
 class HomeScreen(tk.Frame):
     def __init__(self, parent, controller):
@@ -838,7 +781,7 @@ if __name__ == "__main__":
     camera_frame = cv2.imread("./data/camera_frame.png")
     camera_frame = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
     camera_frame = PIL.Image.fromarray(camera_frame)
-    gui_app = MemGui()
-    gui_app.after(1, gui_app.after_update)
-    gui_app.mainloop()
-
+    init_proxy()
+    app = MemGui()
+    app.after(1, app.after_update)
+    app.mainloop()

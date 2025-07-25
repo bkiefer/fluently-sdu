@@ -29,6 +29,8 @@ class VisionModule():
         console_level = 'debug' if verbose else 'info'
         self.logger = utilities.CustomLogger("Vision", "MeMVision.log", console_level=console_level, file_level=None)
         try:
+            self.qual_cnn = vision.CustomConvNeuralNet(n_classes=2)
+            self.qual_cnn.load_model("data/cell_qual_classifier.pth")
             self.camera = vision.RealSenseCamera(extrinsic=camera_Ext,
                                                 enabled_strams={
                                                 'color': [1920, 1080],
@@ -40,8 +42,6 @@ class VisionModule():
             self.logger.warning("The vision module could not be started, the module will run for debug purpose")
         self.packs_yolo_model = YOLO("data/packs_best_model.pt")
         self.cells_yolo_model = YOLO("data/cells_best_model.pt")
-        self.qual_cnn = vision.CustomConvNeuralNet(n_classes=2)
-        self.qual_cnn.load_model("data/cell_qual_classifier.pth")
         self.set_background()
         
     def set_background(self):
@@ -66,8 +66,8 @@ class VisionModule():
         try :
             frame = self.camera.get_color_frame()
         except AttributeError:
-            frame = cv2.imread("data/camera_frame.png")
-            # frame = cv2.imread("data/camera_frame1.png")
+            # frame = cv2.imread("data/camera_frame.png")
+            frame = cv2.imread("data/camera_frame1.png")
         if format.lower() == "pil":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
             frame = PIL.Image.fromarray(frame)
