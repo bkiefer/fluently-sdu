@@ -1,0 +1,11 @@
+path: /home/gu/fluently_ws/fluently_mem/data/yolo_dataset_pack
+
+train: images/train
+val: images/valid
+test: images/test
+
+nc: 2
+
+names:
+  0: trapezoid
+  1: square
