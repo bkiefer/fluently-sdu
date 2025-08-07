@@ -1,23 +1,23 @@
 atomic:
   - [ AlwaysTrue, 'True', 'Always true' ]
-  - [ BatteryFastened, app.pack_state.fastened, "Pack is {neg}fastened" ]
-  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "Pack model is {neg}set" ]
-  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "Pack model is {neg}confirmed" ]
-  - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "Pack bounding box has {neg}been set" ]
-  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "Pack bounding box is {neg}confirmed" ]
-  - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "The cover may still be on" ]
-  - [ CoverOff, app.pack_state.cover_on == False, "The cover is {neg}off" ]
-  - [ CellModelSet, 'app.pack_state.cell_model != None', "Cell model is {neg}identified" ]
-  - [ CellsConfirmed, app.pack_state.cells_confirmed, "Cell bounding box is {neg}confirmed" ]
-  - [ CellsLocated, len(app.pack_state.cells) > 0, "Cells have {neg}been located" ]
-  - [ CellQualitiesSet, app.pack_state.quals == 'set', "Quality of cells is {neg}set" ]
-  - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "Quality of cells is {neg}confirmed" ]
-  - [ SmallToolEquipped, app.robot_module.active_gripper == 'small', "Small Gripper is {neg}equipped" ]
-  - [ LargeToolEquipped, app.robot_module.active_gripper == 'big', "Large Gripper is {neg}equipped" ]
+  - [ BatteryFastened, app.pack_state.fastened, "the pack is {neg}fastened" ]
+  - [ BatteryModelSet, "app.pack_state.model != None and app.pack_state.model != 'unknown'", "the pack model is {neg}set" ]
+  - [ BatteryModelConfirmed, "app.pack_state.model_confirmed", "the pack model is {neg}confirmed" ]
+  - [ BatteryLocationSet, 'app.pack_state.frame_location != None', "the pack bounding box has {neg}been set" ]
+  - [ BatteryLocationConfirmed, app.pack_state.location_confirmed, "the pack bounding box is {neg}confirmed" ]
+  - [ CoverOn, app.pack_state.cover_on == True or app.pack_state.cover_on == None, "the cover may still be on" ]
+  - [ CoverOff, app.pack_state.cover_on == False, "the cover is {neg}off" ]
+  - [ CoverRobotRemovable, app.pack_state.model == "Square", "the cover is {neg}removable by the robot" ]
+  - [ CellModelSet, 'app.pack_state.cell_model != None', "the cell model is {neg}identified" ]
+  - [ CellsConfirmed, app.pack_state.cells_confirmed, "the cell bounding box is {neg}confirmed" ]
+  - [ CellsLocated, len(app.pack_state.cells) > 0, "the cells have {neg}been located" ]
+  - [ CellQualitiesSet, app.pack_state.quals == 'set', "the quality of cells is {neg}set" ]
+  - [ CellQualitiesConfirmed, app.pack_state.quals == 'confirmed', "the quality of the cells is {neg}confirmed" ]
+  - [ SmallToolEquipped, app.robot_module.active_gripper == 'small', "the small Gripper is {neg}equipped" ]
+  - [ LargeToolEquipped, app.robot_module.active_gripper == 'big', "the large Gripper is {neg}equipped" ]
   - [ PickPlaceAttempted, app.pack_state.pickplace_attempted, "Pick and Place has {neg}been attempted" ]
-  - [ RobotAtToolPose, 'True', 'robot arm is at tool pose' ] # TO CHECK
-  - [ RobotAtHomePose, 'True', 'robot arm is at home pose' ] # TO CHECK
-
+  - [ RobotAtToolPose, app.robot_module.position == 'change_tool', 'the robot arm is at tool pose' ] # TO CHECK
+  - [ RobotAtHomePose, app.robot_module.position == 'home', 'the robot arm is at home pose' ] # TO CHECK
 
 actions:
   - confirm_pack_fastened: # H
@@ -28,21 +28,21 @@ actions:
       #post: BatteryModelSet # No, might still be unknown if not identified
   - choose_diff_pack_model: # H
       pre: 'BatteryFastened & ! BatteryModelConfirmed'
-      post: BatteryModelConfirmed
+      #post: BatteryModelConfirmed
   - locate_pack: #R
       pre: 'BatteryFastened & ! BatteryLocationConfirmed'
       post: BatteryLocationSet
   - add_pack_bb: #H
       pre: 'BatteryFastened & ! BatteryLocationConfirmed'
-      post: BatteryLocationConfirmed # where to read that off?
+      post: BatteryLocationSet
   - confirm_pack: #H
-      pre: 'BatteryModelSet & BatteryLocationSet' # BK: or BatteryModelConfirmed?
+      pre: 'BatteryModelSet & BatteryLocationSet & ! BatteryLocationConfirmed & ! BatteryModelConfirmed' # BK: or BatteryModelConfirmed?
       post: 'BatteryLocationConfirmed & BatteryModelConfirmed'
   - check_cover_off: #R
       pre: BatteryFastened # ! CoverOff
-      post: 'CoverOff & BatteryLocationConfirmed'
+      #post: 'CoverOff & BatteryLocationConfirmed'
   - remove_pack_cover: #R
-      pre: '! CoverOff & BatteryLocationConfirmed'
+      pre: '! CoverOff & BatteryLocationConfirmed & CoverRobotRemovable & LargeToolEquipped'
   - move_robot_change_tool_pose:
       pre: '! RobotAtToolPose'
       post: RobotAtToolPose
@@ -67,7 +67,7 @@ actions:
       pre: 'CoverOff & ! CellsConfirmed'
       post: CellsLocated # ?? how to check that?
   - confirm_cells:
-      pre: 'CellsLocated & CellModelSet'
+      pre: 'CellsLocated & CellModelSet & ! CellsConfirmed'
       post: CellsConfirmed
   - assess_cells_qualities:
       pre: CellsConfirmed
@@ -76,8 +76,6 @@ actions:
       pre: CellQualitiesSet
       post: CellQualitiesConfirmed
   - pickup_cells:
-      pre: CellQualitiesConfirmed # & RobotAtHome
+      pre: CellQualitiesConfirmed & SmallToolEquipped # & RobotAtHome
   - confirm_cells_picked:
       pre: PickPlaceAttempted
-#  - verify_cell_pickup: # Not found, where is the function??
-#      pre: AlwaysTrue
