@@ -16,8 +16,8 @@ atomic:
   - [ SmallToolEquipped, app.robot_module.active_gripper == 'small', "the small Gripper is {neg}equipped" ]
   - [ LargeToolEquipped, app.robot_module.active_gripper == 'big', "the large Gripper is {neg}equipped" ]
   - [ PickPlaceAttempted, app.pack_state.pickplace_attempted, "Pick and Place has {neg}been attempted" ]
-  - [ RobotAtToolPose, app.robot_module.position == 'change_tool', 'the robot arm is at tool pose' ] # TO CHECK
-  - [ RobotAtHomePose, app.robot_module.position == 'home', 'the robot arm is at home pose' ] # TO CHECK
+  - [ RobotAtToolPose, app.robot_module.position == 'change_tool', 'the robot arm is at tool change pose' ] # TO CHECK
+  - [ RobotAtHomePose, app.robot_module.position == 'home', 'the robot arm is at home pose' ] # TO CHECK 
 
 actions:
   - confirm_pack_fastened: # H
