@@ -10,8 +10,10 @@
   <packaging>jar</packaging>
 
   <name>actionconv</name>
-
+  
   <properties>
+    <maven.compiler.source>9</maven.compiler.source>
+    <maven.compiler.target>1.9</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>11</maven.compiler.release>
     <junit.version>4.13.2</junit.version>
